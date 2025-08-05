@@ -26,76 +26,79 @@ class SampleApp:
         # 좌표 표시용 변수
         self.coord1 = tk.StringVar(value=str(self.position1))
         self.coord2 = tk.StringVar(value=str(self.position2))
-        self.color_var = tk.StringVar(value=str(self.color))
 
         # 마우스 리스너 참조
         self.listener = None
 
         # UI 위젯 생성
-        self._create_picker_entry(0, "1번 좌표", self.coord1, lambda: self.start_coordinate_picker(1))
-        self._create_picker_entry(1, "2번 좌표", self.coord2, lambda: self.start_coordinate_picker(2))
-        self._create_picker_entry(2, "대상 색상", self.color_var, None) # 기능은 아직 없습니다.
+        self._create_coord_entry(0, "1번 좌표", self.coord1, 1)
+        self._create_coord_entry(1, "2번 좌표", self.coord2, 2)
+        self._create_coord_entry(3, "색상", self.color, 3)
 
         # 상태 메시지
         self.status = tk.StringVar(value="대기 중...")
         tk.Label(root, textvariable=self.status, fg="lightblue", bg="#2e2e2e", anchor="w").grid(
-            row=3, column=0, columnspan=3, sticky="w", padx=10, pady=5
+            row=2, column=0, columnspan=3, sticky="w", padx=10, pady=5
         )
 
         self._parse_area()
         self.find_button = tk.Button(root, text="찾기", command=self.click_found_position)
-        self.find_button.grid(row=4, column=0, columnspan=3, pady=10, padx=10, sticky="ew")
+        self.find_button.grid(row=3, column=0, columnspan=3, pady=10, padx=10, sticky="ew")
 
         self.color_finder = ColorFinder(sleep_time=self.sleep_time)
         # 앱의 활성화 여부와 상관없이 동작하는 전역 키보드 리스너를 시작합니다.
         self.global_hotkey_listener = GlobalHotkeyListener(self.click_found_position)
         self.global_hotkey_listener.start()
 
-    def _create_picker_entry(self, row, label_text, value_var, command):
-        """좌표 또는 색상 선택을 위한 UI 한 줄을 생성하는 범용 헬퍼 메소드"""
+
+    def _create_coord_entry(self, row, label_text, coord_var, position_index):
+        """좌표 선택을 위한 UI 한 줄을 생성하는 헬퍼 메소드"""
         tk.Label(self.root, text=label_text, fg="white", bg="#2e2e2e").grid(
             row=row, column=0, padx=10, pady=10, sticky="e"
             )
-        tk.Label(self.root, textvariable=value_var, width=15, anchor="w", relief="sunken", fg="black", bg="white").grid(
+        tk.Label(self.root, textvariable=coord_var, width=15, anchor="w", relief="sunken", fg="black", bg="white").grid(
             row=row, column=1
             )
-        button_text = label_text.split(" ")[0] + " 따기"
-        tk.Button(self.root, text=button_text, command=command).grid(
+        tk.Button(self.root, text="좌표 따기", command=lambda: self.start_coordinate_picker(position_index)).grid(
             row=row, column=2, padx=5
             )
 
-    def start_coordinate_picker(self, position_index):
-        """마우스 오른쪽 클릭으로 좌표를 가져오는 리스너를 시작합니다."""
+    def _start_mouse_listener(self, on_click_callback, status_message):
+        """마우스 입력을 감지하는 리스너를 시작하는 공통 헬퍼 메소드"""
         if self.listener and self.listener.is_alive():
-            self.status.set("오류: 이미 다른 좌표를 선택 중입니다.")
+            self.status.set("오류: 이미 다른 값을 선택 중입니다.")
             return
 
-        self.status.set("마우스 오른쪽 클릭으로 좌표를 선택하세요...")
+        self.status.set(status_message)
 
         def on_click(x, y, button, pressed):
             if pressed and button == mouse.Button.right:
-                new_pos = (int(x), int(y))
-
-                def update_ui():
-                    if position_index == 1:
-                        self.position1 = new_pos
-                        self.coord1.set(str(new_pos))
-                    elif position_index == 2:
-                        self.position2 = new_pos
-                        self.coord2.set(str(new_pos))
-                    
-                    self.status.set(f"{position_index}번 좌표 저장 완료: {new_pos}")
-                    self._parse_area() # 좌표가 변경되었으므로 영역을 다시 계산합니다.
-
-                self.root.after(0, update_ui)
+                # 실제 작업은 제공된 콜백 함수에서 수행 (UI 안전성을 위해 after 사용)
+                self.root.after(0, lambda: on_click_callback(x, y))
                 return False  # 리스너를 중지합니다.
 
         def listener_target():
             self.listener = mouse.Listener(on_click=on_click)
             self.listener.run()
             self.listener = None
-
+        
         threading.Thread(target=listener_target, daemon=True).start()
+
+    def start_coordinate_picker(self, position_index):
+        """좌표 따기 리스너를 시작합니다."""
+        def on_coordinate_click(x, y):
+            new_pos = (int(x), int(y))
+            if position_index == 1:
+                self.position1 = new_pos
+                self.coord1.set(str(new_pos))
+            elif position_index == 2:
+                self.position2 = new_pos
+                self.coord2.set(str(new_pos))
+            
+            self.status.set(f"{position_index}번 좌표 저장 완료: {new_pos}")
+            self._parse_area() # 좌표가 변경되었으므로 영역을 다시 계산
+
+        self._start_mouse_listener(on_coordinate_click, "마우스 오른쪽 클릭으로 좌표를 선택하세요...")
 
     def _parse_area(self):
         x1, y1 = self.position1
