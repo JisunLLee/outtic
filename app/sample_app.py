@@ -1,5 +1,6 @@
 import tkinter as tk
 import threading
+import ast
 from pynput import mouse
 from PIL import ImageGrab
 from global_hotkey_listener import GlobalHotkeyListener
@@ -35,22 +36,25 @@ class SampleApp:
         self.coord2_var = tk.StringVar(value=str(self.position2))
         self.color_var = tk.StringVar(value=str(self.color))
         self.tolerance_var = tk.IntVar(value=self.color_tolerance)
-        self.direction_var = tk.StringVar(value=self.search_direction.name)
-        self.status = tk.StringVar(value="대기 중...")
 
         # UI 표시용 텍스트 맵
         self.SEARCH_DIRECTION_MAP = {
-            SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT.name: "좌상단->우하단",
-            SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT.name: "우상단->좌하단",
-            SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT.name: "좌하단->우상단",
-            SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT.name: "우하단->좌상단",
+            SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT.name: "→↓",
+            SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT.name: "←↓",
+            SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT.name: "→↑",
+            SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT.name: "←↑",
         }
+        self.direction_var = tk.StringVar(value=self.SEARCH_DIRECTION_MAP[self.search_direction.name])
+        self.status = tk.StringVar(value="대기 중...")
 
         # 내부 상태 변수
         self.listener = None
         self.area = (0, 0, 0, 0)
         self.area_width = 0
         self.area_height = 0
+
+        # 초기 영역 계산
+        self._parse_area()
 
     def _setup_ui(self):
         """애플리케이션의 UI를 생성하고 배치합니다."""
@@ -79,21 +83,41 @@ class SampleApp:
         self._create_ui_row(settings_frame, 3, "허용 오차", self.tolerance_var,
                             widget_type='entry')
 
-        # --- 상태 메시지 ---
+        self._create_ui_row(settings_frame, 4, "탐색 방향", self.direction_var,
+                            widget_type='optionmenu',
+                            options=self.SEARCH_DIRECTION_MAP)
+
+        # --- 상태 메시지 프레임 ---
         tk.Label(self.root, textvariable=self.status, fg="lightblue", bg="#2e2e2e", anchor="w").pack(
             fill="x", padx=10, pady=5, anchor="n")
 
-        # --- 찾기 버튼 ---
-        self.find_button = tk.Button(self.root, text="찾기 (F4)", command=self.click_found_position).pack(
-            pady=10, padx=10, fill="x", anchor="n")
+        # --- 액션 버튼 프레임 ---
+        action_frame = tk.Frame(self.root, bg="#2e2e2e")
+        action_frame.pack(pady=10, padx=10, fill="x", anchor="n")
+        action_frame.grid_columnconfigure(0, weight=1)
+        action_frame.grid_columnconfigure(1, weight=1)
 
-    def _create_ui_row(self, parent, row, label_text, var, widget_type='label', button_text=None, button_command=None):
+        # --- 적용 버튼 ---
+        self.apply_button = tk.Button(action_frame, text="적용하기", command=self._apply_settings)
+        self.apply_button.grid(row=0, column=0, sticky="ew", padx=2)
+
+        # --- 찾기 버튼 ---
+        self.find_button = tk.Button(action_frame, text="찾기 (F4)", command=self.click_found_position)
+        self.find_button.grid(row=0, column=1, sticky="ew", padx=2)
+
+    def _create_ui_row(self, parent, row, label_text, var, widget_type='label', options=None, button_text=None, button_command=None):
         """설정 UI 한 줄을 생성하는 범용 헬퍼 메서드"""
         tk.Label(parent, text=label_text, fg="white", bg="#2e2e2e").grid(row=row, column=0, padx=(0, 10), pady=5, sticky="e")
         if widget_type == 'label':
             tk.Label(parent, textvariable=var, width=15, anchor="w", relief="sunken", fg="black", bg="white").grid(row=row, column=1, sticky="ew")
         elif widget_type == 'entry':
             tk.Entry(parent, textvariable=var, width=15).grid(row=row, column=1, sticky="ew")
+        elif widget_type == 'optionmenu' and options:
+            # options는 {'internal_name': 'Display Name'} 형식의 딕셔너리입니다.
+            option_menu = tk.OptionMenu(parent, var, *options.values())
+            option_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0)
+            option_menu["menu"].config(bg="#555555", fg="white")
+            option_menu.grid(row=row, column=1, sticky="ew")
         if button_text and button_command:
             tk.Button(parent, text=button_text, command=button_command).grid(row=row, column=2, padx=5)
 
@@ -123,14 +147,11 @@ class SampleApp:
         def on_coordinate_click(x, y):
             new_pos = (int(x), int(y))
             if position_index == 1:
-                self.position1 = new_pos
                 self.coord1_var.set(str(new_pos))
             elif position_index == 2:
-                self.position2 = new_pos
                 self.coord2_var.set(str(new_pos))
             
             self.status.set(f"{position_index}번 좌표 저장 완료: {new_pos}")
-            self._parse_area() # 좌표가 변경되었으므로 영역을 다시 계산
 
         self._start_mouse_listener(on_coordinate_click, "마우스 오른쪽 클릭으로 좌표를 선택하세요...")
 
@@ -144,12 +165,47 @@ class SampleApp:
             screenshot = ImageGrab.grab(bbox=(ix, iy, ix + 1, iy + 1)).convert('RGB')
             pixel_color = screenshot.getpixel((0, 0))
             new_color = pixel_color
-            
-            self.color = new_color
             self.color_var.set(str(new_color))
             self.status.set(f"색상 저장 완료: {new_color}")
 
         self._start_mouse_listener(on_color_click, "마우스 오른쪽 클릭으로 색상을 선택하세요...")
+
+    def _apply_settings(self):
+        """UI의 설정값들을 실제 애플리케이션 상태에 적용합니다."""
+        try:
+            # 1. 좌표 파싱 및 적용
+            pos1_str = self.coord1_var.get()
+            pos2_str = self.coord2_var.get()
+            # ast.literal_eval을 사용하여 "(x, y)" 형식의 문자열을 안전하게 튜플로 변환
+            self.position1 = ast.literal_eval(pos1_str)
+            self.position2 = ast.literal_eval(pos2_str)
+
+            # 2. 색상 파싱 및 적용
+            color_str = self.color_var.get()
+            self.color = ast.literal_eval(color_str)
+
+            # 3. 허용 오차 적용
+            self.color_tolerance = self.tolerance_var.get()
+
+            # 4. 탐색 방향 적용
+            selected_display_name = self.direction_var.get()
+            # SEARCH_DIRECTION_MAP의 key와 value를 뒤집어서 display name으로 enum name을 찾습니다.
+            reversed_direction_map = {v: k for k, v in self.SEARCH_DIRECTION_MAP.items()}
+            direction_name = reversed_direction_map.get(selected_display_name)
+            if direction_name:
+                self.search_direction = SearchDirection[direction_name]
+
+            # 5. 영역 재계산
+            self._parse_area()
+
+            self.status.set("설정이 성공적으로 적용되었습니다.")
+            print("--- Settings Applied ---")
+
+        except (ValueError, SyntaxError) as e:
+            error_msg = f"설정 적용 오류: 입력값을 확인하세요. ({e})"
+            self.status.set(error_msg)
+        except tk.TclError:
+            self.status.set("설정 적용 오류: 허용 오차는 숫자여야 합니다.")
 
     def _parse_area(self):
         """두 좌표를 기반으로 사각 영역을 계산합니다. 좌표 순서에 상관없이 동작합니다."""
@@ -170,13 +226,7 @@ class SampleApp:
         print(f"영역 Height: {self.area_height}")
 
     def click_found_position(self):
-        try:
-            tolerance = self.tolerance_var.get()
-        except tk.TclError:
-            self.status.set("오류: 허용 오차는 숫자여야 합니다.")
-            return
-
-        abs_x, abs_y = self.color_finder.find_color_in_area(self.area, self.color, tolerance, self.search_direction)
+        abs_x, abs_y = self.color_finder.find_color_in_area(self.area, self.color, self.color_tolerance, self.search_direction)
 
         if abs_x is not None and abs_y is not None:
             # 지정된 좌표 (abs_x, abs_y)를 클릭합니다.
