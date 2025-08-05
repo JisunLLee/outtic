@@ -33,7 +33,6 @@ class SampleApp:
         # UI 위젯 생성
         self._create_coord_entry(0, "1번 좌표", self.coord1, 1)
         self._create_coord_entry(1, "2번 좌표", self.coord2, 2)
-        self._create_coord_entry(3, "색상", self.color, 3)
 
         # 상태 메시지
         self.status = tk.StringVar(value="대기 중...")
@@ -63,38 +62,42 @@ class SampleApp:
             row=row, column=2, padx=5
             )
 
-    def start_coordinate_picker(self, position_index):
-        """마우스 오른쪽 클릭으로 좌표를 가져오는 리스너를 시작합니다."""
+    def _start_mouse_listener(self, on_click_callback, status_message):
+        """마우스 입력을 감지하는 리스너를 시작하는 공통 헬퍼 메소드"""
         if self.listener and self.listener.is_alive():
-            self.status.set("오류: 이미 다른 좌표를 선택 중입니다.")
+            self.status.set("오류: 이미 다른 값을 선택 중입니다.")
             return
 
-        self.status.set("마우스 오른쪽 클릭으로 좌표를 선택하세요...")
+        self.status.set(status_message)
 
         def on_click(x, y, button, pressed):
             if pressed and button == mouse.Button.right:
-                new_pos = (int(x), int(y))
-
-                def update_ui():
-                    if position_index == 1:
-                        self.position1 = new_pos
-                        self.coord1.set(str(new_pos))
-                    elif position_index == 2:
-                        self.position2 = new_pos
-                        self.coord2.set(str(new_pos))
-                    
-                    self.status.set(f"{position_index}번 좌표 저장 완료: {new_pos}")
-                    self._parse_area() # 좌표가 변경되었으므로 영역을 다시 계산합니다.
-
-                self.root.after(0, update_ui)
+                # 실제 작업은 제공된 콜백 함수에서 수행 (UI 안전성을 위해 after 사용)
+                self.root.after(0, lambda: on_click_callback(x, y))
                 return False  # 리스너를 중지합니다.
 
         def listener_target():
             self.listener = mouse.Listener(on_click=on_click)
             self.listener.run()
             self.listener = None
-
+        
         threading.Thread(target=listener_target, daemon=True).start()
+
+    def start_coordinate_picker(self, position_index):
+        """좌표 따기 리스너를 시작합니다."""
+        def on_coordinate_click(x, y):
+            new_pos = (int(x), int(y))
+            if position_index == 1:
+                self.position1 = new_pos
+                self.coord1.set(str(new_pos))
+            elif position_index == 2:
+                self.position2 = new_pos
+                self.coord2.set(str(new_pos))
+            
+            self.status.set(f"{position_index}번 좌표 저장 완료: {new_pos}")
+            self._parse_area() # 좌표가 변경되었으므로 영역을 다시 계산
+
+        self._start_mouse_listener(on_coordinate_click, "마우스 오른쪽 클릭으로 좌표를 선택하세요...")
 
     def _parse_area(self):
         x1, y1 = self.position1
