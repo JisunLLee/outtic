@@ -7,49 +7,67 @@ from color_finder import ColorFinder, SearchDirection
 class SampleApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("샘플 테스터")
 
-        self.root.geometry("330x500")
-        self.root.configure(bg="#2e2e2e")
+        self._initialize_attributes()
+        self._setup_ui()
 
-        self.position1 = (53, 182)
-        self.position2 = (713, 647)
-        self.color = (0, 204, 204)
-        
-        # 색상 유사도 허용 범위 (0~255, 값이 클수록 더 넓은 범위의 색상을 찾음)
-        # 예: 10은 매우 유사한 색상, 50은 눈에 띄게 다른 색상도 포함할 수 있음
-        self.color_tolerance = 15
-        # 탐색 방향 설정
-        self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
-        self.sleep_time = 0.02
-
-        # 좌표 표시용 변수
-        self.coord1 = tk.StringVar(value=str(self.position1))
-        self.coord2 = tk.StringVar(value=str(self.position2))
-
-        # 마우스 리스너 참조
-        self.listener = None
-
-        # UI 위젯 생성
-        self._create_coord_entry(0, "1번 좌표", self.coord1, 1)
-        self._create_coord_entry(1, "2번 좌표", self.coord2, 2)
-        self._create_coord_entry(3, "색상", self.color, 3)
-
-        # 상태 메시지
-        self.status = tk.StringVar(value="대기 중...")
-        tk.Label(root, textvariable=self.status, fg="lightblue", bg="#2e2e2e", anchor="w").grid(
-            row=2, column=0, columnspan=3, sticky="w", padx=10, pady=5
-        )
-
-        self._parse_area()
-        self.find_button = tk.Button(root, text="찾기", command=self.click_found_position)
-        self.find_button.grid(row=3, column=0, columnspan=3, pady=10, padx=10, sticky="ew")
-
+        # 핵심 로직 컴포넌트 초기화
         self.color_finder = ColorFinder(sleep_time=self.sleep_time)
-        # 앱의 활성화 여부와 상관없이 동작하는 전역 키보드 리스너를 시작합니다.
         self.global_hotkey_listener = GlobalHotkeyListener(self.click_found_position)
         self.global_hotkey_listener.start()
 
+        # 창 닫기 이벤트 처리
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def _initialize_attributes(self):
+        """애플리케이션의 모든 속성을 초기화합니다."""
+        # 설정값
+        self.position1 = (53, 182)
+        self.position2 = (713, 647)
+        self.color = (0, 204, 204)
+        self.color_tolerance = 15
+        self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
+        self.sleep_time = 0.02
+
+        # UI와 연동될 Tkinter 변수
+        self.coord1_var = tk.StringVar(value=str(self.position1))
+        self.coord2_var = tk.StringVar(value=str(self.position2))
+        self.color_var = tk.StringVar(value=str(self.color))
+        self.status = tk.StringVar(value="대기 중...")
+
+        # 내부 상태 변수
+        self.listener = None
+        self.area = 0, 0, 0, 0
+        self.area_width = 0
+        self.area_height = 0
+
+    def _setup_ui(self):
+        """애플리케이션의 UI를 생성하고 배치합니다."""
+        self.root.title("샘플 테스터")
+        self.root.geometry("330x500")
+        self.root.configure(bg="#2e2e2e")
+
+        # UI 위젯 생성
+        self._create_coord_entry(0, "1번 좌표", self.coord1_var, 1)
+        self._create_coord_entry(1, "2번 좌표", self.coord2_var, 2)
+
+        # 색상 표시 UI (기존 코드의 버그 수정 및 재배치)
+        tk.Label(self.root, text="색상", fg="white", bg="#2e2e2e").grid(
+            row=2, column=0, padx=10, pady=10, sticky="e"
+        )
+        tk.Label(self.root, textvariable=self.color_var, width=15, anchor="w", relief="sunken", fg="black", bg="white").grid(
+            row=2, column=1
+        )
+
+        # 상태 메시지
+        tk.Label(self.root, textvariable=self.status, fg="lightblue", bg="#2e2e2e", anchor="w").grid(
+            row=3, column=0, columnspan=3, sticky="w", padx=10, pady=5
+        )
+
+        # 초기 영역 계산 및 찾기 버튼
+        self._parse_area()
+        self.find_button = tk.Button(self.root, text="찾기 (F4)", command=self.click_found_position)
+        self.find_button.grid(row=4, column=0, columnspan=3, pady=10, padx=10, sticky="ew")
 
     def _create_coord_entry(self, row, label_text, coord_var, position_index):
         """좌표 선택을 위한 UI 한 줄을 생성하는 헬퍼 메소드"""
@@ -90,10 +108,10 @@ class SampleApp:
             new_pos = (int(x), int(y))
             if position_index == 1:
                 self.position1 = new_pos
-                self.coord1.set(str(new_pos))
+                self.coord1_var.set(str(new_pos))
             elif position_index == 2:
                 self.position2 = new_pos
-                self.coord2.set(str(new_pos))
+                self.coord2_var.set(str(new_pos))
             
             self.status.set(f"{position_index}번 좌표 저장 완료: {new_pos}")
             self._parse_area() # 좌표가 변경되었으므로 영역을 다시 계산
@@ -101,16 +119,22 @@ class SampleApp:
         self._start_mouse_listener(on_coordinate_click, "마우스 오른쪽 클릭으로 좌표를 선택하세요...")
 
     def _parse_area(self):
+        """두 좌표를 기반으로 사각 영역을 계산합니다. 좌표 순서에 상관없이 동작합니다."""
         x1, y1 = self.position1
         x2, y2 = self.position2
-        width = x2 - x1
-        height = y2 - y1
-        self.area = (x1, y1, x2, y2)
-        self.area_width = width
-        self.area_height = height
+        
+        left = min(x1, x2)
+        top = min(y1, y2)
+        right = max(x1, x2)
+        bottom = max(y1, y2)
+
+        self.area = (left, top, right, bottom)
+        self.area_width = right - left
+        self.area_height = bottom - top
+
         print(f"영역 좌표: {self.area}")
-        print(f"영역 Width: {width}")
-        print(f"영역 Height: {height}")
+        print(f"영역 Width: {self.area_width}")
+        print(f"영역 Height: {self.area_height}")
 
     def click_found_position(self):
         abs_x, abs_y = self.color_finder.find_color_in_area(self.area, self.color, self.color_tolerance, self.search_direction)
@@ -120,6 +144,11 @@ class SampleApp:
             self.color_finder.click_action(abs_x, abs_y)
         else:
             print("Color not found in the specified area.")
+
+    def on_closing(self):
+        """창을 닫을 때 리소스를 안전하게 정리합니다."""
+        self.global_hotkey_listener.stop()
+        self.root.destroy()
 
 if __name__ == "__main__":
     root = tk.Tk()
