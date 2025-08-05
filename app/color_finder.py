@@ -33,11 +33,13 @@ class ColorFinder:
         x1, y1, x2, y2 = area
         screenshot = ImageGrab.grab(bbox=(x1, y1, x2, y2))
         color_x, color_y = self._find_color_in_area(screenshot, color, tolerance, direction)
+        opt_x = 1.5 # 색상 버튼의 가로 크기에 따라 조정
+        opt_y = 2.5 # 색상 버튼의 세로 크기에 따라 조정
 
         if color_x is not None and color_y is not None:
-            # 찾은 상대 좌표를 절대 좌표로 변환합니다. 오프셋을 제거하여 정확도를 높입니다.
-            abs_x = x1 + color_x
-            abs_y = y1 + color_y
+            # 최종 좌표는 정수로 변환하여 반환
+            abs_x = int(x1 + color_x + opt_x)
+            abs_y = int(y1 + color_y + opt_y)
             print(f"Color found at ({abs_x}, {abs_y}) with tolerance {tolerance}")
             return abs_x, abs_y
         return None, None
