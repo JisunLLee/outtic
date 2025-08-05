@@ -1,5 +1,6 @@
 import tkinter as tk
 import threading
+import time
 import ast
 from pynput import mouse
 from PIL import ImageGrab
@@ -15,7 +16,7 @@ class SampleApp:
 
         # 핵심 로직 컴포넌트 초기화
         self.color_finder = ColorFinder(sleep_time=self.sleep_time)
-        self.global_hotkey_listener = GlobalHotkeyListener(self.click_found_position)
+        self.global_hotkey_listener = GlobalHotkeyListener(self.toggle_search)
         self.global_hotkey_listener.start()
 
         # 창 닫기 이벤트 처리
@@ -26,6 +27,7 @@ class SampleApp:
         # 설정값
         self.position1 = (53, 182)
         self.position2 = (713, 647)
+        self.position3 = (0, 0) # 완료 후 클릭할 좌표
         self.color = (0, 204, 204)
         self.color_tolerance = 15
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
@@ -34,6 +36,7 @@ class SampleApp:
         # UI와 연동될 Tkinter 변수
         self.coord1_var = tk.StringVar(value=str(self.position1))
         self.coord2_var = tk.StringVar(value=str(self.position2))
+        self.coord3_var = tk.StringVar(value=str(self.position3))
         self.color_var = tk.StringVar(value=str(self.color))
         self.tolerance_var = tk.IntVar(value=self.color_tolerance)
 
@@ -52,6 +55,8 @@ class SampleApp:
         self.area = (0, 0, 0, 0)
         self.area_width = 0
         self.area_height = 0
+        self.is_searching = False
+        self.search_thread = None
 
         # 초기 영역 계산
         self._parse_area()
@@ -80,12 +85,17 @@ class SampleApp:
                             button_text="색상 따기",
                             button_command=self.start_color_picker)
 
-        self._create_ui_row(settings_frame, 3, "허용 오차", self.tolerance_var,
+        self._create_ui_row(settings_frame, 3, "완료 좌표", self.coord3_var,
+                            button_text="좌표 따기",
+                            button_command=lambda: self.start_coordinate_picker(3))
+
+        self._create_ui_row(settings_frame, 4, "색상 오차", self.tolerance_var,
                             widget_type='entry')
 
-        self._create_ui_row(settings_frame, 4, "탐색 방향", self.direction_var,
+        self._create_ui_row(settings_frame, 5, "탐색 방향", self.direction_var,
                             widget_type='optionmenu',
                             options=self.SEARCH_DIRECTION_MAP)
+
 
         # --- 상태 메시지 프레임 ---
         tk.Label(self.root, textvariable=self.status, fg="lightblue", bg="#2e2e2e", anchor="w").pack(
@@ -102,7 +112,7 @@ class SampleApp:
         self.apply_button.grid(row=0, column=0, sticky="ew", padx=2)
 
         # --- 찾기 버튼 ---
-        self.find_button = tk.Button(action_frame, text="찾기 (F4)", command=self.click_found_position)
+        self.find_button = tk.Button(action_frame, text="찾기 (F4)", command=self.toggle_search)
         self.find_button.grid(row=0, column=1, sticky="ew", padx=2)
 
     def _create_ui_row(self, parent, row, label_text, var, widget_type='label', options=None, button_text=None, button_command=None):
@@ -150,8 +160,14 @@ class SampleApp:
                 self.coord1_var.set(str(new_pos))
             elif position_index == 2:
                 self.coord2_var.set(str(new_pos))
+            elif position_index == 3:
+                self.coord3_var.set(str(new_pos))
             
-            self.status.set(f"{position_index}번 좌표 저장 완료: {new_pos}")
+            if position_index == 3:
+                status_text = f"완료선택 좌표 저장 완료: {new_pos}"
+            else:
+                status_text = f"{position_index}번 좌표 저장 완료: {new_pos}"
+            self.status.set(status_text)
 
         self._start_mouse_listener(on_coordinate_click, "마우스 오른쪽 클릭으로 좌표를 선택하세요...")
 
@@ -176,9 +192,11 @@ class SampleApp:
             # 1. 좌표 파싱 및 적용
             pos1_str = self.coord1_var.get()
             pos2_str = self.coord2_var.get()
+            pos3_str = self.coord3_var.get()
             # ast.literal_eval을 사용하여 "(x, y)" 형식의 문자열을 안전하게 튜플로 변환
             self.position1 = ast.literal_eval(pos1_str)
             self.position2 = ast.literal_eval(pos2_str)
+            self.position3 = ast.literal_eval(pos3_str)
 
             # 2. 색상 파싱 및 적용
             color_str = self.color_var.get()
@@ -225,17 +243,47 @@ class SampleApp:
         print(f"영역 Width: {self.area_width}")
         print(f"영역 Height: {self.area_height}")
 
-    def click_found_position(self):
-        abs_x, abs_y = self.color_finder.find_color_in_area(self.area, self.color, self.color_tolerance, self.search_direction)
+    def toggle_search(self):
+        """색상 검색을 시작하거나 중지하는 토글 메서드입니다."""
+        if self.is_searching:
+            self.is_searching = False
+            self.find_button.config(text="찾기 (F4)")
+            self.status.set("검색이 중지되었습니다.")
+            print("--- 색상 검색 OFF ---")
+            return
 
-        if abs_x is not None and abs_y is not None:
-            # 지정된 좌표 (abs_x, abs_y)를 클릭합니다.
-            self.color_finder.click_action(abs_x, abs_y)
-        else:
-            print("Color not found in the specified area.")
+        # '적용하기'를 누르지 않고 '찾기'를 누를 경우를 대비해 한번 더 적용
+        self._apply_settings()
+        # 설정 적용 중 오류가 발생했다면 검색을 시작하지 않음
+        if "오류" in self.status.get():
+            return
+
+        self.is_searching = True
+        self.status.set("색상 검색 중... (F4로 중지)")
+        self.find_button.config(text="중지 (F4)")
+        print("--- 색상 검색 ON ---")
+
+        self.search_thread = threading.Thread(target=self._search_worker, daemon=True)
+        self.search_thread.start()
+
+    def _search_worker(self):
+        """(스레드 워커) 색상을 주기적으로 검색하고, 찾으면 클릭 후 종료합니다."""
+        while self.is_searching:
+            abs_x, abs_y = self.color_finder.find_color_in_area(self.area, self.color, self.color_tolerance, self.search_direction)
+
+            if abs_x is not None and abs_y is not None:
+                self.color_finder.click_action(abs_x, abs_y)
+                self.is_searching = False  # 루프 및 스레드 종료
+                self.root.after(0, lambda: self.status.set(f"색상 발견 및 클릭 완료: ({abs_x}, {abs_y})"))
+                self.root.after(0, lambda: self.find_button.config(text="찾기 (F4)"))
+                print("--- 색상 발견, 검색 종료 ---")
+                return
+
+            time.sleep(0.1) # 색상을 못 찾았으면 잠시 대기
 
     def on_closing(self):
         """창을 닫을 때 리소스를 안전하게 정리합니다."""
+        self.is_searching = False # 실행 중인 검색 스레드 중지
         self.global_hotkey_listener.stop()
         self.root.destroy()
 
