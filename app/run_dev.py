@@ -37,7 +37,7 @@ if __name__ == "__main__":
     event_handler = AppReloader(script_to_run)
 
     observer = Observer()
-    observer.schedule(event_handler, path='.', recursive=False)  # 현재 디렉토리 감시
+    observer.schedule(event_handler, path='./app', recursive=False)  # 현재 디렉토리 감시
     observer.start()
     print(f"--- '{script_to_run}' 파일의 변경을 감시합니다. 종료하려면 Ctrl+C를 누르세요. ---")
 
