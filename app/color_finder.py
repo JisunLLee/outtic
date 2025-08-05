@@ -33,13 +33,11 @@ class ColorFinder:
         x1, y1, x2, y2 = area
         screenshot = ImageGrab.grab(bbox=(x1, y1, x2, y2))
         color_x, color_y = self._find_color_in_area(screenshot, color, tolerance, direction)
-        opt_x = 1.5 # 색상 버튼의 가로 크기에 따라 조정
-        opt_y = 2.5 # 색상 버튼의 세로 크기에 따라 조정
 
         if color_x is not None and color_y is not None:
-            # 최종 좌표는 정수로 변환하여 반환
-            abs_x = int(x1 + color_x + opt_x)
-            abs_y = int(y1 + color_y + opt_y)
+            # 찾은 상대 좌표를 절대 좌표로 변환합니다. 오프셋을 제거하여 정확도를 높입니다.
+            abs_x = x1 + color_x
+            abs_y = y1 + color_y
             print(f"Color found at ({abs_x}, {abs_y}) with tolerance {tolerance}")
             return abs_x, abs_y
         return None, None
@@ -48,12 +46,8 @@ class ColorFinder:
         # 1. Pillow 이미지를 NumPy 배열로 변환하여 픽셀 접근 속도를 높입니다.
         img_array = np.array(screenshot)
         height, width, _ = img_array.shape
-
-        # 2. 제곱된 허용 오차를 미리 계산하여 루프 내에서 제곱근 계산(sqrt)을 피합니다.
-        #    이것이 가장 큰 성능 향상 요소입니다.
-        tolerance_sq = tolerance**2
         
-        r2, g2, b2 = color
+        r2, g2, b2 = int(color[0]), int(color[1]), int(color[2])
 
         # 탐색 방향에 따른 범위 설정
         if direction == SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT:
@@ -78,9 +72,10 @@ class ColorFinder:
                 # getpixel() 대신 배열에서 직접 픽셀 값을 읽습니다.
                 r1, g1, b1 = img_array[y, x][:3]
 
-                # 4. 제곱 거리를 사용하여 색상 유사도를 계산합니다.
-                dist_sq = (int(r1) - r2)**2 + (int(g1) - g2)**2 + (int(b1) - b2)**2
-                
-                if dist_sq <= tolerance_sq:
+                # 4. 각 채널의 차이가 허용 오차(tolerance) 이내인지 확인합니다.
+                #    이는 유클리드 거리보다 특정 색상 범위를 지정하는 데 더 직관적일 수 있습니다.
+                if abs(int(r1) - r2) <= tolerance and \
+                   abs(int(g1) - g2) <= tolerance and \
+                   abs(int(b1) - b2) <= tolerance:
                     return x, y
         return None, None

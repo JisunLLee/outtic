@@ -89,13 +89,12 @@ class SampleApp:
                             button_text="좌표 따기",
                             button_command=lambda: self.start_coordinate_picker(3))
 
-        self._create_ui_row(settings_frame, 4, "색상 오차", self.tolerance_var,
+        self._create_ui_row(settings_frame, 4, "색상 오차(채널별)", self.tolerance_var,
                             widget_type='entry')
 
         self._create_ui_row(settings_frame, 5, "탐색 방향", self.direction_var,
                             widget_type='optionmenu',
                             options=self.SEARCH_DIRECTION_MAP)
-
 
         # --- 상태 메시지 프레임 ---
         tk.Label(self.root, textvariable=self.status, fg="lightblue", bg="#2e2e2e", anchor="w").pack(
