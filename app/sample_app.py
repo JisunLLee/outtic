@@ -1,6 +1,7 @@
 import tkinter as tk
 import threading
 from pynput import mouse
+from PIL import ImageGrab
 from global_hotkey_listener import GlobalHotkeyListener
 from color_finder import ColorFinder, SearchDirection
 
@@ -33,6 +34,7 @@ class SampleApp:
         self.coord1_var = tk.StringVar(value=str(self.position1))
         self.coord2_var = tk.StringVar(value=str(self.position2))
         self.color_var = tk.StringVar(value=str(self.color))
+        self.tolerance_var = tk.IntVar(value=self.color_tolerance)
         self.status = tk.StringVar(value="대기 중...")
 
         # 내부 상태 변수
@@ -58,16 +60,26 @@ class SampleApp:
         tk.Label(self.root, textvariable=self.color_var, width=15, anchor="w", relief="sunken", fg="black", bg="white").grid(
             row=2, column=1
         )
+        tk.Button(self.root, text="색상 따기", command=self.start_color_picker).grid(
+            row=2, column=2, padx=5
+        )
+
+        # 허용 오차 입력 UI
+        tk.Label(self.root, text="허용 오차", fg="white", bg="#2e2e2e").grid(
+            row=3, column=0, padx=10, pady=10, sticky="e"
+        )
+        tk.Entry(self.root, textvariable=self.tolerance_var, width=15).grid(
+            row=3, column=1, columnspan=2, sticky="ew", padx=5
+        )
 
         # 상태 메시지
         tk.Label(self.root, textvariable=self.status, fg="lightblue", bg="#2e2e2e", anchor="w").grid(
-            row=3, column=0, columnspan=3, sticky="w", padx=10, pady=5
+            row=4, column=0, columnspan=3, sticky="w", padx=10, pady=5
         )
 
         # 초기 영역 계산 및 찾기 버튼
-        self._parse_area()
         self.find_button = tk.Button(self.root, text="찾기 (F4)", command=self.click_found_position)
-        self.find_button.grid(row=4, column=0, columnspan=3, pady=10, padx=10, sticky="ew")
+        self.find_button.grid(row=5, column=0, columnspan=3, pady=10, padx=10, sticky="ew")
 
     def _create_coord_entry(self, row, label_text, coord_var, position_index):
         """좌표 선택을 위한 UI 한 줄을 생성하는 헬퍼 메소드"""
@@ -118,6 +130,23 @@ class SampleApp:
 
         self._start_mouse_listener(on_coordinate_click, "마우스 오른쪽 클릭으로 좌표를 선택하세요...")
 
+    def start_color_picker(self):
+        """색상 따기 리스너를 시작합니다."""
+        def on_color_click(x, y):
+            # 클릭된 위치의 1x1 스크린샷을 찍어 색상 값을 얻습니다.
+            ix, iy = int(x), int(y)
+            # .convert('RGB')를 호출하여 반환값이 항상 (R, G, B) 튜플이 되도록 보장합니다.
+            # 이렇게 하면 회색조(grayscale) 이미지 등에서 정수 값이 반환되어 발생하는 오류를 방지합니다.
+            screenshot = ImageGrab.grab(bbox=(ix, iy, ix + 1, iy + 1)).convert('RGB')
+            pixel_color = screenshot.getpixel((0, 0))
+            new_color = pixel_color
+            
+            self.color = new_color
+            self.color_var.set(str(new_color))
+            self.status.set(f"색상 저장 완료: {new_color}")
+
+        self._start_mouse_listener(on_color_click, "마우스 오른쪽 클릭으로 색상을 선택하세요...")
+
     def _parse_area(self):
         """두 좌표를 기반으로 사각 영역을 계산합니다. 좌표 순서에 상관없이 동작합니다."""
         x1, y1 = self.position1
@@ -137,7 +166,13 @@ class SampleApp:
         print(f"영역 Height: {self.area_height}")
 
     def click_found_position(self):
-        abs_x, abs_y = self.color_finder.find_color_in_area(self.area, self.color, self.color_tolerance, self.search_direction)
+        try:
+            tolerance = self.tolerance_var.get()
+        except tk.TclError:
+            self.status.set("오류: 허용 오차는 숫자여야 합니다.")
+            return
+
+        abs_x, abs_y = self.color_finder.find_color_in_area(self.area, self.color, tolerance, self.search_direction)
 
         if abs_x is not None and abs_y is not None:
             # 지정된 좌표 (abs_x, abs_y)를 클릭합니다.
