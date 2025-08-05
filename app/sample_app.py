@@ -164,7 +164,7 @@ class SampleApp:
                 self.coord3_var.set(str(new_pos))
             
             if position_index == 3:
-                status_text = f"완료선택 좌표 저장 완료: {new_pos}"
+                status_text = f"완료 좌표 저장 완료: {new_pos}"
             else:
                 status_text = f"{position_index}번 좌표 저장 완료: {new_pos}"
             self.status.set(status_text)
@@ -272,11 +272,23 @@ class SampleApp:
             abs_x, abs_y = self.color_finder.find_color_in_area(self.area, self.color, self.color_tolerance, self.search_direction)
 
             if abs_x is not None and abs_y is not None:
+                # 1. 찾은 색상 위치 클릭
                 self.color_finder.click_action(abs_x, abs_y)
+
+                # 2. '완료 좌표' 좌표 클릭
+                # (0, 0)은 기본값이므로, 사용자가 설정했을 경우에만 클릭
+                if self.position3 != (0, 0):
+                    time.sleep(0.1) # 첫 번째 클릭 후 잠시 대기
+                    comp_x, comp_y = self.position3
+                    self.color_finder.click_action(comp_x, comp_y)
+                    status_message = f"색상 클릭 후 완료좌표({comp_x},{comp_y}) 클릭"
+                else:
+                    status_message = f"색상 발견 및 클릭 완료: ({abs_x}, {abs_y})"
+
                 self.is_searching = False  # 루프 및 스레드 종료
-                self.root.after(0, lambda: self.status.set(f"색상 발견 및 클릭 완료: ({abs_x}, {abs_y})"))
+                self.root.after(0, lambda msg=status_message: self.status.set(msg))
                 self.root.after(0, lambda: self.find_button.config(text="찾기 (F4)"))
-                print("--- 색상 발견, 검색 종료 ---")
+                print("--- 색상 발견, 작업 완료, 검색 종료 ---")
                 return
 
             time.sleep(0.1) # 색상을 못 찾았으면 잠시 대기
