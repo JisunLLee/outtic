@@ -33,7 +33,7 @@ class AppReloader(FileSystemEventHandler):
 
 
 if __name__ == "__main__":
-    script_to_run = "sample_app.py"
+    script_to_run = "app/sample_app.py"
     event_handler = AppReloader(script_to_run)
 
     observer = Observer()
