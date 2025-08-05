@@ -35,11 +35,20 @@ class SampleApp:
         self.coord2_var = tk.StringVar(value=str(self.position2))
         self.color_var = tk.StringVar(value=str(self.color))
         self.tolerance_var = tk.IntVar(value=self.color_tolerance)
+        self.direction_var = tk.StringVar(value=self.search_direction.name)
         self.status = tk.StringVar(value="대기 중...")
+
+        # UI 표시용 텍스트 맵
+        self.SEARCH_DIRECTION_MAP = {
+            SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT.name: "좌상단->우하단",
+            SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT.name: "우상단->좌하단",
+            SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT.name: "좌하단->우상단",
+            SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT.name: "우하단->좌상단",
+        }
 
         # 내부 상태 변수
         self.listener = None
-        self.area = 0, 0, 0, 0
+        self.area = (0, 0, 0, 0)
         self.area_width = 0
         self.area_height = 0
 
@@ -49,49 +58,44 @@ class SampleApp:
         self.root.geometry("330x500")
         self.root.configure(bg="#2e2e2e")
 
-        # UI 위젯 생성
-        self._create_coord_entry(0, "1번 좌표", self.coord1_var, 1)
-        self._create_coord_entry(1, "2번 좌표", self.coord2_var, 2)
+        # --- 설정 프레임 ---
+        settings_frame = tk.Frame(self.root, bg="#2e2e2e")
+        settings_frame.pack(padx=10, pady=5, fill="x", anchor="n")
+        settings_frame.grid_columnconfigure(1, weight=1) # 중앙 위젯이 공간을 차지하도록
 
-        # 색상 표시 UI (기존 코드의 버그 수정 및 재배치)
-        tk.Label(self.root, text="색상", fg="white", bg="#2e2e2e").grid(
-            row=2, column=0, padx=10, pady=10, sticky="e"
-        )
-        tk.Label(self.root, textvariable=self.color_var, width=15, anchor="w", relief="sunken", fg="black", bg="white").grid(
-            row=2, column=1
-        )
-        tk.Button(self.root, text="색상 따기", command=self.start_color_picker).grid(
-            row=2, column=2, padx=5
-        )
+        # --- UI 위젯 동적 생성 ---
+        self._create_ui_row(settings_frame, 0, "1번 좌표", self.coord1_var,
+                            button_text="좌표 따기",
+                            button_command=lambda: self.start_coordinate_picker(1))
 
-        # 허용 오차 입력 UI
-        tk.Label(self.root, text="허용 오차", fg="white", bg="#2e2e2e").grid(
-            row=3, column=0, padx=10, pady=10, sticky="e"
-        )
-        tk.Entry(self.root, textvariable=self.tolerance_var, width=15).grid(
-            row=3, column=1, columnspan=2, sticky="ew", padx=5
-        )
+        self._create_ui_row(settings_frame, 1, "2번 좌표", self.coord2_var,
+                            button_text="좌표 따기",
+                            button_command=lambda: self.start_coordinate_picker(2))
 
-        # 상태 메시지
-        tk.Label(self.root, textvariable=self.status, fg="lightblue", bg="#2e2e2e", anchor="w").grid(
-            row=4, column=0, columnspan=3, sticky="w", padx=10, pady=5
-        )
+        self._create_ui_row(settings_frame, 2, "대상 색상", self.color_var,
+                            button_text="색상 따기",
+                            button_command=self.start_color_picker)
 
-        # 초기 영역 계산 및 찾기 버튼
-        self.find_button = tk.Button(self.root, text="찾기 (F4)", command=self.click_found_position)
-        self.find_button.grid(row=5, column=0, columnspan=3, pady=10, padx=10, sticky="ew")
+        self._create_ui_row(settings_frame, 3, "허용 오차", self.tolerance_var,
+                            widget_type='entry')
 
-    def _create_coord_entry(self, row, label_text, coord_var, position_index):
-        """좌표 선택을 위한 UI 한 줄을 생성하는 헬퍼 메소드"""
-        tk.Label(self.root, text=label_text, fg="white", bg="#2e2e2e").grid(
-            row=row, column=0, padx=10, pady=10, sticky="e"
-            )
-        tk.Label(self.root, textvariable=coord_var, width=15, anchor="w", relief="sunken", fg="black", bg="white").grid(
-            row=row, column=1
-            )
-        tk.Button(self.root, text="좌표 따기", command=lambda: self.start_coordinate_picker(position_index)).grid(
-            row=row, column=2, padx=5
-            )
+        # --- 상태 메시지 ---
+        tk.Label(self.root, textvariable=self.status, fg="lightblue", bg="#2e2e2e", anchor="w").pack(
+            fill="x", padx=10, pady=5, anchor="n")
+
+        # --- 찾기 버튼 ---
+        self.find_button = tk.Button(self.root, text="찾기 (F4)", command=self.click_found_position).pack(
+            pady=10, padx=10, fill="x", anchor="n")
+
+    def _create_ui_row(self, parent, row, label_text, var, widget_type='label', button_text=None, button_command=None):
+        """설정 UI 한 줄을 생성하는 범용 헬퍼 메서드"""
+        tk.Label(parent, text=label_text, fg="white", bg="#2e2e2e").grid(row=row, column=0, padx=(0, 10), pady=5, sticky="e")
+        if widget_type == 'label':
+            tk.Label(parent, textvariable=var, width=15, anchor="w", relief="sunken", fg="black", bg="white").grid(row=row, column=1, sticky="ew")
+        elif widget_type == 'entry':
+            tk.Entry(parent, textvariable=var, width=15).grid(row=row, column=1, sticky="ew")
+        if button_text and button_command:
+            tk.Button(parent, text=button_text, command=button_command).grid(row=row, column=2, padx=5)
 
     def _start_mouse_listener(self, on_click_callback, status_message):
         """마우스 입력을 감지하는 리스너를 시작하는 공통 헬퍼 메소드"""
