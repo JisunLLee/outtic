@@ -226,7 +226,7 @@ class SampleApp:
             if position_index == 3:
                 status_text = f"완료선택 좌표 저장 완료: {new_pos}"
             else:
-                status_text = f"{position_index}번 좌표 저장 완료: {new_pos}"
+                status_text = f"Position{position_index} 저장 완료: {new_pos}"
             self.status.set(status_text)
             print(f"캡쳐된 {position_index}번 좌표: {new_pos}")
 
@@ -379,7 +379,7 @@ class SampleApp:
 
             # --- 색상을 찾지 못했을 때의 로직 ---
             if self.use_fail_sequence:
-                # 현재 스텝(0: 4번좌표, 1: 5번좌표)에 따라 클릭할 좌표와 횟수 결정
+                # 현재 스텝(0: position4, 1: position5)에 따라 클릭할 좌표와 횟수 결정
                 if self.fail_sequence_step == 0:
                     target_coord = self.position4
                     coord_num = 4
@@ -389,12 +389,12 @@ class SampleApp:
                     coord_num = 5
                     total_clicks_for_step = self.pos5_click_count
 
-                # 클릭 실행 여부 결정 (5번 좌표는 체크박스 확인)
+                # 클릭 실행 여부 결정 (position5는 체크박스 확인)
                 should_click = False
                 if coord_num == 4:
                     should_click = True
                 elif coord_num == 5:
-                    should_click = self.use_position5 # 5번 좌표 사용 여부 확인
+                    should_click = self.use_position5 # position5 사용 여부 확인
 
                 # 조건이 맞으면 클릭 실행
                 if should_click and target_coord and target_coord != (0, 0):
