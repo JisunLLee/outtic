@@ -29,6 +29,7 @@ class SampleApp:
         self.position1 = (84, 219)
         self.position2 = (713, 647)
         self.position3 = (805, 704) # 완료 후 클릭할 좌표
+        self.position4 = (0, 0) # 실패 시 클릭할 좌표
         self.color = (0, 204, 204)
         self.color_tolerance = 15
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
@@ -38,8 +39,10 @@ class SampleApp:
         self.coord1_var = tk.StringVar(value=str(self.position1))
         self.coord2_var = tk.StringVar(value=str(self.position2))
         self.coord3_var = tk.StringVar(value=str(self.position3))
+        self.coord4_var = tk.StringVar(value=str(self.position4))
         self.color_var = tk.StringVar(value=str(self.color))
         self.tolerance_var = tk.IntVar(value=self.color_tolerance)
+        self.use_position4_var = tk.BooleanVar(value=False)
 
         # UI 표시용 텍스트 맵
         self.SEARCH_DIRECTION_MAP = {
@@ -58,6 +61,7 @@ class SampleApp:
         self.area_height = 0
         self.is_searching = False
         self.search_thread = None
+        self.use_position4 = False
         self.area_window = None # 영역 확인 창을 위한 참조
 
         # 초기 영역 계산
@@ -89,11 +93,17 @@ class SampleApp:
         self._create_ui_row(settings_frame, 3, "완료선택", self.coord3_var,
                             button_text="좌표 따기",
                             button_command=lambda: self.start_coordinate_picker(3))
+        
+        self._create_ui_row(settings_frame, 4, "4번 좌표", self.coord4_var,
+                            button_text="좌표 따기",
+                            button_command=lambda: self.start_coordinate_picker(4),
+                            checkbox_var=self.use_position4_var,
+                            checkbox_text="사용")
 
-        self._create_ui_row(settings_frame, 4, "색상 오차(채널별)", self.tolerance_var,
+        self._create_ui_row(settings_frame, 5, "색상 오차(채널별)", self.tolerance_var,
                             widget_type='entry')
 
-        self._create_ui_row(settings_frame, 5, "탐색 방향", self.direction_var,
+        self._create_ui_row(settings_frame, 6, "탐색 방향", self.direction_var,
                             widget_type='optionmenu',
                             options=self.SEARCH_DIRECTION_MAP)
 
@@ -120,18 +130,32 @@ class SampleApp:
         self.find_button = tk.Button(action_frame, text="찾기 (F4)", command=self.toggle_search)
         self.find_button.grid(row=0, column=2, sticky="ew", padx=2)
 
-    def _create_ui_row(self, parent, row, label_text, var, widget_type='label', options=None, button_text=None, button_command=None):
+    def _create_ui_row(self, parent, row, label_text, var, widget_type='label', options=None, button_text=None, button_command=None, checkbox_var=None, checkbox_text=None):
         """설정 UI 한 줄을 생성하는 범용 헬퍼 메서드"""
         tk.Label(parent, text=label_text, fg="white", bg="#2e2e2e").grid(row=row, column=0, padx=(0, 10), pady=5, sticky="e")
+
+        # 중앙 위젯(값 표시/입력)과 체크박스를 담을 프레임
+        widget_frame = tk.Frame(parent, bg="#2e2e2e")
+        widget_frame.grid(row=row, column=1, sticky="ew")
+        widget_frame.grid_columnconfigure(0, weight=1) # 주 위젯이 확장되도록 설정
+
         if widget_type == 'label':
-            tk.Label(parent, textvariable=var, width=15, anchor="w", relief="sunken", fg="black", bg="white").grid(row=row, column=1, sticky="ew")
+            tk.Label(widget_frame, textvariable=var, width=15, anchor="w", relief="sunken", fg="black", bg="white").grid(row=0, column=0, sticky="ew")
         elif widget_type == 'entry':
-            tk.Entry(parent, textvariable=var, width=15).grid(row=row, column=1, sticky="ew")
+            tk.Entry(widget_frame, textvariable=var, width=15).grid(row=0, column=0, sticky="ew")
         elif widget_type == 'optionmenu' and options:
-            option_menu = tk.OptionMenu(parent, var, *options.values())
+            option_menu = tk.OptionMenu(widget_frame, var, *options.values())
             option_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0)
             option_menu["menu"].config(bg="#555555", fg="white")
-            option_menu.grid(row=row, column=1, sticky="ew")
+            option_menu.grid(row=0, column=0, sticky="ew")
+
+        if checkbox_var and checkbox_text:
+            cb = tk.Checkbutton(widget_frame, text=checkbox_text, variable=checkbox_var, 
+                                bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", 
+                                activebackground="#2e2e2e", activeforeground="white", 
+                                highlightthickness=0, borderwidth=0)
+            cb.grid(row=0, column=1, padx=5)
+
         if button_text and button_command:
             tk.Button(parent, text=button_text, command=button_command).grid(row=row, column=2, padx=5, sticky="w")
 
@@ -165,6 +189,8 @@ class SampleApp:
                 self.coord2_var.set(str(new_pos))
             elif position_index == 3:
                 self.coord3_var.set(str(new_pos))
+            elif position_index == 4:
+                self.coord4_var.set(str(new_pos))
             
             if position_index == 3:
                 status_text = f"완료선택 좌표 저장 완료: {new_pos}"
@@ -221,8 +247,10 @@ class SampleApp:
             self.position1 = ast.literal_eval(self.coord1_var.get())
             self.position2 = ast.literal_eval(self.coord2_var.get())
             self.position3 = ast.literal_eval(self.coord3_var.get())
+            self.position4 = ast.literal_eval(self.coord4_var.get())
             self.color = ast.literal_eval(self.color_var.get())
             self.color_tolerance = self.tolerance_var.get()
+            self.use_position4 = self.use_position4_var.get()
 
             selected_display_name = self.direction_var.get()
             reversed_direction_map = {v: k for k, v in self.SEARCH_DIRECTION_MAP.items()}
