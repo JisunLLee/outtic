@@ -70,7 +70,20 @@ class SampleApp:
     def _setup_ui(self):
         """애플리케이션의 UI를 생성하고 배치합니다."""
         self.root.title("샘플 테스터")
-        self.root.geometry("330x500")
+
+        window_width = 330
+        window_height = 500
+
+        # 화면 크기 가져오기
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+
+        # 창을 좌측 하단에 위치시키기 위한 x, y 좌표 계산
+        # 작업 표시줄이나 독(Dock)을 고려하여 약간의 여백(offset)을 줍니다.
+        x_coordinate = 0
+        y_coordinate = screen_height - window_height - 80
+
+        self.root.geometry(f"{window_width}x{window_height}+{x_coordinate}+{y_coordinate}")
         self.root.configure(bg="#2e2e2e")
 
         # --- 설정 프레임 ---
