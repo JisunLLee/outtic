@@ -2,6 +2,7 @@ import tkinter as tk
 import threading
 import time
 import ast
+import random
 from pynput import mouse
 from PIL import ImageGrab
 from global_hotkey_listener import GlobalHotkeyListener
@@ -356,8 +357,11 @@ class SampleApp:
                 # (0, 0)은 기본값이므로, 사용자가 설정했을 경우에만 클릭
                 if (fail_x, fail_y) != (0, 0):
                     self.root.after(0, lambda: self.status.set(f"색상 못찾음. 4번 좌표({fail_x},{fail_y}) 클릭."))
-                    # 360ms의 지정된 딜레이로 클릭
-                    self.color_finder.click_action(fail_x, fail_y, delay=self.fail_click_delay)
+                    
+                    # 기본 딜레이에서 +/- 100ms (0.1초) 범위의 랜덤 값을 적용합니다.
+                    random_offset = random.uniform(-0.1, 0.1)
+                    random_delay = self.fail_click_delay + random_offset
+                    self.color_finder.click_action(fail_x, fail_y, delay=max(0, random_delay))
 
             time.sleep(0.1)
 
