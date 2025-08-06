@@ -40,6 +40,8 @@ class SampleApp:
         self.position3 = (805, 704) # 색상 선택 완료 후 클릭할 좌표
         self.position4 = (813, 396) # 색상 선택 실패 시 클릭할 첫 번째 좌표
         self.position5 = (815, 429) # 색상 선택 실패 시 클릭할 두 번째 좌표
+        self.color4 = (0, 0, 0) # 구역 1에서 찾을 색상
+        self.color5 = (0, 0, 0) # 구역 2에서 찾을 색상
         self.color = (0, 204, 204)
         self.color_tolerance = 15
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
@@ -56,12 +58,16 @@ class SampleApp:
         self.coord4_var = tk.StringVar(value=str(self.position4))
         self.coord5_var = tk.StringVar(value=str(self.position5))
         self.color_var = tk.StringVar(value=str(self.color))
+        self.color4_var = tk.StringVar(value=str(self.color4))
+        self.color5_var = tk.StringVar(value=str(self.color5))
         self.tolerance_var = tk.IntVar(value=self.color_tolerance)
         self.fail_delay_var = tk.StringVar(value=str(int(self.fail_click_delay * 1000)))
         self.use_fail_sequence_var = tk.BooleanVar(value=True) # 구역 1 체크박스
         self.use_position5_var = tk.BooleanVar(value=True) # 구역 2 체크박스
         self.pos4_clicks_var = tk.StringVar(value=str(self.pos4_click_count))
         self.pos5_clicks_var = tk.StringVar(value=str(self.pos5_click_count))
+        self.use_same_color4_var = tk.BooleanVar(value=True)
+        self.use_same_color5_var = tk.BooleanVar(value=True)
 
         # UI 표시용 텍스트 맵
         self.SEARCH_DIRECTION_MAP = {
@@ -82,6 +88,8 @@ class SampleApp:
         self.search_thread = None
         self.use_fail_sequence = False
         self.use_position5 = False
+        self.use_same_color4 = True
+        self.use_same_color5 = True
         self.fail_sequence_step = 0
         self.fail_sequence_click_count = 0
         self.area_window = None # 영역 확인 창을 위한 참조
@@ -101,7 +109,7 @@ class SampleApp:
         self.root.title("샘플 테스터")
 
         window_width = 330
-        window_height = 480
+        window_height = 550 # UI 항목 추가로 높이 증가
 
         # 화면 크기 가져오기
         screen_width = self.root.winfo_screenwidth()
@@ -131,7 +139,7 @@ class SampleApp:
 
         self._create_ui_row(settings_frame, 2, "색상", self.color_var,
                             button_text="선택",
-                            button_command=self.start_color_picker)
+                            button_command=lambda: self.start_color_picker(0))
         self._create_ui_row(settings_frame, 3, "완료", self.coord3_var,
                             button_text="선택",
                             button_command=lambda: self.start_coordinate_picker(3))
@@ -154,13 +162,25 @@ class SampleApp:
         self._create_ui_row(settings_frame, 7, "구역 2 클릭(번)", self.pos5_clicks_var,
                             widget_type='entry')
 
-        self._create_ui_row(settings_frame, 8, "구역선택 딜레이(ms)", self.fail_delay_var,
+        self._create_ui_row(settings_frame, 8, "구역 1 찾을색상", self.color4_var,
+                            button_text="선택",
+                            button_command=lambda: self.start_color_picker(4),
+                            checkbox_var=self.use_same_color4_var,
+                            checkbox_text="기존색상")
+
+        self._create_ui_row(settings_frame, 9, "구역 2 찾을색상", self.color5_var,
+                            button_text="선택",
+                            button_command=lambda: self.start_color_picker(5),
+                            checkbox_var=self.use_same_color5_var,
+                            checkbox_text="기존색상")
+
+        self._create_ui_row(settings_frame, 10, "구역선택 딜레이(ms)", self.fail_delay_var,
                             widget_type='entry')
 
-        self._create_ui_row(settings_frame, 9, "색상 오차", self.tolerance_var,
+        self._create_ui_row(settings_frame, 11, "색상 오차", self.tolerance_var,
                             widget_type='entry')
 
-        self._create_ui_row(settings_frame, 10, "탐색 방향", self.direction_var,
+        self._create_ui_row(settings_frame, 12, "탐색 방향", self.direction_var,
                             widget_type='optionmenu',
                             options=self.SEARCH_DIRECTION_MAP)
 
@@ -264,9 +284,9 @@ class SampleApp:
 
         self.root.after(2000, grab_coord_after_delay)
 
-    def start_color_picker(self):
+    def start_color_picker(self, color_index=0):
         """사용자가 마우스를 올려둔 위치의 색상을 2초 후에 캡처합니다."""
-        self.status.set("색상 지정: 2초 후 마우스 위치의 색상을 캡처합니다...")
+        self.status.set(f"색상 지정({color_index if color_index != 0 else '기본'}): 2초 후 마우스 위치를 캡처합니다...")
 
         def grab_color_after_delay():
             x, y = self.mouse_controller.position
@@ -275,10 +295,19 @@ class SampleApp:
             screenshot = ImageGrab.grab(bbox=(ix, iy, ix + 1, iy + 1)).convert('RGB')
             pixel_color = screenshot.getpixel((0, 0))
             new_color = pixel_color
-            
-            self.color_var.set(str(new_color))
-            self.status.set(f"색상 저장 완료: {new_color}")
-            print(f"캡쳐된 색상: {new_color}")
+
+            if color_index == 0:
+                self.color_var.set(str(new_color))
+                status_text = f"기본 색상 저장 완료: {new_color}"
+            elif color_index == 4:
+                self.color4_var.set(str(new_color))
+                status_text = f"구역 1 색상 저장 완료: {new_color}"
+            elif color_index == 5:
+                self.color5_var.set(str(new_color))
+                status_text = f"구역 2 색상 저장 완료: {new_color}"
+
+            self.status.set(status_text)
+            print(status_text)
             self._flash_window()
 
         self.root.after(2000, grab_color_after_delay)
@@ -316,6 +345,8 @@ class SampleApp:
             self.position4 = ast.literal_eval(self.coord4_var.get())
             self.position5 = ast.literal_eval(self.coord5_var.get())
             self.color = ast.literal_eval(self.color_var.get())
+            self.color4 = ast.literal_eval(self.color4_var.get())
+            self.color5 = ast.literal_eval(self.color5_var.get())
             self.color_tolerance = self.tolerance_var.get()
             # ms 단위의 문자열을 초 단위의 float으로 변환
             self.fail_click_delay = int(self.fail_delay_var.get()) / 1000.0
@@ -323,6 +354,8 @@ class SampleApp:
             self.use_position5 = self.use_position5_var.get()
             self.pos4_click_count = int(self.pos4_clicks_var.get())
             self.pos5_click_count = int(self.pos5_clicks_var.get())
+            self.use_same_color4 = self.use_same_color4_var.get()
+            self.use_same_color5 = self.use_same_color5_var.get()
 
             selected_display_name = self.direction_var.get()
             reversed_direction_map = {v: k for k, v in self.SEARCH_DIRECTION_MAP.items()}
