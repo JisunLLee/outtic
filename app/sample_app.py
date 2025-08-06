@@ -26,9 +26,9 @@ class SampleApp:
     def _initialize_attributes(self):
         """애플리케이션의 모든 속성을 초기화합니다."""
         # 설정값
-        self.position1 = (53, 182)
+        self.position1 = (84, 219)
         self.position2 = (713, 647)
-        self.position3 = (0, 0) # 완료 후 클릭할 좌표
+        self.position3 = (805, 704) # 완료 후 클릭할 좌표
         self.color = (0, 204, 204)
         self.color_tolerance = 15
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
