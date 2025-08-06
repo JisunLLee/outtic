@@ -39,7 +39,7 @@ class SampleApp:
         self.sleep_time = 0.02
         self.fail_click_delay = 0.36 # 색상 찾기 실패 시 클릭 딜레이 (360ms)
         # 실패 시 시퀀스 클릭 횟수
-        self.pos4_click_count = 7
+        self.pos4_click_count = 5
         self.pos5_click_count = 1
 
         # UI와 연동될 Tkinter 변수
@@ -51,8 +51,8 @@ class SampleApp:
         self.color_var = tk.StringVar(value=str(self.color))
         self.tolerance_var = tk.IntVar(value=self.color_tolerance)
         self.fail_delay_var = tk.StringVar(value=str(int(self.fail_click_delay * 1000)))
-        self.use_fail_sequence_var = tk.BooleanVar(value=False) # 구역1 체크박스
-        self.use_position5_var = tk.BooleanVar(value=False) # 구역2 체크박스
+        self.use_fail_sequence_var = tk.BooleanVar(value=True) # 구역 1 체크박스
+        self.use_position5_var = tk.BooleanVar(value=True) # 구역 2 체크박스
         self.pos4_clicks_var = tk.StringVar(value=str(self.pos4_click_count))
         self.pos5_clicks_var = tk.StringVar(value=str(self.pos5_click_count))
 
@@ -134,10 +134,10 @@ class SampleApp:
                             checkbox_var=self.use_position5_var,
                             checkbox_text="사용")
 
-        self._create_ui_row(settings_frame, 6, "구역1 클릭(번)", self.pos4_clicks_var,
+        self._create_ui_row(settings_frame, 6, "구역 1 클릭(번)", self.pos4_clicks_var,
                             widget_type='entry')
 
-        self._create_ui_row(settings_frame, 7, "구역2 클릭(번)", self.pos5_clicks_var,
+        self._create_ui_row(settings_frame, 7, "구역 2 클릭(번)", self.pos5_clicks_var,
                             widget_type='entry')
 
         self._create_ui_row(settings_frame, 8, "구역선택 딜레이(ms)", self.fail_delay_var,
@@ -414,7 +414,8 @@ class SampleApp:
                 # 조건이 맞으면 클릭 실행
                 if should_click and target_coord and target_coord != (0, 0):
                     fail_x, fail_y = target_coord
-                    self.root.after(0, lambda c=coord_num, cl=self.fail_sequence_click_count, tc=total_clicks_for_step: self.status.set(f"실패 시퀀스: {c}번 좌표 클릭 ({cl + 1}/{tc})"))
+                    self.root.after(0, lambda c=coord_num, cl=self.fail_sequence_click_count, tc=total_clicks_for_step: self.status.set(
+                        f"구역 선택: 구역{c-2} ({cl + 1}/{tc})"))
                     
                     # 딜레이 계산 및 클릭
                     final_delay = self.fail_click_delay
