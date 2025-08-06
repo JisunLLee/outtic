@@ -30,22 +30,26 @@ class SampleApp:
         self.position1 = (84, 219)
         self.position2 = (713, 647)
         self.position3 = (805, 704) # 완료 후 클릭할 좌표
-        self.position4 = (813, 396) # 실패 시 클릭할 좌표
+        self.position4 = (813, 396) # 실패 시 클릭할 첫 번째 좌표
+        self.position5 = (0, 0) # 실패 시 클릭할 두 번째 좌표
         self.color = (0, 204, 204)
         self.color_tolerance = 15
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
         self.sleep_time = 0.02
         self.fail_click_delay = 0.36 # 색상 찾기 실패 시 클릭 딜레이 (360ms)
+        # 실패 시 클릭 시퀀스 정의: (좌표 번호, 클릭 횟수)
+        self.fail_click_sequence = [(4, 7), (5, 1), (4, 4), (5, 1)]
 
         # UI와 연동될 Tkinter 변수
         self.coord1_var = tk.StringVar(value=str(self.position1))
         self.coord2_var = tk.StringVar(value=str(self.position2))
         self.coord3_var = tk.StringVar(value=str(self.position3))
         self.coord4_var = tk.StringVar(value=str(self.position4))
+        self.coord5_var = tk.StringVar(value=str(self.position5))
         self.color_var = tk.StringVar(value=str(self.color))
         self.tolerance_var = tk.IntVar(value=self.color_tolerance)
-        self.fail_delay_var = tk.StringVar(value=str(int(self.fail_click_delay * 100)))
-        self.use_position4_var = tk.BooleanVar(value=False)
+        self.fail_delay_var = tk.StringVar(value=str(int(self.fail_click_delay * 1000)))
+        self.use_fail_sequence_var = tk.BooleanVar(value=False)
 
         # UI 표시용 텍스트 맵
         self.SEARCH_DIRECTION_MAP = {
@@ -64,7 +68,9 @@ class SampleApp:
         self.area_height = 0
         self.is_searching = False
         self.search_thread = None
-        self.use_position4 = False
+        self.use_fail_sequence = False
+        self.fail_sequence_step = 0
+        self.fail_sequence_click_count = 0
         self.area_window = None # 영역 확인 창을 위한 참조
 
         # 초기 영역 계산
@@ -96,33 +102,37 @@ class SampleApp:
 
         # --- UI 위젯 동적 생성 ---
         self._create_ui_row(settings_frame, 0, "1번 좌표", self.coord1_var,
-                            button_text="좌표 따기",
+                            button_text="선택",
                             button_command=lambda: self.start_coordinate_picker(1))
 
         self._create_ui_row(settings_frame, 1, "2번 좌표", self.coord2_var,
-                            button_text="좌표 따기",
+                            button_text="선택",
                             button_command=lambda: self.start_coordinate_picker(2))
 
-        self._create_ui_row(settings_frame, 2, "대상 색상", self.color_var,
-                            button_text="대상 지정",
+        self._create_ui_row(settings_frame, 2, "색상", self.color_var,
+                            button_text="선택",
                             button_command=self.start_color_picker)
-        self._create_ui_row(settings_frame, 3, "완료선택", self.coord3_var,
-                            button_text="좌표 따기",
+        self._create_ui_row(settings_frame, 3, "완료", self.coord3_var,
+                            button_text="선택",
                             button_command=lambda: self.start_coordinate_picker(3))
         
         self._create_ui_row(settings_frame, 4, "4번 좌표", self.coord4_var,
-                            button_text="좌표 따기",
+                            button_text="선택",
                             button_command=lambda: self.start_coordinate_picker(4),
-                            checkbox_var=self.use_position4_var,
-                            checkbox_text="사용")
+                            checkbox_var=self.use_fail_sequence_var,
+                            checkbox_text="좌표4 클릭")
 
-        self._create_ui_row(settings_frame, 5, "4번 좌표 딜레이()", self.fail_delay_var,
+        self._create_ui_row(settings_frame, 5, "5번 좌표", self.coord5_var,
+                            button_text="선택",
+                            button_command=lambda: self.start_coordinate_picker(5))
+
+        self._create_ui_row(settings_frame, 6, "실패 시 딜레이(ms)", self.fail_delay_var,
                             widget_type='entry')
 
-        self._create_ui_row(settings_frame, 6, "색상 오차(채널별)", self.tolerance_var,
+        self._create_ui_row(settings_frame, 7, "색상 오차(채널별)", self.tolerance_var,
                             widget_type='entry')
 
-        self._create_ui_row(settings_frame, 7, "탐색 방향", self.direction_var,
+        self._create_ui_row(settings_frame, 8, "탐색 방향", self.direction_var,
                             widget_type='optionmenu',
                             options=self.SEARCH_DIRECTION_MAP)
 
@@ -199,7 +209,7 @@ class SampleApp:
         threading.Thread(target=listener_target, daemon=True).start()
 
     def start_coordinate_picker(self, position_index):
-        """좌표 따기 리스너를 시작합니다."""
+        """좌표 선택 리스너를 시작합니다."""
         def on_coordinate_click(x, y):
             new_pos = (int(x), int(y))
             if position_index == 1:
@@ -210,6 +220,8 @@ class SampleApp:
                 self.coord3_var.set(str(new_pos))
             elif position_index == 4:
                 self.coord4_var.set(str(new_pos))
+            elif position_index == 5:
+                self.coord5_var.set(str(new_pos))
             
             if position_index == 3:
                 status_text = f"완료선택 좌표 저장 완료: {new_pos}"
@@ -267,11 +279,12 @@ class SampleApp:
             self.position2 = ast.literal_eval(self.coord2_var.get())
             self.position3 = ast.literal_eval(self.coord3_var.get())
             self.position4 = ast.literal_eval(self.coord4_var.get())
+            self.position5 = ast.literal_eval(self.coord5_var.get())
             self.color = ast.literal_eval(self.color_var.get())
             self.color_tolerance = self.tolerance_var.get()
-            # ms 단위의 문자열을 단위 변경해서 float으로 변환
-            self.fail_click_delay = int(self.fail_delay_var.get()) / 100.0
-            self.use_position4 = self.use_position4_var.get()
+            # ms 단위의 문자열을 초 단위의 float으로 변환
+            self.fail_click_delay = int(self.fail_delay_var.get()) / 1000.0
+            self.use_fail_sequence = self.use_fail_sequence_var.get()
 
             selected_display_name = self.direction_var.get()
             reversed_direction_map = {v: k for k, v in self.SEARCH_DIRECTION_MAP.items()}
@@ -326,6 +339,8 @@ class SampleApp:
         if "오류" in self.status.get():
             return
 
+        self.fail_sequence_step = 0
+        self.fail_sequence_click_count = 0
         self.is_searching = True
         self.status.set("색상 검색 중... (F4로 중지)")
         self.find_button.config(text="중지 (F4)")
@@ -358,16 +373,35 @@ class SampleApp:
                 return
 
             # --- 색상을 찾지 못했을 때의 로직 ---
-            if self.use_position4:
-                fail_x, fail_y = self.position4
-                # (0, 0)은 기본값이므로, 사용자가 설정했을 경우에만 클릭
-                if (fail_x, fail_y) != (0, 0):
-                    self.root.after(0, lambda: self.status.set(f"색상 못찾음. 4번 좌표({fail_x},{fail_y}) 클릭."))
+            if self.use_fail_sequence:
+                # 현재 실행할 시퀀스 스텝 가져오기
+                current_step = self.fail_click_sequence[self.fail_sequence_step]
+                coord_num, total_clicks_for_step = current_step
+
+                # 클릭할 좌표 결정
+                if coord_num == 4:
+                    target_coord = self.position4
+                elif coord_num == 5:
+                    target_coord = self.position5
+                else:
+                    target_coord = None # 정의되지 않은 좌표 번호
+
+                if target_coord and target_coord != (0, 0):
+                    fail_x, fail_y = target_coord
+                    self.root.after(0, lambda: self.status.set(f"실패 시퀀스: {coord_num}번 좌표 클릭 ({self.fail_sequence_click_count + 1}/{total_clicks_for_step})"))
                     
-                    # 기본 딜레이에서 +/- 100ms (0.1초) 범위의 랜덤 값을 적용합니다.
-                    random_offset = random.uniform(-0.1, 0.1)
-                    random_delay = self.fail_click_delay + random_offset
-                    self.color_finder.click_action(fail_x, fail_y, delay=max(0, random_delay))
+                    # 딜레이 계산 및 클릭
+                    final_delay = self.fail_click_delay
+                    if self.fail_click_delay > 0:
+                        random_offset = random.uniform(-0.1, 0.1)
+                        final_delay = self.fail_click_delay + random_offset
+                    self.color_finder.click_action(fail_x, fail_y, delay=max(0, final_delay))
+
+                    # 클릭 카운트 증가 및 스텝 전환
+                    self.fail_sequence_click_count += 1
+                    if self.fail_sequence_click_count >= total_clicks_for_step:
+                        self.fail_sequence_click_count = 0
+                        self.fail_sequence_step = (self.fail_sequence_step + 1) % len(self.fail_click_sequence)
 
             time.sleep(0.1)
 
