@@ -90,6 +90,7 @@ class SampleApp:
         self.use_position5 = False
         self.use_same_color4 = True
         self.use_same_color5 = True
+        self.current_search_color = self.color # 현재 검색 대상 색상
         self.fail_sequence_step = 0
         self.fail_sequence_click_count = 0
         self.area_window = None # 영역 확인 창을 위한 참조
@@ -166,13 +167,13 @@ class SampleApp:
                             button_text="선택",
                             button_command=lambda: self.start_color_picker(4),
                             checkbox_var=self.use_same_color4_var,
-                            checkbox_text="기존색상")
+                            checkbox_text="기본사용")
 
         self._create_ui_row(settings_frame, 9, "구역 2 찾을색상", self.color5_var,
                             button_text="선택",
                             button_command=lambda: self.start_color_picker(5),
                             checkbox_var=self.use_same_color5_var,
-                            checkbox_text="기존색상")
+                            checkbox_text="기본사용")
 
         self._create_ui_row(settings_frame, 10, "구역선택 딜레이(ms)", self.fail_delay_var,
                             widget_type='entry')
@@ -416,6 +417,7 @@ class SampleApp:
             if "오류" in self.status.get():
                 return
 
+            self.current_search_color = self.color # 검색 시작 시 항상 기본 색상으로 초기화
             self.fail_sequence_step = 0
             self.fail_sequence_click_count = 0
             self.is_searching = True
@@ -462,7 +464,7 @@ class SampleApp:
     def _search_worker(self):
         """(스레드 워커) 색상을 주기적으로 검색하고, 찾으면 클릭 후 종료합니다."""
         while self.is_searching:
-            abs_x, abs_y = self.color_finder.find_color_in_area(self.area, self.color, self.color_tolerance, self.search_direction)
+            abs_x, abs_y = self.color_finder.find_color_in_area(self.area, self.current_search_color, self.color_tolerance, self.search_direction)
 
             if abs_x is not None and abs_y is not None:
                 self.color_finder.click_action(abs_x, abs_y)
@@ -523,6 +525,21 @@ class SampleApp:
                 if self.fail_sequence_click_count >= total_clicks_for_step:
                     self.fail_sequence_click_count = 0
                     self.fail_sequence_step = 1 - self.fail_sequence_step # 0 -> 1, 1 -> 0
+
+                    # 방금 완료된 스텝에 따라 다음 검색 색상을 업데이트합니다.
+                    if self.fail_sequence_step == 1: # 0->1로 변경된 직후 (구역 1 클릭 완료)
+                        if self.use_same_color4:
+                            self.current_search_color = self.color
+                        else:
+                            self.current_search_color = self.color4
+                        print(f"다음 검색 색상 변경 (구역1 규칙): {self.current_search_color}")
+                    else: # 1->0으로 변경된 직후 (구역 2 클릭 완료)
+                        if self.use_same_color5:
+                            self.current_search_color = self.color
+                        else:
+                            self.current_search_color = self.color5
+                        print(f"다음 검색 색상 변경 (구역2 규칙): {self.current_search_color}")
+
 
             time.sleep(0.1)
 
