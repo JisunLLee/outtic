@@ -86,8 +86,12 @@ class SampleApp:
         self.fail_sequence_click_count = 0
         self.area_window = None # 영역 확인 창을 위한 참조
         self.ui_queue = queue.Queue() # UI 업데이트 작업을 위한 큐
-        self.original_bg = "#2e2e2e"
-        self.searching_bg = "#5B5B00" # 검색 중일 때의 어두운 노란색
+        # 창 배경색 상태 관리
+        self.WINDOW_COLORS = {
+            'default': "#2e2e2e",
+            'searching': "#5B5B00", # 어두운 노란색
+            'flash_success': "#004d00" # 어두운 녹색
+        }
 
         # 초기 영역 계산
         self._parse_area()
@@ -109,7 +113,7 @@ class SampleApp:
         y_coordinate = screen_height - window_height - 60
 
         self.root.geometry(f"{window_width}x{window_height}+{x_coordinate}+{y_coordinate}")
-        self.root.configure(bg=self.original_bg)
+        self._update_window_bg('default')
 
         # --- 설정 프레임 ---
         settings_frame = tk.Frame(self.root, bg="#2e2e2e")
@@ -354,16 +358,21 @@ class SampleApp:
         print(f"영역 Width: {self.area_width}")
         print(f"영역 Height: {self.area_height}")
 
-    def _flash_window(self, flash_color="#004d00", duration=150):
+    def _flash_window(self, flash_state='flash_success', duration=150):
         """창 배경색을 잠시 변경하여 시각적 피드백을 줍니다."""
-        self.root.configure(bg=flash_color)
-        self.root.after(duration, lambda: self.root.configure(bg=self.original_bg))
+        self._update_window_bg(flash_state)
+        self.root.after(duration, lambda: self._update_window_bg('default'))
 
     def _play_success_sound(self):
         """작업 성공 시 시스템 비프음을 4번 재생합니다."""
         for i in range(4):
             # 200ms 간격으로 벨 소리를 예약하여 "삐-삐-삐-삐-" 효과를 냅니다.
             self.root.after(i * 200, self.root.bell)
+
+    def _update_window_bg(self, state='default'):
+        """창의 배경색을 상태에 따라 업데이트합니다."""
+        color = self.WINDOW_COLORS.get(state, self.WINDOW_COLORS['default'])
+        self.root.configure(bg=color)
 
     def start_search(self):
         """색상 검색을 시작합니다."""
@@ -381,7 +390,7 @@ class SampleApp:
             # --- UI 업데이트 ---
             self.status.set("색상 검색 중... (ESC로 중지)")
             self.find_button.config(text="중지 (ESC)")
-            self.root.configure(bg=self.searching_bg)
+            self._update_window_bg('searching')
             self.root.bell() # 시작음
             print("--- 색상 검색 ON ---")
 
@@ -404,7 +413,7 @@ class SampleApp:
         def stop_search_task():
             self.find_button.config(text="찾기(Shift+ESC)")
             self.status.set("검색이 중지되었습니다.")
-            self.root.configure(bg=self.original_bg)
+            self._update_window_bg('default')
             self.root.bell()
             self.root.after(150, self.root.bell)
             print("--- 색상 검색 OFF ---")
@@ -438,7 +447,7 @@ class SampleApp:
                 self.ui_queue.put(self._play_success_sound)
                 self.ui_queue.put(lambda msg=status_message: self.status.set(msg))
                 self.ui_queue.put(lambda: self.find_button.config(text="찾기(Shift+ESC)"))
-                self.ui_queue.put(lambda: self.root.configure(bg=self.original_bg))
+                self.ui_queue.put(lambda: self._update_window_bg('default'))
 
                 print("--- 색상 발견, 작업 완료, 검색 종료 ---")
                 return
