@@ -16,6 +16,7 @@ class SampleApp:
 
         # 핵심 로직 컴포넌트 초기화
         self.color_finder = ColorFinder(sleep_time=self.sleep_time)
+        self.mouse_controller = mouse.Controller()
         self.global_hotkey_listener = GlobalHotkeyListener(self.toggle_search)
         self.global_hotkey_listener.start()
 
@@ -57,6 +58,7 @@ class SampleApp:
         self.area_height = 0
         self.is_searching = False
         self.search_thread = None
+        self.area_window = None # 영역 확인 창을 위한 참조
 
         # 초기 영역 계산
         self._parse_area()
@@ -82,10 +84,9 @@ class SampleApp:
                             button_command=lambda: self.start_coordinate_picker(2))
 
         self._create_ui_row(settings_frame, 2, "대상 색상", self.color_var,
-                            button_text="색상 따기",
+                            button_text="대상 지정",
                             button_command=self.start_color_picker)
-
-        self._create_ui_row(settings_frame, 3, "완료 좌표", self.coord3_var,
+        self._create_ui_row(settings_frame, 3, "완료선택", self.coord3_var,
                             button_text="좌표 따기",
                             button_command=lambda: self.start_coordinate_picker(3))
 
@@ -105,14 +106,19 @@ class SampleApp:
         action_frame.pack(pady=10, padx=10, fill="x", anchor="n")
         action_frame.grid_columnconfigure(0, weight=1)
         action_frame.grid_columnconfigure(1, weight=1)
+        action_frame.grid_columnconfigure(2, weight=1)
 
         # --- 적용 버튼 ---
         self.apply_button = tk.Button(action_frame, text="적용하기", command=self._apply_settings)
         self.apply_button.grid(row=0, column=0, sticky="ew", padx=2)
 
+        # --- 영역 확인 버튼 ---
+        self.show_area_button = tk.Button(action_frame, text="영역확인", command=self.show_area)
+        self.show_area_button.grid(row=0, column=1, sticky="ew", padx=2)
+
         # --- 찾기 버튼 ---
         self.find_button = tk.Button(action_frame, text="찾기 (F4)", command=self.toggle_search)
-        self.find_button.grid(row=0, column=1, sticky="ew", padx=2)
+        self.find_button.grid(row=0, column=2, sticky="ew", padx=2)
 
     def _create_ui_row(self, parent, row, label_text, var, widget_type='label', options=None, button_text=None, button_command=None):
         """설정 UI 한 줄을 생성하는 범용 헬퍼 메서드"""
@@ -122,13 +128,12 @@ class SampleApp:
         elif widget_type == 'entry':
             tk.Entry(parent, textvariable=var, width=15).grid(row=row, column=1, sticky="ew")
         elif widget_type == 'optionmenu' and options:
-            # options는 {'internal_name': 'Display Name'} 형식의 딕셔너리입니다.
             option_menu = tk.OptionMenu(parent, var, *options.values())
             option_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0)
             option_menu["menu"].config(bg="#555555", fg="white")
             option_menu.grid(row=row, column=1, sticky="ew")
         if button_text and button_command:
-            tk.Button(parent, text=button_text, command=button_command).grid(row=row, column=2, padx=5)
+            tk.Button(parent, text=button_text, command=button_command).grid(row=row, column=2, padx=5, sticky="w")
 
     def _start_mouse_listener(self, on_click_callback, status_message):
         """마우스 입력을 감지하는 리스너를 시작하는 공통 헬퍼 메소드"""
@@ -140,9 +145,8 @@ class SampleApp:
 
         def on_click(x, y, button, pressed):
             if pressed and button == mouse.Button.right:
-                # 실제 작업은 제공된 콜백 함수에서 수행 (UI 안전성을 위해 after 사용)
                 self.root.after(0, lambda: on_click_callback(x, y))
-                return False  # 리스너를 중지합니다.
+                return False
 
         def listener_target():
             self.listener = mouse.Listener(on_click=on_click)
@@ -163,7 +167,7 @@ class SampleApp:
                 self.coord3_var.set(str(new_pos))
             
             if position_index == 3:
-                status_text = f"완료 좌표 저장 완료: {new_pos}"
+                status_text = f"완료선택 좌표 저장 완료: {new_pos}"
             else:
                 status_text = f"{position_index}번 좌표 저장 완료: {new_pos}"
             self.status.set(status_text)
@@ -171,50 +175,62 @@ class SampleApp:
         self._start_mouse_listener(on_coordinate_click, "마우스 오른쪽 클릭으로 좌표를 선택하세요...")
 
     def start_color_picker(self):
-        """색상 따기 리스너를 시작합니다."""
-        def on_color_click(x, y):
-            # 클릭된 위치의 1x1 스크린샷을 찍어 색상 값을 얻습니다.
+        """사용자가 마우스를 올려둔 위치의 색상을 캡처합니다."""
+        self.status.set("3초 후 마우스 위치의 색상을 캡처합니다. 커서를 대상 위에 두세요...")
+
+        def grab_color_after_delay():
+            x, y = self.mouse_controller.position
             ix, iy = int(x), int(y)
-            # .convert('RGB')를 호출하여 반환값이 항상 (R, G, B) 튜플이 되도록 보장합니다.
-            # 이렇게 하면 회색조(grayscale) 이미지 등에서 정수 값이 반환되어 발생하는 오류를 방지합니다.
+            
             screenshot = ImageGrab.grab(bbox=(ix, iy, ix + 1, iy + 1)).convert('RGB')
             pixel_color = screenshot.getpixel((0, 0))
             new_color = pixel_color
+            
             self.color_var.set(str(new_color))
             self.status.set(f"색상 저장 완료: {new_color}")
+            print(f"캡쳐된 색상: {new_color}")
 
-        self._start_mouse_listener(on_color_click, "마우스 오른쪽 클릭으로 색상을 선택하세요...")
+        self.root.after(3000, grab_color_after_delay)
+
+    def show_area(self):
+        """선택된 두 좌표를 기준으로 사각형 영역을 화면에 표시합니다."""
+        if self.area_window and self.area_window.winfo_exists():
+            self.area_window.destroy()
+
+        self._apply_settings()
+        if "오류" in self.status.get():
+            return
+
+        left, top, right, bottom = self.area
+        width = self.area_width
+        height = self.area_height
+
+        self.area_window = tk.Toplevel(self.root)
+        self.area_window.overrideredirect(True)
+        self.area_window.geometry(f"{width}x{height}+{left}+{top}")
+        self.area_window.configure(bg="red", highlightthickness=0)
+        self.area_window.attributes('-alpha', 0.4)
+        self.area_window.attributes('-topmost', True)
+
+        self.status.set(f"영역 표시: ({left},{top}) - ({right},{bottom})")
+        self.area_window.after(3000, self.area_window.destroy)
 
     def _apply_settings(self):
         """UI의 설정값들을 실제 애플리케이션 상태에 적용합니다."""
         try:
-            # 1. 좌표 파싱 및 적용
-            pos1_str = self.coord1_var.get()
-            pos2_str = self.coord2_var.get()
-            pos3_str = self.coord3_var.get()
-            # ast.literal_eval을 사용하여 "(x, y)" 형식의 문자열을 안전하게 튜플로 변환
-            self.position1 = ast.literal_eval(pos1_str)
-            self.position2 = ast.literal_eval(pos2_str)
-            self.position3 = ast.literal_eval(pos3_str)
-
-            # 2. 색상 파싱 및 적용
-            color_str = self.color_var.get()
-            self.color = ast.literal_eval(color_str)
-
-            # 3. 허용 오차 적용
+            self.position1 = ast.literal_eval(self.coord1_var.get())
+            self.position2 = ast.literal_eval(self.coord2_var.get())
+            self.position3 = ast.literal_eval(self.coord3_var.get())
+            self.color = ast.literal_eval(self.color_var.get())
             self.color_tolerance = self.tolerance_var.get()
 
-            # 4. 탐색 방향 적용
             selected_display_name = self.direction_var.get()
-            # SEARCH_DIRECTION_MAP의 key와 value를 뒤집어서 display name으로 enum name을 찾습니다.
             reversed_direction_map = {v: k for k, v in self.SEARCH_DIRECTION_MAP.items()}
             direction_name = reversed_direction_map.get(selected_display_name)
             if direction_name:
                 self.search_direction = SearchDirection[direction_name]
 
-            # 5. 영역 재계산
             self._parse_area()
-
             self.status.set("설정이 성공적으로 적용되었습니다.")
             print("--- Settings Applied ---")
 
@@ -251,9 +267,7 @@ class SampleApp:
             print("--- 색상 검색 OFF ---")
             return
 
-        # '적용하기'를 누르지 않고 '찾기'를 누를 경우를 대비해 한번 더 적용
         self._apply_settings()
-        # 설정 적용 중 오류가 발생했다면 검색을 시작하지 않음
         if "오류" in self.status.get():
             return
 
@@ -271,30 +285,27 @@ class SampleApp:
             abs_x, abs_y = self.color_finder.find_color_in_area(self.area, self.color, self.color_tolerance, self.search_direction)
 
             if abs_x is not None and abs_y is not None:
-                # 1. 찾은 색상 위치 클릭
                 self.color_finder.click_action(abs_x, abs_y)
 
-                # 2. '완료 좌표' 좌표 클릭
-                # (0, 0)은 기본값이므로, 사용자가 설정했을 경우에만 클릭
                 if self.position3 != (0, 0):
-                    time.sleep(0.1) # 첫 번째 클릭 후 잠시 대기
+                    time.sleep(0.1)
                     comp_x, comp_y = self.position3
                     self.color_finder.click_action(comp_x, comp_y)
-                    status_message = f"색상 클릭 후 완료좌표({comp_x},{comp_y}) 클릭"
+                    status_message = f"색상 클릭 후 완료선택({comp_x},{comp_y}) 클릭"
                 else:
                     status_message = f"색상 발견 및 클릭 완료: ({abs_x}, {abs_y})"
 
-                self.is_searching = False  # 루프 및 스레드 종료
+                self.is_searching = False
                 self.root.after(0, lambda msg=status_message: self.status.set(msg))
                 self.root.after(0, lambda: self.find_button.config(text="찾기 (F4)"))
                 print("--- 색상 발견, 작업 완료, 검색 종료 ---")
                 return
 
-            time.sleep(0.1) # 색상을 못 찾았으면 잠시 대기
+            time.sleep(0.1)
 
     def on_closing(self):
         """창을 닫을 때 리소스를 안전하게 정리합니다."""
-        self.is_searching = False # 실행 중인 검색 스레드 중지
+        self.is_searching = False
         self.global_hotkey_listener.stop()
         self.root.destroy()
 

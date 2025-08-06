@@ -75,7 +75,6 @@ class ColorFinder:
                 r1, g1, b1 = img_array[y, x][:3]
 
                 # 4. 각 채널의 차이가 허용 오차(tolerance) 이내인지 확인합니다.
-                #    이는 유클리드 거리보다 특정 색상 범위를 지정하는 데 더 직관적일 수 있습니다.
                 if abs(int(r1) - r2) <= tolerance and \
                    abs(int(g1) - g2) <= tolerance and \
                    abs(int(b1) - b2) <= tolerance:
