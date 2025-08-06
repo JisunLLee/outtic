@@ -29,7 +29,7 @@ class SampleApp:
         self.position1 = (84, 219)
         self.position2 = (713, 647)
         self.position3 = (805, 704) # 완료 후 클릭할 좌표
-        self.position4 = (0, 0) # 실패 시 클릭할 좌표
+        self.position4 = (813, 396) # 실패 시 클릭할 좌표
         self.color = (0, 204, 204)
         self.color_tolerance = 15
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
