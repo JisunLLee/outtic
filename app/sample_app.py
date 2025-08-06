@@ -44,7 +44,7 @@ class SampleApp:
         self.coord4_var = tk.StringVar(value=str(self.position4))
         self.color_var = tk.StringVar(value=str(self.color))
         self.tolerance_var = tk.IntVar(value=self.color_tolerance)
-        self.fail_delay_var = tk.StringVar(value=str(int(self.fail_click_delay * 100)))
+        self.fail_delay_var = tk.StringVar(value=str(int(self.fail_click_delay * 1000)))
         self.use_position4_var = tk.BooleanVar(value=False)
 
         # UI 표시용 텍스트 맵
@@ -116,7 +116,7 @@ class SampleApp:
                             checkbox_var=self.use_position4_var,
                             checkbox_text="사용")
 
-        self._create_ui_row(settings_frame, 5, "4번 좌표 딜레이()", self.fail_delay_var,
+        self._create_ui_row(settings_frame, 5, "실패 시 딜레이(ms)", self.fail_delay_var,
                             widget_type='entry')
 
         self._create_ui_row(settings_frame, 6, "색상 오차(채널별)", self.tolerance_var,
@@ -269,8 +269,8 @@ class SampleApp:
             self.position4 = ast.literal_eval(self.coord4_var.get())
             self.color = ast.literal_eval(self.color_var.get())
             self.color_tolerance = self.tolerance_var.get()
-            # ms 단위의 문자열을 단위 변경해서 float으로 변환
-            self.fail_click_delay = int(self.fail_delay_var.get()) / 100.0
+            # ms 단위의 문자열을 초 단위의 float으로 변환
+            self.fail_click_delay = int(self.fail_delay_var.get()) / 1000.0
             self.use_position4 = self.use_position4_var.get()
 
             selected_display_name = self.direction_var.get()
@@ -364,10 +364,12 @@ class SampleApp:
                 if (fail_x, fail_y) != (0, 0):
                     self.root.after(0, lambda: self.status.set(f"색상 못찾음. 4번 좌표({fail_x},{fail_y}) 클릭."))
                     
-                    # 기본 딜레이에서 +/- 100ms (0.1초) 범위의 랜덤 값을 적용합니다.
-                    random_offset = random.uniform(-0.1, 0.1)
-                    random_delay = self.fail_click_delay + random_offset
-                    self.color_finder.click_action(fail_x, fail_y, delay=max(0, random_delay))
+                    final_delay = self.fail_click_delay
+                    # 딜레이가 0보다 클 때만 랜덤 오프셋을 적용합니다.
+                    if self.fail_click_delay > 0:
+                        random_offset = random.uniform(-0.1, 0.1)
+                        final_delay = self.fail_click_delay + random_offset
+                    self.color_finder.click_action(fail_x, fail_y, delay=max(0, final_delay))
 
             time.sleep(0.1)
 
