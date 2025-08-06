@@ -204,30 +204,14 @@ class SampleApp:
         if button_text and button_command:
             tk.Button(parent, text=button_text, command=button_command).grid(row=row, column=2, padx=5, sticky="w")
 
-    def _start_mouse_listener(self, on_click_callback, status_message):
-        """마우스 입력을 감지하는 리스너를 시작하는 공통 헬퍼 메소드"""
-        if self.listener and self.listener.is_alive():
-            self.status.set("오류: 이미 다른 값을 선택 중입니다.")
-            return
-
-        self.status.set(status_message)
-
-        def on_click(x, y, button, pressed):
-            if pressed and button == mouse.Button.right:
-                self.root.after(0, lambda: on_click_callback(x, y))
-                return False
-
-        def listener_target():
-            self.listener = mouse.Listener(on_click=on_click)
-            self.listener.run()
-            self.listener = None
-        
-        threading.Thread(target=listener_target, daemon=True).start()
-
     def start_coordinate_picker(self, position_index):
-        """좌표 선택 리스너를 시작합니다."""
-        def on_coordinate_click(x, y):
+        """사용자가 마우스를 올려둔 위치의 좌표를 2초 후에 캡처합니다."""
+        self.status.set(f"{position_index}번 좌표 지정: 2초 후 마우스 위치를 저장합니다...")
+
+        def grab_coord_after_delay():
+            x, y = self.mouse_controller.position
             new_pos = (int(x), int(y))
+
             if position_index == 1:
                 self.coord1_var.set(str(new_pos))
             elif position_index == 2:
@@ -238,18 +222,19 @@ class SampleApp:
                 self.coord4_var.set(str(new_pos))
             elif position_index == 5:
                 self.coord5_var.set(str(new_pos))
-            
+
             if position_index == 3:
                 status_text = f"완료선택 좌표 저장 완료: {new_pos}"
             else:
                 status_text = f"{position_index}번 좌표 저장 완료: {new_pos}"
             self.status.set(status_text)
+            print(f"캡쳐된 {position_index}번 좌표: {new_pos}")
 
-        self._start_mouse_listener(on_coordinate_click, "마우스 오른쪽 클릭으로 좌표를 선택하세요...")
+        self.root.after(2000, grab_coord_after_delay)
 
     def start_color_picker(self):
-        """사용자가 마우스를 올려둔 위치의 색상을 캡처합니다."""
-        self.status.set("3초 후 마우스 위치의 색상을 캡처합니다. 커서를 대상 위에 두세요...")
+        """사용자가 마우스를 올려둔 위치의 색상을 2초 후에 캡처합니다."""
+        self.status.set("색상 지정: 2초 후 마우스 위치의 색상을 캡처합니다...")
 
         def grab_color_after_delay():
             x, y = self.mouse_controller.position
@@ -263,7 +248,7 @@ class SampleApp:
             self.status.set(f"색상 저장 완료: {new_color}")
             print(f"캡쳐된 색상: {new_color}")
 
-        self.root.after(3000, grab_color_after_delay)
+        self.root.after(2000, grab_color_after_delay)
 
     def show_area(self):
         """선택된 두 좌표를 기준으로 사각형 영역을 화면에 표시합니다."""
