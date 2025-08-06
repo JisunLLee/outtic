@@ -3,6 +3,7 @@ import threading
 import time
 import ast
 import random
+import sys
 from pynput import mouse
 from PIL import ImageGrab
 from global_hotkey_listener import GlobalHotkeyListener
@@ -27,8 +28,8 @@ class SampleApp:
     def _initialize_attributes(self):
         """애플리케이션의 모든 속성을 초기화합니다."""
         # 설정값
-        self.position1 = (84, 219)
-        self.position2 = (713, 647)
+        self.position1 = (75, 193)
+        self.position2 = (451, 485)
         self.position3 = (805, 704) # 색상 선택 완료 후 클릭할 좌표
         self.position4 = (813, 396) # 색상 선택 실패 시 클릭할 첫 번째 좌표
         self.position5 = (815, 429) # 색상 선택 실패 시 클릭할 두 번째 좌표
@@ -158,19 +159,21 @@ class SampleApp:
         action_frame.pack(pady=10, padx=10, fill="x", anchor="n")
         action_frame.grid_columnconfigure(0, weight=1)
         action_frame.grid_columnconfigure(1, weight=1)
-        action_frame.grid_columnconfigure(2, weight=1)
-
-        # --- 적용 버튼 ---
-        self.apply_button = tk.Button(action_frame, text="적용하기", command=self._apply_settings)
-        self.apply_button.grid(row=0, column=0, sticky="ew", padx=2)
 
         # --- 영역 확인 버튼 ---
         self.show_area_button = tk.Button(action_frame, text="영역확인", command=self.show_area)
-        self.show_area_button.grid(row=0, column=1, sticky="ew", padx=2)
+        self.show_area_button.grid(row=0, column=0, sticky="ew", padx=2)
 
         # --- 찾기 버튼 ---
         self.find_button = tk.Button(action_frame, text="찾기 (F4)", command=self.toggle_search)
-        self.find_button.grid(row=0, column=2, sticky="ew", padx=2)
+        self.find_button.grid(row=0, column=1, sticky="ew", padx=2)
+
+        # --- 적용하기 단축키 바인딩 ---
+        # OS에 따라 다른 단축키를 바인딩합니다.
+        if sys.platform == "darwin": # macOS
+            self.root.bind("<Command-s>", self._apply_settings)
+        else: # Windows, Linux
+            self.root.bind("<Control-s>", self._apply_settings)
 
     def _create_ui_row(self, parent, row, label_text, var, widget_type='label', options=None, button_text=None, button_command=None, checkbox_var=None, checkbox_text=None):
         """설정 UI 한 줄을 생성하는 범용 헬퍼 메서드"""
@@ -267,6 +270,7 @@ class SampleApp:
         if self.area_window and self.area_window.winfo_exists():
             self.area_window.destroy()
 
+        # '영역확인' 시 최신 UI 값을 반영하기 위해 설정을 먼저 적용합니다.
         self._apply_settings()
         if "오류" in self.status.get():
             return
@@ -285,7 +289,7 @@ class SampleApp:
         self.status.set(f"영역 표시: ({left},{top}) - ({right},{bottom})")
         self.area_window.after(3000, self.area_window.destroy)
 
-    def _apply_settings(self):
+    def _apply_settings(self, event=None):
         """UI의 설정값들을 실제 애플리케이션 상태에 적용합니다."""
         try:
             self.position1 = ast.literal_eval(self.coord1_var.get())
