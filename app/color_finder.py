@@ -20,10 +20,12 @@ class ColorFinder:
         self.mouse_controller = mouse.Controller()
         self.sleep_time = sleep_time
 
-    def click_action(self, x: int, y: int):
+    def click_action(self, x: int, y: int, delay: float = None):
         try:
             self.mouse_controller.position = (x, y)
-            time.sleep(self.sleep_time) # ✅ 딜레이 추가: 마우스 이동 후 클릭까지 대기
+            # Use provided delay if available, otherwise use the default sleep_time
+            sleep_duration = delay if delay is not None else self.sleep_time
+            time.sleep(sleep_duration)
             self.mouse_controller.click(mouse.Button.left, 1)
             print(f"클릭 완료: ({x}, {y})")
         except Exception as e:

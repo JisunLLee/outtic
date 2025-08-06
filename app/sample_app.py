@@ -34,6 +34,7 @@ class SampleApp:
         self.color_tolerance = 15
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
         self.sleep_time = 0.02
+        self.fail_click_delay = 0.36 # 색상 찾기 실패 시 클릭 딜레이 (360ms)
 
         # UI와 연동될 Tkinter 변수
         self.coord1_var = tk.StringVar(value=str(self.position1))
@@ -300,10 +301,10 @@ class SampleApp:
         print(f"영역 Height: {self.area_height}")
 
     def _play_success_sound(self):
-        """작업 성공 시 시스템 비프음을 3번 재생합니다."""
+        """작업 성공 시 시스템 비프음을 4번 재생합니다."""
         for i in range(4):
-            # 150ms 간격으로 벨 소리를 예약하여 "삐-삐-삐" 효과를 냅니다.
-            self.root.after(i * 150, self.root.bell)
+            # 200ms 간격으로 벨 소리를 예약하여 "삐-삐-삐-삐-" 효과를 냅니다.
+            self.root.after(i * 200, self.root.bell)
 
     def toggle_search(self):
         """색상 검색을 시작하거나 중지하는 토글 메서드입니다."""
@@ -348,6 +349,15 @@ class SampleApp:
                 self.root.after(0, lambda: self.find_button.config(text="찾기 (F4)"))
                 print("--- 색상 발견, 작업 완료, 검색 종료 ---")
                 return
+
+            # --- 색상을 찾지 못했을 때의 로직 ---
+            if self.use_position4:
+                fail_x, fail_y = self.position4
+                # (0, 0)은 기본값이므로, 사용자가 설정했을 경우에만 클릭
+                if (fail_x, fail_y) != (0, 0):
+                    self.root.after(0, lambda: self.status.set(f"색상 못찾음. 4번 좌표({fail_x},{fail_y}) 클릭."))
+                    # 360ms의 지정된 딜레이로 클릭
+                    self.color_finder.click_action(fail_x, fail_y, delay=self.fail_click_delay)
 
             time.sleep(0.1)
 
