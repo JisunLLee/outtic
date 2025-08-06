@@ -2,6 +2,7 @@ import tkinter as tk
 import threading
 import time
 import ast
+import queue
 import random
 import sys
 from pynput import mouse
@@ -16,6 +17,7 @@ class SampleApp:
 
         self._initialize_attributes()
         self._setup_ui()
+        self._process_ui_queue() # UI 업데이트 큐 처리 시작
 
         # 핵심 로직 컴포넌트 초기화
         self.color_finder = ColorFinder(sleep_time=self.sleep_time)
@@ -83,6 +85,7 @@ class SampleApp:
         self.fail_sequence_step = 0
         self.fail_sequence_click_count = 0
         self.area_window = None # 영역 확인 창을 위한 참조
+        self.ui_queue = queue.Queue() # UI 업데이트 작업을 위한 큐
 
         # 초기 영역 계산
         self._parse_area()
@@ -208,6 +211,19 @@ class SampleApp:
 
         if button_text and button_command:
             tk.Button(parent, text=button_text, command=button_command).grid(row=row, column=2, padx=5, sticky="w")
+
+    def _process_ui_queue(self):
+        """메인 스레드에서 UI 업데이트 큐를 주기적으로 확인하고 처리합니다."""
+        try:
+            while True:
+                # 큐에서 작업을 가져옵니다. 블로킹하지 않습니다.
+                task = self.ui_queue.get_nowait()
+                task()  # 가져온 함수를 실행합니다.
+        except queue.Empty:
+            pass  # 큐가 비어있으면 아무것도 하지 않습니다.
+        finally:
+            # 100ms 후에 다시 이 함수를 호출하도록 예약합니다.
+            self.root.after(100, self._process_ui_queue)
 
     def start_coordinate_picker(self, position_index):
         """사용자가 마우스를 올려둔 위치의 좌표를 2초 후에 캡처합니다."""
@@ -350,11 +366,9 @@ class SampleApp:
 
     def start_search(self):
         """색상 검색을 시작합니다."""
-        # UI 업데이트가 메인 스레드에서 실행되도록 예약합니다.
-        def start_search_on_main_thread():
+        def start_search_task():
             if self.is_searching:
                 return
-
             self._apply_settings()
             if "오류" in self.status.get():
                 return
@@ -362,32 +376,36 @@ class SampleApp:
             self.fail_sequence_step = 0
             self.fail_sequence_click_count = 0
             self.is_searching = True
+
+            # --- UI 업데이트 ---
             self.status.set("색상 검색 중... (ESC로 중지)")
             self.find_button.config(text="중지 (ESC)")
             self.root.bell() # 시작음
             print("--- 색상 검색 ON ---")
 
+            # --- 백그라운드 작업 시작 ---
             self.search_thread = threading.Thread(target=self._search_worker, daemon=True)
             self.search_thread.start()
         
-        self.root.after(0, start_search_on_main_thread)
+        # UI 업데이트 작업을 큐에 넣습니다.
+        self.ui_queue.put(start_search_task)
 
     def stop_search(self):
         """색상 검색을 중지합니다."""
         if not self.is_searching:
             return
         
-        # 검색 스레드를 즉시 중지시키기 위해 is_searching 플래그는 바로 변경합니다.
+        # 검색 스레드를 즉시 중지시키기 위해 플래그는 바로 변경합니다.
         self.is_searching = False
 
-        # 나머지 UI 업데이트는 메인 스레드에서 안전하게 처리하도록 예약합니다.
-        def stop_search_on_main_thread():
+        # UI 업데이트 작업을 큐에 넣습니다.
+        def stop_search_task():
             self.find_button.config(text="찾기(Shift+ESC)")
             self.status.set("검색이 중지되었습니다.")
             self.root.bell()
             self.root.after(150, self.root.bell)
             print("--- 색상 검색 OFF ---")
-        self.root.after(0, stop_search_on_main_thread)
+        self.ui_queue.put(stop_search_task)
 
     def toggle_search(self):
         """UI 버튼 클릭 시 검색을 토글합니다."""
@@ -413,9 +431,11 @@ class SampleApp:
                     status_message = f"색상 발견 및 클릭 완료: ({abs_x}, {abs_y})"
 
                 self.is_searching = False
-                self.root.after(0, self._play_success_sound)
-                self.root.after(0, lambda msg=status_message: self.status.set(msg))
-                self.root.after(0, lambda: self.find_button.config(text="찾기(Shift+ESC)"))
+                # UI 업데이트 작업을 큐에 넣습니다.
+                self.ui_queue.put(self._play_success_sound)
+                self.ui_queue.put(lambda msg=status_message: self.status.set(msg))
+                self.ui_queue.put(lambda: self.find_button.config(text="찾기(Shift+ESC)"))
+
                 print("--- 색상 발견, 작업 완료, 검색 종료 ---")
                 return
 
@@ -441,8 +461,9 @@ class SampleApp:
                 # 조건이 맞으면 클릭 실행
                 if should_click and target_coord and target_coord != (0, 0):
                     fail_x, fail_y = target_coord
-                    self.root.after(0, lambda c=coord_num, cl=self.fail_sequence_click_count, tc=total_clicks_for_step: self.status.set(
-                        f"구역 선택: 구역{c-3} ({cl + 1}/{tc})"))
+                    # 상태 메시지 업데이트를 큐에 넣습니다.
+                    self.ui_queue.put(lambda c=coord_num, cl=self.fail_sequence_click_count, tc=total_clicks_for_step: 
+                                      self.status.set(f"구역 선택: 구역{c-3} ({cl + 1}/{tc})"))
                     
                     # 딜레이 계산 및 클릭
                     final_delay = self.fail_click_delay
