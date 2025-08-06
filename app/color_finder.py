@@ -1,5 +1,6 @@
 from enum import Enum
 from pynput import mouse
+from typing import Optional
 from PIL import ImageGrab
 import time
 import numpy as np
@@ -20,7 +21,7 @@ class ColorFinder:
         self.mouse_controller = mouse.Controller()
         self.sleep_time = sleep_time
 
-    def click_action(self, x: int, y: int, delay: float = None):
+    def click_action(self, x: int, y: int, delay: Optional[float] = None):
         try:
             self.mouse_controller.position = (x, y)
             # Use provided delay if available, otherwise use the default sleep_time
