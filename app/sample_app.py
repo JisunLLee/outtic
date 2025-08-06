@@ -258,6 +258,12 @@ class SampleApp:
         print(f"영역 Width: {self.area_width}")
         print(f"영역 Height: {self.area_height}")
 
+    def _play_success_sound(self):
+        """작업 성공 시 시스템 비프음을 3번 재생합니다."""
+        for i in range(4):
+            # 150ms 간격으로 벨 소리를 예약하여 "삐-삐-삐" 효과를 냅니다.
+            self.root.after(i * 150, self.root.bell)
+
     def toggle_search(self):
         """색상 검색을 시작하거나 중지하는 토글 메서드입니다."""
         if self.is_searching:
@@ -296,6 +302,7 @@ class SampleApp:
                     status_message = f"색상 발견 및 클릭 완료: ({abs_x}, {abs_y})"
 
                 self.is_searching = False
+                self.root.after(0, self._play_success_sound)
                 self.root.after(0, lambda msg=status_message: self.status.set(msg))
                 self.root.after(0, lambda: self.find_button.config(text="찾기 (F4)"))
                 print("--- 색상 발견, 작업 완료, 검색 종료 ---")
