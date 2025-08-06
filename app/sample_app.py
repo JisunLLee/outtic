@@ -5,9 +5,10 @@ import ast
 import random
 import sys
 from pynput import mouse
+from pynput import keyboard
 from PIL import ImageGrab
-from global_hotkey_listener import GlobalHotkeyListener
 from color_finder import ColorFinder, SearchDirection
+from global_hotkey_listener import GlobalHotkeyListener
 
 class SampleApp:
     def __init__(self, root):
@@ -19,7 +20,11 @@ class SampleApp:
         # 핵심 로직 컴포넌트 초기화
         self.color_finder = ColorFinder(sleep_time=self.sleep_time)
         self.mouse_controller = mouse.Controller()
-        self.global_hotkey_listener = GlobalHotkeyListener(self.toggle_search)
+        hotkey_map = {
+            'shift+esc': self.start_search,
+            keyboard.Key.esc: self.stop_search
+        }
+        self.global_hotkey_listener = GlobalHotkeyListener(hotkey_map)
         self.global_hotkey_listener.start()
 
         # 창 닫기 이벤트 처리
@@ -165,7 +170,7 @@ class SampleApp:
         self.show_area_button.grid(row=0, column=0, sticky="ew", padx=2)
 
         # --- 찾기 버튼 ---
-        self.find_button = tk.Button(action_frame, text="찾기 (F4)", command=self.toggle_search)
+        self.find_button = tk.Button(action_frame, text="찾기(Shift+ESC)", command=self.toggle_search)
         self.find_button.grid(row=0, column=1, sticky="ew", padx=2)
 
         # --- 적용하기 단축키 바인딩 ---
@@ -230,9 +235,9 @@ class SampleApp:
             elif position_index == 5:
                 status_text = f"구역 2 좌표 저장 완료: {new_pos}"
             else:
-                status_text = f"Position{position_index} Saved: {new_pos}"
+                status_text = f"{position_index}번 좌표 저장 완료: {new_pos}"
             self.status.set(status_text)
-            print(f"Position{position_index} : {new_pos}")
+            print(f"{position_index}번 좌표: {new_pos}")
             self._flash_window()
 
         self.root.after(2000, grab_coord_after_delay)
@@ -343,13 +348,9 @@ class SampleApp:
             # 200ms 간격으로 벨 소리를 예약하여 "삐-삐-삐-삐-" 효과를 냅니다.
             self.root.after(i * 200, self.root.bell)
 
-    def toggle_search(self):
-        """색상 검색을 시작하거나 중지하는 토글 메서드입니다."""
+    def start_search(self):
+        """색상 검색을 시작합니다."""
         if self.is_searching:
-            self.is_searching = False
-            self.find_button.config(text="찾기 (F4)")
-            self.status.set("검색이 중지되었습니다.")
-            print("--- 색상 검색 OFF ---")
             return
 
         self._apply_settings()
@@ -359,12 +360,32 @@ class SampleApp:
         self.fail_sequence_step = 0
         self.fail_sequence_click_count = 0
         self.is_searching = True
-        self.status.set("색상 검색 중... (F4로 중지)")
-        self.find_button.config(text="중지 (F4)")
+        self.status.set("색상 검색 중... (ESC로 중지)")
+        self.find_button.config(text="중지 (ESC)")
+        self.root.bell() # 시작음
         print("--- 색상 검색 ON ---")
 
         self.search_thread = threading.Thread(target=self._search_worker, daemon=True)
         self.search_thread.start()
+
+    def stop_search(self):
+        """색상 검색을 중지합니다."""
+        if not self.is_searching:
+            return
+        self.is_searching = False
+        self.find_button.config(text="찾기(Shift+ESC)")
+        self.status.set("검색이 중지되었습니다.")
+        # 삐-삐 소리
+        self.root.bell()
+        self.root.after(150, self.root.bell)
+        print("--- 색상 검색 OFF ---")
+
+    def toggle_search(self):
+        """UI 버튼 클릭 시 검색을 토글합니다."""
+        if self.is_searching:
+            self.stop_search()
+        else:
+            self.start_search()
 
     def _search_worker(self):
         """(스레드 워커) 색상을 주기적으로 검색하고, 찾으면 클릭 후 종료합니다."""
@@ -385,7 +406,7 @@ class SampleApp:
                 self.is_searching = False
                 self.root.after(0, self._play_success_sound)
                 self.root.after(0, lambda msg=status_message: self.status.set(msg))
-                self.root.after(0, lambda: self.find_button.config(text="찾기 (F4)"))
+                self.root.after(0, lambda: self.find_button.config(text="찾기(Shift+ESC)"))
                 print("--- 색상 발견, 작업 완료, 검색 종료 ---")
                 return
 
@@ -412,7 +433,7 @@ class SampleApp:
                 if should_click and target_coord and target_coord != (0, 0):
                     fail_x, fail_y = target_coord
                     self.root.after(0, lambda c=coord_num, cl=self.fail_sequence_click_count, tc=total_clicks_for_step: self.status.set(
-                        f"구역 선택: 구역{c-2} ({cl + 1}/{tc})"))
+                        f"구역 선택: 구역{c-3} ({cl + 1}/{tc})"))
                     
                     # 딜레이 계산 및 클릭
                     final_delay = self.fail_click_delay
