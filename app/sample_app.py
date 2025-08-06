@@ -350,35 +350,44 @@ class SampleApp:
 
     def start_search(self):
         """색상 검색을 시작합니다."""
-        if self.is_searching:
-            return
+        # UI 업데이트가 메인 스레드에서 실행되도록 예약합니다.
+        def start_search_on_main_thread():
+            if self.is_searching:
+                return
 
-        self._apply_settings()
-        if "오류" in self.status.get():
-            return
+            self._apply_settings()
+            if "오류" in self.status.get():
+                return
 
-        self.fail_sequence_step = 0
-        self.fail_sequence_click_count = 0
-        self.is_searching = True
-        self.status.set("색상 검색 중... (ESC로 중지)")
-        self.find_button.config(text="중지 (ESC)")
-        self.root.bell() # 시작음
-        print("--- 색상 검색 ON ---")
+            self.fail_sequence_step = 0
+            self.fail_sequence_click_count = 0
+            self.is_searching = True
+            self.status.set("색상 검색 중... (ESC로 중지)")
+            self.find_button.config(text="중지 (ESC)")
+            self.root.bell() # 시작음
+            print("--- 색상 검색 ON ---")
 
-        self.search_thread = threading.Thread(target=self._search_worker, daemon=True)
-        self.search_thread.start()
+            self.search_thread = threading.Thread(target=self._search_worker, daemon=True)
+            self.search_thread.start()
+        
+        self.root.after(0, start_search_on_main_thread)
 
     def stop_search(self):
         """색상 검색을 중지합니다."""
         if not self.is_searching:
             return
+        
+        # 검색 스레드를 즉시 중지시키기 위해 is_searching 플래그는 바로 변경합니다.
         self.is_searching = False
-        self.find_button.config(text="찾기(Shift+ESC)")
-        self.status.set("검색이 중지되었습니다.")
-        # 삐-삐 소리
-        self.root.bell()
-        self.root.after(150, self.root.bell)
-        print("--- 색상 검색 OFF ---")
+
+        # 나머지 UI 업데이트는 메인 스레드에서 안전하게 처리하도록 예약합니다.
+        def stop_search_on_main_thread():
+            self.find_button.config(text="찾기(Shift+ESC)")
+            self.status.set("검색이 중지되었습니다.")
+            self.root.bell()
+            self.root.after(150, self.root.bell)
+            print("--- 색상 검색 OFF ---")
+        self.root.after(0, stop_search_on_main_thread)
 
     def toggle_search(self):
         """UI 버튼 클릭 시 검색을 토글합니다."""
