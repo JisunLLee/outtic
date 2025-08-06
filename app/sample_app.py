@@ -31,7 +31,7 @@ class SampleApp:
         self.position2 = (713, 647)
         self.position3 = (805, 704) # 완료 후 클릭할 좌표
         self.position4 = (813, 396) # 실패 시 클릭할 첫 번째 좌표
-        self.position5 = (0, 0) # 실패 시 클릭할 두 번째 좌표
+        self.position5 = (815, 429) # 실패 시 클릭할 두 번째 좌표
         self.color = (0, 204, 204)
         self.color_tolerance = 15
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
@@ -49,7 +49,8 @@ class SampleApp:
         self.color_var = tk.StringVar(value=str(self.color))
         self.tolerance_var = tk.IntVar(value=self.color_tolerance)
         self.fail_delay_var = tk.StringVar(value=str(int(self.fail_click_delay * 1000)))
-        self.use_fail_sequence_var = tk.BooleanVar(value=False)
+        self.use_fail_sequence_var = tk.BooleanVar(value=False) # 4번 좌표 체크박스
+        self.use_position5_var = tk.BooleanVar(value=False) # 5번 좌표 체크박스
 
         # UI 표시용 텍스트 맵
         self.SEARCH_DIRECTION_MAP = {
@@ -69,6 +70,7 @@ class SampleApp:
         self.is_searching = False
         self.search_thread = None
         self.use_fail_sequence = False
+        self.use_position5 = False
         self.fail_sequence_step = 0
         self.fail_sequence_click_count = 0
         self.area_window = None # 영역 확인 창을 위한 참조
@@ -120,11 +122,13 @@ class SampleApp:
                             button_text="선택",
                             button_command=lambda: self.start_coordinate_picker(4),
                             checkbox_var=self.use_fail_sequence_var,
-                            checkbox_text="좌표4 클릭")
+                            checkbox_text="사용")
 
         self._create_ui_row(settings_frame, 5, "5번 좌표", self.coord5_var,
                             button_text="선택",
-                            button_command=lambda: self.start_coordinate_picker(5))
+                            button_command=lambda: self.start_coordinate_picker(5),
+                            checkbox_var=self.use_position5_var,
+                            checkbox_text="사용")
 
         self._create_ui_row(settings_frame, 6, "실패 시 딜레이(ms)", self.fail_delay_var,
                             widget_type='entry')
@@ -285,6 +289,7 @@ class SampleApp:
             # ms 단위의 문자열을 초 단위의 float으로 변환
             self.fail_click_delay = int(self.fail_delay_var.get()) / 1000.0
             self.use_fail_sequence = self.use_fail_sequence_var.get()
+            self.use_position5 = self.use_position5_var.get()
 
             selected_display_name = self.direction_var.get()
             reversed_direction_map = {v: k for k, v in self.SEARCH_DIRECTION_MAP.items()}
@@ -378,15 +383,18 @@ class SampleApp:
                 current_step = self.fail_click_sequence[self.fail_sequence_step]
                 coord_num, total_clicks_for_step = current_step
 
-                # 클릭할 좌표 결정
+                # 클릭할 좌표와 클릭 여부 결정
+                should_click = False
+                target_coord = None
                 if coord_num == 4:
                     target_coord = self.position4
+                    should_click = True
                 elif coord_num == 5:
                     target_coord = self.position5
-                else:
-                    target_coord = None # 정의되지 않은 좌표 번호
+                    should_click = self.use_position5 # 5번 좌표 사용 여부 확인
 
-                if target_coord and target_coord != (0, 0):
+                # 조건이 맞으면 클릭 실행
+                if should_click and target_coord and target_coord != (0, 0):
                     fail_x, fail_y = target_coord
                     self.root.after(0, lambda: self.status.set(f"실패 시퀀스: {coord_num}번 좌표 클릭 ({self.fail_sequence_click_count + 1}/{total_clicks_for_step})"))
                     
@@ -397,11 +405,11 @@ class SampleApp:
                         final_delay = self.fail_click_delay + random_offset
                     self.color_finder.click_action(fail_x, fail_y, delay=max(0, final_delay))
 
-                    # 클릭 카운트 증가 및 스텝 전환
-                    self.fail_sequence_click_count += 1
-                    if self.fail_sequence_click_count >= total_clicks_for_step:
-                        self.fail_sequence_click_count = 0
-                        self.fail_sequence_step = (self.fail_sequence_step + 1) % len(self.fail_click_sequence)
+                # 현재 스텝의 클릭 카운트 증가 (클릭을 했든 안했든 카운트는 증가하여 다음으로 넘어감)
+                self.fail_sequence_click_count += 1
+                if self.fail_sequence_click_count >= total_clicks_for_step:
+                    self.fail_sequence_click_count = 0
+                    self.fail_sequence_step = (self.fail_sequence_step + 1) % len(self.fail_click_sequence)
 
             time.sleep(0.1)
 
