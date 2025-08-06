@@ -44,6 +44,7 @@ class SampleApp:
         self.coord4_var = tk.StringVar(value=str(self.position4))
         self.color_var = tk.StringVar(value=str(self.color))
         self.tolerance_var = tk.IntVar(value=self.color_tolerance)
+        self.fail_delay_var = tk.StringVar(value=str(int(self.fail_click_delay * 100)))
         self.use_position4_var = tk.BooleanVar(value=False)
 
         # UI 표시용 텍스트 맵
@@ -115,10 +116,13 @@ class SampleApp:
                             checkbox_var=self.use_position4_var,
                             checkbox_text="사용")
 
-        self._create_ui_row(settings_frame, 5, "색상 오차(채널별)", self.tolerance_var,
+        self._create_ui_row(settings_frame, 5, "4번 좌표 딜레이()", self.fail_delay_var,
                             widget_type='entry')
 
-        self._create_ui_row(settings_frame, 6, "탐색 방향", self.direction_var,
+        self._create_ui_row(settings_frame, 6, "색상 오차(채널별)", self.tolerance_var,
+                            widget_type='entry')
+
+        self._create_ui_row(settings_frame, 7, "탐색 방향", self.direction_var,
                             widget_type='optionmenu',
                             options=self.SEARCH_DIRECTION_MAP)
 
@@ -265,6 +269,8 @@ class SampleApp:
             self.position4 = ast.literal_eval(self.coord4_var.get())
             self.color = ast.literal_eval(self.color_var.get())
             self.color_tolerance = self.tolerance_var.get()
+            # ms 단위의 문자열을 단위 변경해서 float으로 변환
+            self.fail_click_delay = int(self.fail_delay_var.get()) / 100.0
             self.use_position4 = self.use_position4_var.get()
 
             selected_display_name = self.direction_var.get()
