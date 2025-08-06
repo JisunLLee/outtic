@@ -94,6 +94,7 @@ class SampleApp:
         self.fail_sequence_step = 0
         self.fail_sequence_click_count = 0
         self.area_window = None # 영역 확인 창을 위한 참조
+        self.marker_windows = [] # 좌표 마커 창들을 위한 참조
         self.ui_queue = queue.Queue() # UI 업데이트 작업을 위한 큐
         # 창 배경색 상태 관리
         self.WINDOW_COLORS = {
@@ -314,15 +315,21 @@ class SampleApp:
         self.root.after(2000, grab_color_after_delay)
 
     def show_area(self):
-        """선택된 두 좌표를 기준으로 사각형 영역을 화면에 표시합니다."""
+        """선택된 두 좌표를 기준으로 사각형 영역과 모든 개별 좌표를 화면에 표시합니다."""
+        # 이전에 열려 있던 창들 닫기
         if self.area_window and self.area_window.winfo_exists():
             self.area_window.destroy()
+        for marker in self.marker_windows:
+            if marker and marker.winfo_exists():
+                marker.destroy()
+        self.marker_windows.clear()
 
         # '영역확인' 시 최신 UI 값을 반영하기 위해 설정을 먼저 적용합니다.
         self._apply_settings()
         if "오류" in self.status.get():
             return
 
+        # 1. 메인 검색 영역 표시
         left, top, right, bottom = self.area
         width = self.area_width
         height = self.area_height
@@ -333,9 +340,32 @@ class SampleApp:
         self.area_window.configure(bg="red", highlightthickness=0)
         self.area_window.attributes('-alpha', 0.4)
         self.area_window.attributes('-topmost', True)
+        self.area_window.after(3000, self.area_window.destroy) # 3초 후 자동 닫기
 
-        self.status.set(f"영역 표시: ({left},{top}) - ({right},{bottom})")
-        self.area_window.after(3000, self.area_window.destroy)
+        # 2. 개별 좌표 마커 표시
+        coords_to_show = {
+            "1": (self.position1, "#4A90E2"),   # 파란색
+            "2": (self.position2, "#4A90E2"),   # 파란색
+            "완": (self.position3, "#50E3C2"),  # 녹색
+            "G1": (self.position4, "#F5A623"), # 주황색
+            "G2": (self.position5, "#BD10E0")   # 보라색
+        }
+        marker_size = 20
+        for name, (pos, color) in coords_to_show.items():
+            x, y = pos
+            if x == 0 and y == 0: continue # (0,0) 좌표는 표시하지 않음
+
+            marker = tk.Toplevel(self.root)
+            marker.overrideredirect(True)
+            marker.geometry(f"{marker_size}x{marker_size}+{x - marker_size//2}+{y - marker_size//2}")
+            marker.configure(bg=color, highlightthickness=1, highlightbackground="white")
+            marker.attributes('-alpha', 0.7)
+            marker.attributes('-topmost', True)
+            tk.Label(marker, text=name, bg=color, fg="white", font=("Helvetica", 8, "bold")).pack(expand=True, fill='both')
+            marker.after(3000, marker.destroy)
+            self.marker_windows.append(marker)
+
+        self.status.set("영역 및 모든 좌표 표시 중...")
 
     def _apply_settings(self, event=None):
         """UI의 설정값들을 실제 애플리케이션 상태에 적용합니다."""
