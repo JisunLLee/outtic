@@ -87,7 +87,7 @@ class SampleApp:
         self.root.title("샘플 테스터")
 
         window_width = 330
-        window_height = 500
+        window_height = 480
 
         # 화면 크기 가져오기
         screen_width = self.root.winfo_screenwidth()
@@ -96,7 +96,7 @@ class SampleApp:
         # 창을 좌측 하단에 위치시키기 위한 x, y 좌표 계산
         # 작업 표시줄이나 독(Dock)을 고려하여 약간의 여백(offset)을 줍니다.
         x_coordinate = 0
-        y_coordinate = screen_height - window_height - 80
+        y_coordinate = screen_height - window_height - 60
 
         self.root.geometry(f"{window_width}x{window_height}+{x_coordinate}+{y_coordinate}")
         self.root.configure(bg="#2e2e2e")
@@ -225,10 +225,15 @@ class SampleApp:
 
             if position_index == 3:
                 status_text = f"완료선택 좌표 저장 완료: {new_pos}"
+            elif position_index == 4:
+                status_text = f"구역 1 좌표 저장 완료: {new_pos}"
+            elif position_index == 5:
+                status_text = f"구역 2 좌표 저장 완료: {new_pos}"
             else:
-                status_text = f"Position{position_index} 저장 완료: {new_pos}"
+                status_text = f"Position{position_index} Saved: {new_pos}"
             self.status.set(status_text)
-            print(f"캡쳐된 {position_index}번 좌표: {new_pos}")
+            print(f"Position{position_index} : {new_pos}")
+            self._flash_window()
 
         self.root.after(2000, grab_coord_after_delay)
 
@@ -247,6 +252,7 @@ class SampleApp:
             self.color_var.set(str(new_color))
             self.status.set(f"색상 저장 완료: {new_color}")
             print(f"캡쳐된 색상: {new_color}")
+            self._flash_window()
 
         self.root.after(2000, grab_color_after_delay)
 
@@ -324,6 +330,12 @@ class SampleApp:
         print(f"영역 좌표: {self.area}")
         print(f"영역 Width: {self.area_width}")
         print(f"영역 Height: {self.area_height}")
+
+    def _flash_window(self, flash_color="#004d00", duration=150):
+        """창 배경색을 잠시 변경하여 시각적 피드백을 줍니다."""
+        original_color = "#2e2e2e" # 기존 배경색
+        self.root.configure(bg=flash_color)
+        self.root.after(duration, lambda: self.root.configure(bg=original_color))
 
     def _play_success_sound(self):
         """작업 성공 시 시스템 비프음을 4번 재생합니다."""
