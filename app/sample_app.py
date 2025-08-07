@@ -119,7 +119,7 @@ class SampleApp:
         self.root.title("샘플 테스터")
 
         window_width = 330
-        window_height = 620 # UI 항목 추가로 높이 증가
+        window_height = 580 # UI 레이아웃 변경으로 높이 감소
 
         # 화면 크기 가져오기
         screen_width = self.root.winfo_screenwidth()
@@ -156,49 +156,22 @@ class SampleApp:
         self._create_ui_row(settings_frame, 4, "완료 클릭 오차", self.offset3_var,
                             widget_type='entry')
         
-        self._create_ui_row(settings_frame, 5, "구역 1", self.coord4_var,
-                            button_text="선택",
-                            button_command=lambda: self.start_coordinate_picker(4),
-                            checkbox_var=self.use_fail_sequence_var,
-                            checkbox_text="사용")
+        # --- 구역 1, 2 설정 프레임 ---
+        area1_frame = self._create_area_settings_frame(settings_frame, 1, self.coord4_var, self.use_fail_sequence_var, self.pos4_clicks_var, self.color4_var, self.use_same_color4_var, self.offset4_var)
+        area1_frame.grid(row=5, column=0, columnspan=3, sticky="ew", padx=5, pady=(5,0))
 
-        self._create_ui_row(settings_frame, 6, "구역 1 클릭(번)", self.pos4_clicks_var,
+        area2_frame = self._create_area_settings_frame(settings_frame, 2, self.coord5_var, self.use_position5_var, self.pos5_clicks_var, self.color5_var, self.use_same_color5_var, self.offset5_var)
+        area2_frame.grid(row=6, column=0, columnspan=3, sticky="ew", padx=5, pady=(5,0))
+
+        # --- 나머지 설정 ---
+        # LabelFrame이 2개의 row를 차지하므로, 다음 row 인덱스는 7부터 시작합니다.
+        self._create_ui_row(settings_frame, 7, "구역선택 딜레이(ms)", self.fail_delay_var,
                             widget_type='entry')
 
-        self._create_ui_row(settings_frame, 7, "구역 1 찾을색상", self.color4_var,
-                            button_text="선택",
-                            button_command=lambda: self.start_color_picker(4),
-                            checkbox_var=self.use_same_color4_var,
-                            checkbox_text="기본사용")
-        
-        self._create_ui_row(settings_frame, 8, "구역 1 클릭 오차", self.offset4_var,
+        self._create_ui_row(settings_frame, 8, "색상 오차", self.tolerance_var,
                             widget_type='entry')
 
-        self._create_ui_row(settings_frame, 9, "구역 2", self.coord5_var,
-                            button_text="선택",
-                            button_command=lambda: self.start_coordinate_picker(5),
-                            checkbox_var=self.use_position5_var,
-                            checkbox_text="사용")
-
-        self._create_ui_row(settings_frame, 10, "구역 2 클릭(번)", self.pos5_clicks_var,
-                            widget_type='entry')
-
-        self._create_ui_row(settings_frame, 11, "구역 2 찾을색상", self.color5_var,
-                            button_text="선택",
-                            button_command=lambda: self.start_color_picker(5),
-                            checkbox_var=self.use_same_color5_var,
-                            checkbox_text="기본사용")
-        
-        self._create_ui_row(settings_frame, 12, "구역 2 클릭 오차", self.offset5_var,
-                            widget_type='entry')
-
-        self._create_ui_row(settings_frame, 13, "구역선택 딜레이(ms)", self.fail_delay_var,
-                            widget_type='entry')
-
-        self._create_ui_row(settings_frame, 14, "색상 오차", self.tolerance_var,
-                            widget_type='entry')
-
-        self._create_ui_row(settings_frame, 15, "탐색 방향", self.direction_var,
+        self._create_ui_row(settings_frame, 9, "탐색 방향", self.direction_var,
                             widget_type='optionmenu',
                             options=self.SEARCH_DIRECTION_MAP)
 
@@ -255,6 +228,37 @@ class SampleApp:
 
         if button_text and button_command:
             tk.Button(parent, text=button_text, command=button_command).grid(row=row, column=2, padx=5, sticky="w")
+
+    def _create_area_settings_frame(self, parent, area_index, coord_var, use_var, clicks_var, color_var, use_same_color_var, offset_var):
+        """'구역' 설정을 위한 UI 그룹(LabelFrame)을 생성합니다."""
+        frame = tk.LabelFrame(parent, text=f"구역 {area_index}", fg="white", bg="#2e2e2e", padx=5, pady=5)
+        frame.grid_columnconfigure(1, weight=1)
+
+        # Row 0: 좌표
+        self._create_ui_row(frame, 0, "좌표", coord_var,
+                            button_text="선택",
+                            button_command=lambda: self.start_coordinate_picker(area_index + 3), # 1->4, 2->5
+                            checkbox_var=use_var,
+                            checkbox_text="사용")
+        
+        # Row 1: 클릭횟수와 클릭 오차를 한 줄에 배치
+        count_offset_frame = tk.Frame(frame, bg="#2e2e2e")
+        count_offset_frame.grid(row=1, column=0, columnspan=3, sticky="ew", pady=5)
+        count_offset_frame.grid_columnconfigure(1, weight=1)
+        count_offset_frame.grid_columnconfigure(3, weight=1)
+        tk.Label(count_offset_frame, text="클릭횟수", fg="white", bg="#2e2e2e").grid(row=0, column=0, padx=(0, 5))
+        tk.Entry(count_offset_frame, textvariable=clicks_var, width=5).grid(row=0, column=1, sticky="ew")
+        tk.Label(count_offset_frame, text="클릭 오차", fg="white", bg="#2e2e2e").grid(row=0, column=2, padx=(10, 5))
+        tk.Entry(count_offset_frame, textvariable=offset_var, width=5).grid(row=0, column=3, sticky="ew")
+
+        # Row 2: 찾을색상
+        self._create_ui_row(frame, 2, "찾을색상", color_var,
+                            button_text="선택",
+                            button_command=lambda: self.start_color_picker(area_index + 3), # 1->4, 2->5
+                            checkbox_var=use_same_color_var,
+                            checkbox_text="기본사용")
+
+        return frame
 
     def _process_ui_queue(self):
         """메인 스레드에서 UI 업데이트 큐를 주기적으로 확인하고 처리합니다."""
@@ -405,7 +409,7 @@ class SampleApp:
             self.click_offset4 = int(self.offset4_var.get())
             self.click_offset5 = int(self.offset5_var.get())
 
-            # '기존색상' 체크박스 상태에 따라 다음에 찾을 색상을 미리 결정합니다.
+            # '기본사용' 체크박스 상태에 따라 다음에 찾을 색상을 미리 결정합니다.
             if self.use_same_color4_var.get():
                 self.next_color_after_pos4 = self.color
             else:
