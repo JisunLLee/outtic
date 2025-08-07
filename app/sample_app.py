@@ -50,6 +50,10 @@ class SampleApp:
         # 실패 시 시퀀스 클릭 횟수
         self.pos4_click_count = 3
         self.pos5_click_count = 2
+        # 클릭 위치 오차
+        self.click_offset3 = 0
+        self.click_offset4 = 4
+        self.click_offset5 = 4
 
         # UI와 연동될 Tkinter 변수
         self.coord1_var = tk.StringVar(value=str(self.position1))
@@ -502,7 +506,7 @@ class SampleApp:
                 if self.position3 != (0, 0):
                     time.sleep(0.1)
                     comp_x, comp_y = self.position3
-                    self.color_finder.click_action(comp_x, comp_y)
+                    self.color_finder.click_action(comp_x, comp_y, offset=self.click_offset3)
                     status_message = f"색상 클릭 후 완료선택({comp_x},{comp_y}) 클릭"
                 else:
                     status_message = f"색상 발견 및 클릭 완료: ({abs_x}, {abs_y})"
@@ -519,13 +523,15 @@ class SampleApp:
 
             # --- 색상을 찾지 못했을 때의 로직 ---
             if self.use_fail_sequence:
-                # 현재 스텝(0: position4, 1: position5)에 따라 클릭할 좌표와 횟수 결정
+                # 현재 스텝(0: position4, 1: position5)에 따라 클릭할 좌표, 횟수, 오차 결정
                 if self.fail_sequence_step == 0:
                     target_coord = self.position4
+                    target_offset = self.click_offset4
                     coord_num = 4
                     total_clicks_for_step = self.pos4_click_count
                 else: # self.fail_sequence_step == 1
                     target_coord = self.position5
+                    target_offset = self.click_offset5
                     coord_num = 5
                     total_clicks_for_step = self.pos5_click_count
 
@@ -548,7 +554,7 @@ class SampleApp:
                     if self.fail_click_delay > 0:
                         random_offset = random.uniform(-0.1, 0.1)
                         final_delay = self.fail_click_delay + random_offset
-                    self.color_finder.click_action(fail_x, fail_y, delay=max(0, final_delay))
+                    self.color_finder.click_action(fail_x, fail_y, delay=max(0, final_delay), offset=target_offset)
 
                 # 현재 스텝의 클릭 카운트 증가
                 self.fail_sequence_click_count += 1
