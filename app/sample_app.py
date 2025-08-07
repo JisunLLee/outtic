@@ -24,7 +24,7 @@ class SampleApp:
         self.mouse_controller = mouse.Controller()
         hotkey_map = {
             'shift+esc': self.start_search,
-            keyboard.Key.esc: self.stop_search
+            keyboard.Key.esc: lambda: self.stop_search() # 기본 인자로 호출하기 위해 람다 사용
         }
         self.global_hotkey_listener = GlobalHotkeyListener(hotkey_map)
         self.global_hotkey_listener.start()
@@ -534,7 +534,7 @@ class SampleApp:
         # UI 업데이트 작업을 큐에 넣습니다.
         self.ui_queue.put(start_search_task)
 
-    def stop_search(self):
+    def stop_search(self, message="검색이 중지되었습니다.", auto_stopped=False):
         """색상 검색을 중지합니다."""
         if not self.is_searching:
             return
@@ -545,10 +545,17 @@ class SampleApp:
         # UI 업데이트 작업을 큐에 넣습니다.
         def stop_search_task():
             self.find_button.config(text="찾기(Shift+ESC)")
-            self.status.set("검색이 중지되었습니다.")
+            self.status.set(message)
             self._update_window_bg('default')
-            self.root.bell()
-            self.root.after(150, self.root.bell)
+
+            if auto_stopped:
+                # 자동 중단 시 3번 울림
+                for i in range(3):
+                    self.root.after(i * 150, self.root.bell)
+            else:
+                # 수동 중단 시 2번 울림
+                self.root.bell()
+                self.root.after(150, self.root.bell)
             print("--- 색상 검색 OFF ---")
         self.ui_queue.put(stop_search_task)
 
@@ -629,8 +636,8 @@ class SampleApp:
                 if should_click and self.fail_sequence_target_coord and self.fail_sequence_target_coord != (0, 0):
                     fail_x, fail_y = self.fail_sequence_target_coord
                     # 상태 메시지 업데이트를 큐에 넣습니다.
-                    self.ui_queue.put(lambda c=coord_num, cl=self.fail_sequence_click_count, tc=total_clicks_for_step: 
-                                      self.status.set(f"구역 선택: 구역{c-3} ({cl + 1}/{tc})"))
+                    self.ui_queue.put(lambda c=coord_num, cl=self.fail_sequence_click_count, tc=total_clicks_for_step, total=self.total_fail_clicks:
+                                      self.status.set(f"구역 선택: 구역{c-3} ({cl + 1}/{tc}) | 총 {total + 1}/{self.max_fail_clicks}"))
                     
                     # 딜레이 계산 및 클릭
                     final_delay = self.fail_click_delay
@@ -643,8 +650,7 @@ class SampleApp:
                     self.total_fail_clicks += 1
                     if self.total_fail_clicks >= self.max_fail_clicks:
                         print(f"--- 최대 실패 클릭 횟수({self.max_fail_clicks})에 도달하여 자동 중단합니다. ---")
-                        self.ui_queue.put(lambda: self.status.set("최대 클릭 도달, 자동 중단됨"))
-                        self.ui_queue.put(self.stop_search)
+                        self.ui_queue.put(lambda: self.stop_search(message="최대 클릭 도달, 자동 중단됨", auto_stopped=True))
                         return # 워커 스레드 종료
 
                 # 현재 스텝의 클릭 카운트 증가
