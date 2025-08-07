@@ -305,7 +305,7 @@ class AppUI:
             new_color = pixel_color
 
             if color_index == 0:
-                self.color_var.set(str(new_pos))
+                self.color_var.set(str(new_color))
                 status_text = f"기본 색상 저장 완료: {new_color}"
             elif color_index == 4:
                 self.color4_var.set(str(new_color))
