@@ -40,9 +40,9 @@ class SampleApp:
         self.position3 = (805, 704) # 색상 선택 완료 후 클릭할 좌표
         self.position4 = (813, 396) # 색상 선택 실패 시 클릭할 첫 번째 좌표
         self.position5 = (815, 429) # 색상 선택 실패 시 클릭할 두 번째 좌표
-        self.color4 = (0, 0, 0) # 구역 1에서 찾을 색상
-        self.color5 = (0, 0, 0) # 구역 2에서 찾을 색상
         self.color = (0, 204, 204)
+        self.color4 = self.color # 구역 1에서 찾을 색상, 기본 색상으로 초기화
+        self.color5 = self.color # 구역 2에서 찾을 색상, 기본 색상으로 초기화
         self.color_tolerance = 15
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
         self.sleep_time = 0.02
@@ -71,8 +71,8 @@ class SampleApp:
         self.use_position5_var = tk.BooleanVar(value=True) # 구역 2 체크박스
         self.pos4_clicks_var = tk.StringVar(value=str(self.pos4_click_count))
         self.pos5_clicks_var = tk.StringVar(value=str(self.pos5_click_count))
-        self.use_same_color4_var = tk.BooleanVar(value=True)
-        self.use_same_color5_var = tk.BooleanVar(value=True)
+        self.use_same_color4_var = tk.BooleanVar(value=False) # 체크 시 구역1 색상 사용
+        self.use_same_color5_var = tk.BooleanVar(value=False) # 체크 시 구역2 색상 사용
         self.offset3_var = tk.StringVar(value=str(self.click_offset3))
         self.offset4_var = tk.StringVar(value=str(self.click_offset4))
         self.complete_delay_var = tk.StringVar(value=str(int(self.complete_click_delay * 1000)))
@@ -278,11 +278,32 @@ class SampleApp:
         # Row 3: 찾을색상 (커스텀 레이아웃)
         color_row = tk.Frame(frame, bg="#2e2e2e")
         color_row.grid(row=3, column=0, columnspan=3, sticky="ew")
-        color_row.grid_columnconfigure(2, weight=1) # 값 표시 레이블이 확장되도록
-        tk.Checkbutton(color_row, variable=use_same_color_var, bg="#2e2e2e", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, borderwidth=0).grid(row=0, column=0)
+        color_row.grid_columnconfigure(2, weight=1)
+
+        # 위젯들을 변수에 저장하여 상태 변경 함수에서 접근할 수 있도록 합니다.
+        color_value_label = tk.Label(color_row, textvariable=color_var, width=15, anchor="w", relief="sunken")
+        color_select_button = tk.Button(color_row, text="선택", command=lambda: self.start_color_picker(area_index + 3))
+
+        def toggle_color_widgets_state():
+            """체크박스 상태에 따라 색상 관련 위젯의 상태를 변경합니다."""
+            if use_same_color_var.get():  # 체크됨 -> 구역별 색상 사용
+                color_value_label.config(bg='white', fg='black')
+                color_select_button.config(state='normal')
+            else:  # 체크 해제됨 -> 기본 색상 사용
+                color_value_label.config(bg='#555555', fg='#999999') # 비활성화된 모양
+                color_select_button.config(state='disabled')
+
+        color_checkbox = tk.Checkbutton(color_row, variable=use_same_color_var, command=toggle_color_widgets_state,
+                                        bg="#2e2e2e", selectcolor="#2e2e2e", activebackground="#2e2e2e",
+                                        highlightthickness=0, borderwidth=0)
+        
+        color_checkbox.grid(row=0, column=0)
         tk.Label(color_row, text="색상", fg="white", bg="#2e2e2e").grid(row=0, column=1, padx=(0, 5))
-        tk.Label(color_row, textvariable=color_var, width=15, anchor="w", relief="sunken", fg="black", bg="white").grid(row=0, column=2, sticky="ew", padx=(0, 5))
-        tk.Button(color_row, text="선택", command=lambda: self.start_color_picker(area_index + 3)).grid(row=0, column=3)
+        color_value_label.grid(row=0, column=2, sticky="ew", padx=(0, 5))
+        color_select_button.grid(row=0, column=3)
+
+        # 초기 상태를 설정하기 위해 함수를 한 번 호출합니다.
+        toggle_color_widgets_state()
 
         return frame
 
@@ -436,15 +457,16 @@ class SampleApp:
             self.click_offset5 = int(self.offset5_var.get())
             self.complete_click_delay = int(self.complete_delay_var.get()) / 1000.0
 
-            # '기본사용' 체크박스 상태에 따라 다음에 찾을 색상을 미리 결정합니다.
+            # '색상' 체크박스 상태에 따라 다음에 찾을 색상을 미리 결정합니다.
+            # 체크하면(True) 구역별 색상 사용, 체크 해제하면(False) 기본 색상 사용.
             if self.use_same_color4_var.get():
-                self.next_color_after_pos4 = self.color
-            else:
                 self.next_color_after_pos4 = self.color4
-            if self.use_same_color5_var.get():
-                self.next_color_after_pos5 = self.color
             else:
+                self.next_color_after_pos4 = self.color
+            if self.use_same_color5_var.get():
                 self.next_color_after_pos5 = self.color5
+            else:
+                self.next_color_after_pos5 = self.color
 
             selected_display_name = self.direction_var.get()
             reversed_direction_map = {v: k for k, v in self.SEARCH_DIRECTION_MAP.items()}
