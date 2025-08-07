@@ -43,6 +43,7 @@ class AppUI:
         self.complete_delay_var = tk.StringVar(value=str(int(c.complete_click_delay * 1000)))
         self.offset5_var = tk.StringVar(value=str(c.click_offset5))
         self.max_fail_clicks_var = tk.StringVar(value=str(c.max_fail_clicks))
+        self.memo_var = tk.StringVar()
 
         self.SEARCH_DIRECTION_MAP = {
             SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT.name: "→↓",
@@ -86,6 +87,7 @@ class AppUI:
             'complete_delay_var': self.complete_delay_var,
             'offset5_var': self.offset5_var,
             'max_fail_clicks_var': self.max_fail_clicks_var,
+            'memo_var': self.memo_var,
             'direction_var': self.direction_var,
         }
 
@@ -94,7 +96,7 @@ class AppUI:
         self.root.title("샘플 테스터")
 
         window_width = 330
-        window_height = 680 # UI 항목 추가로 높이 증가
+        window_height = 710 # UI 항목 추가로 높이 증가
 
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
@@ -155,6 +157,11 @@ class AppUI:
             self.root.bind("<Command-s>", self.controller.apply_settings)
         else:
             self.root.bind("<Control-s>", self.controller.apply_settings)
+        
+        # --- 메모 입력창 ---
+        self.memo_entry = tk.Entry(self.root, textvariable=self.memo_var, bg='#444444', fg='white', insertbackground='white', borderwidth=0, highlightthickness=1, highlightcolor="#555555", highlightbackground="#555555")
+        self.memo_entry.pack(fill='x', padx=10, pady=(0, 10))
+
 
     def _create_entry_row(self, parent, row, label_text, var):
         tk.Label(parent, text=label_text, fg="white", bg="#2e2e2e").grid(row=row, column=0, padx=(0, 10), pady=5, sticky="e")
