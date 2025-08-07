@@ -72,6 +72,9 @@ class SampleApp:
         self.pos5_clicks_var = tk.StringVar(value=str(self.pos5_click_count))
         self.use_same_color4_var = tk.BooleanVar(value=True)
         self.use_same_color5_var = tk.BooleanVar(value=True)
+        self.offset3_var = tk.StringVar(value=str(self.click_offset3))
+        self.offset4_var = tk.StringVar(value=str(self.click_offset4))
+        self.offset5_var = tk.StringVar(value=str(self.click_offset5))
 
         # UI 표시용 텍스트 맵
         self.SEARCH_DIRECTION_MAP = {
@@ -115,7 +118,7 @@ class SampleApp:
         self.root.title("샘플 테스터")
 
         window_width = 330
-        window_height = 550 # UI 항목 추가로 높이 증가
+        window_height = 620 # UI 항목 추가로 높이 증가
 
         # 화면 크기 가져오기
         screen_width = self.root.winfo_screenwidth()
@@ -149,44 +152,52 @@ class SampleApp:
         self._create_ui_row(settings_frame, 3, "완료", self.coord3_var,
                             button_text="선택",
                             button_command=lambda: self.start_coordinate_picker(3))
+        self._create_ui_row(settings_frame, 4, "완료 클릭 오차", self.offset3_var,
+                            widget_type='entry')
         
-        self._create_ui_row(settings_frame, 4, "구역 1", self.coord4_var,
+        self._create_ui_row(settings_frame, 5, "구역 1", self.coord4_var,
                             button_text="선택",
                             button_command=lambda: self.start_coordinate_picker(4),
                             checkbox_var=self.use_fail_sequence_var,
                             checkbox_text="사용")
 
-        self._create_ui_row(settings_frame, 5, "구역 2", self.coord5_var,
+        self._create_ui_row(settings_frame, 6, "구역 1 클릭(번)", self.pos4_clicks_var,
+                            widget_type='entry')
+
+        self._create_ui_row(settings_frame, 7, "구역 1 찾을색상", self.color4_var,
+                            button_text="선택",
+                            button_command=lambda: self.start_color_picker(4),
+                            checkbox_var=self.use_same_color4_var,
+                            checkbox_text="기본사용")
+        
+        self._create_ui_row(settings_frame, 8, "구역 1 클릭 오차", self.offset4_var,
+                            widget_type='entry')
+
+        self._create_ui_row(settings_frame, 9, "구역 2", self.coord5_var,
                             button_text="선택",
                             button_command=lambda: self.start_coordinate_picker(5),
                             checkbox_var=self.use_position5_var,
                             checkbox_text="사용")
 
-        self._create_ui_row(settings_frame, 6, "구역 1 클릭(번)", self.pos4_clicks_var,
+        self._create_ui_row(settings_frame, 10, "구역 2 클릭(번)", self.pos5_clicks_var,
                             widget_type='entry')
 
-        self._create_ui_row(settings_frame, 7, "구역 2 클릭(번)", self.pos5_clicks_var,
-                            widget_type='entry')
-
-        self._create_ui_row(settings_frame, 8, "구역 1 찾을색상", self.color4_var,
-                            button_text="선택",
-                            button_command=lambda: self.start_color_picker(4),
-                            checkbox_var=self.use_same_color4_var,
-                            checkbox_text="기본사용")
-
-        self._create_ui_row(settings_frame, 9, "구역 2 찾을색상", self.color5_var,
+        self._create_ui_row(settings_frame, 11, "구역 2 찾을색상", self.color5_var,
                             button_text="선택",
                             button_command=lambda: self.start_color_picker(5),
                             checkbox_var=self.use_same_color5_var,
                             checkbox_text="기본사용")
-
-        self._create_ui_row(settings_frame, 10, "구역선택 딜레이(ms)", self.fail_delay_var,
+        
+        self._create_ui_row(settings_frame, 12, "구역 2 클릭 오차", self.offset5_var,
                             widget_type='entry')
 
-        self._create_ui_row(settings_frame, 11, "색상 오차", self.tolerance_var,
+        self._create_ui_row(settings_frame, 13, "구역선택 딜레이(ms)", self.fail_delay_var,
                             widget_type='entry')
 
-        self._create_ui_row(settings_frame, 12, "탐색 방향", self.direction_var,
+        self._create_ui_row(settings_frame, 14, "색상 오차", self.tolerance_var,
+                            widget_type='entry')
+
+        self._create_ui_row(settings_frame, 15, "탐색 방향", self.direction_var,
                             widget_type='optionmenu',
                             options=self.SEARCH_DIRECTION_MAP)
 
@@ -391,6 +402,9 @@ class SampleApp:
             self.pos5_click_count = int(self.pos5_clicks_var.get())
             self.use_same_color4 = self.use_same_color4_var.get()
             self.use_same_color5 = self.use_same_color5_var.get()
+            self.click_offset3 = int(self.offset3_var.get())
+            self.click_offset4 = int(self.offset4_var.get())
+            self.click_offset5 = int(self.offset5_var.get())
 
             selected_display_name = self.direction_var.get()
             reversed_direction_map = {v: k for k, v in self.SEARCH_DIRECTION_MAP.items()}
