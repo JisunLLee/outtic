@@ -47,6 +47,7 @@ class SampleApp:
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
         self.sleep_time = 0.02
         self.fail_click_delay = 0.36 # 색상 찾기 실패 시 클릭 딜레이 (360ms)
+        self.complete_click_delay = 0.02 # 완료 클릭 딜레이
         # 실패 시 시퀀스 클릭 횟수
         self.pos4_click_count = 3
         self.pos5_click_count = 2
@@ -74,6 +75,7 @@ class SampleApp:
         self.use_same_color5_var = tk.BooleanVar(value=True)
         self.offset3_var = tk.StringVar(value=str(self.click_offset3))
         self.offset4_var = tk.StringVar(value=str(self.click_offset4))
+        self.complete_delay_var = tk.StringVar(value=str(int(self.complete_click_delay * 1000)))
         self.offset5_var = tk.StringVar(value=str(self.click_offset5))
 
         # UI 표시용 텍스트 맵
@@ -119,7 +121,7 @@ class SampleApp:
         self.root.title("샘플 테스터")
 
         window_width = 330
-        window_height = 580 # UI 레이아웃 변경으로 높이 감소
+        window_height = 660 # UI 항목 추가로 높이 증가
 
         # 화면 크기 가져오기
         screen_width = self.root.winfo_screenwidth()
@@ -150,34 +152,48 @@ class SampleApp:
         self._create_ui_row(settings_frame, 2, "색상", self.color_var,
                             button_text="선택",
                             button_command=lambda: self.start_color_picker(0))
-        self._create_ui_row(settings_frame, 3, "완료", self.coord3_var,
-                            button_text="선택",
-                            button_command=lambda: self.start_coordinate_picker(3))
-        self._create_ui_row(settings_frame, 4, "완료 클릭 오차", self.offset3_var,
-                            widget_type='entry')
-        
+
+        # --- 색상 오차, 탐색 방향 설정 (위치 변경) ---
+        general_settings_frame = tk.Frame(settings_frame, bg="#2e2e2e")
+        general_settings_frame.grid(row=3, column=0, columnspan=3, sticky="ew", pady=5)
+        general_settings_frame.grid_columnconfigure(1, weight=1) # 색상 오차 입력창만 늘어나도록 설정
+        tk.Label(general_settings_frame, text="색상 오차", fg="white", bg="#2e2e2e").grid(row=0, column=0, padx=(0, 5))
+        tk.Entry(general_settings_frame, textvariable=self.tolerance_var, width=5).grid(row=0, column=1, sticky="ew")
+        tk.Label(general_settings_frame, text="탐색 방향", fg="white", bg="#2e2e2e").grid(row=0, column=2, padx=(10, 5))
+        option_menu = tk.OptionMenu(general_settings_frame, self.direction_var, *self.SEARCH_DIRECTION_MAP.values())
+        option_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0)
+        option_menu["menu"].config(bg="#555555", fg="white")
+        option_menu.grid(row=0, column=3, sticky="w") # ew -> w로 변경하여 왼쪽 정렬 및 크기 자동 조절
+
+        # --- 완료 설정 프레임 ---
+        complete_frame = tk.LabelFrame(settings_frame, text="완료 설정", fg="white", bg="#2e2e2e", padx=5, pady=5)
+        complete_frame.grid(row=4, column=0, columnspan=3, sticky="ew", padx=5, pady=(5,0))
+        complete_frame.grid_columnconfigure(1, weight=1)
+        self._create_ui_row(complete_frame, 0, "좌표", self.coord3_var, button_text="선택", button_command=lambda: self.start_coordinate_picker(3))
+        # 클릭 오차와 딜레이를 한 줄에 배치
+        offset_delay_frame = tk.Frame(complete_frame, bg="#2e2e2e")
+        offset_delay_frame.grid(row=1, column=0, columnspan=3, sticky="ew", pady=5)
+        offset_delay_frame.grid_columnconfigure(1, weight=1)
+        offset_delay_frame.grid_columnconfigure(3, weight=1)
+        tk.Label(offset_delay_frame, text="클릭 오차", fg="white", bg="#2e2e2e").grid(row=0, column=0, padx=(0, 5), sticky='e')
+        tk.Entry(offset_delay_frame, textvariable=self.offset3_var, width=5).grid(row=0, column=1, sticky="ew")
+        tk.Label(offset_delay_frame, text="클릭 딜레이", fg="white", bg="#2e2e2e").grid(row=0, column=2, padx=(10, 5), sticky='e')
+        tk.Entry(offset_delay_frame, textvariable=self.complete_delay_var, width=5).grid(row=0, column=3, sticky="ew")
+
+        # --- 상태 메시지 (프레임 내부로 이동) ---
+        tk.Label(settings_frame, textvariable=self.status, fg="lightblue", bg="#2e2e2e", anchor="w").grid(
+            row=5, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
+
         # --- 구역 1, 2 설정 프레임 ---
         area1_frame = self._create_area_settings_frame(settings_frame, 1, self.coord4_var, self.use_fail_sequence_var, self.pos4_clicks_var, self.color4_var, self.use_same_color4_var, self.offset4_var)
-        area1_frame.grid(row=5, column=0, columnspan=3, sticky="ew", padx=5, pady=(5,0))
+        area1_frame.grid(row=6, column=0, columnspan=3, sticky="ew", padx=5, pady=(5,0))
 
         area2_frame = self._create_area_settings_frame(settings_frame, 2, self.coord5_var, self.use_position5_var, self.pos5_clicks_var, self.color5_var, self.use_same_color5_var, self.offset5_var)
-        area2_frame.grid(row=6, column=0, columnspan=3, sticky="ew", padx=5, pady=(5,0))
+        area2_frame.grid(row=7, column=0, columnspan=3, sticky="ew", padx=5, pady=(5,0))
 
-        # --- 나머지 설정 ---
-        # LabelFrame이 2개의 row를 차지하므로, 다음 row 인덱스는 7부터 시작합니다.
-        self._create_ui_row(settings_frame, 7, "구역선택 딜레이(ms)", self.fail_delay_var,
+        # --- 구역선택 딜레이 ---
+        self._create_ui_row(settings_frame, 8, "구역선택 딜레이(ms)", self.fail_delay_var,
                             widget_type='entry')
-
-        self._create_ui_row(settings_frame, 8, "색상 오차", self.tolerance_var,
-                            widget_type='entry')
-
-        self._create_ui_row(settings_frame, 9, "탐색 방향", self.direction_var,
-                            widget_type='optionmenu',
-                            options=self.SEARCH_DIRECTION_MAP)
-
-        # --- 상태 메시지 프레임 ---
-        tk.Label(self.root, textvariable=self.status, fg="lightblue", bg="#2e2e2e", anchor="w").pack(
-            fill="x", padx=10, pady=5, anchor="n")
 
         # --- 액션 버튼 프레임 ---
         action_frame = tk.Frame(self.root, bg="#2e2e2e")
@@ -231,32 +247,42 @@ class SampleApp:
 
     def _create_area_settings_frame(self, parent, area_index, coord_var, use_var, clicks_var, color_var, use_same_color_var, offset_var):
         """'구역' 설정을 위한 UI 그룹(LabelFrame)을 생성합니다."""
-        frame = tk.LabelFrame(parent, text=f"구역 {area_index}", fg="white", bg="#2e2e2e", padx=5, pady=5)
+        # LabelFrame의 text 속성 대신 커스텀 타이틀을 사용합니다.
+        frame = tk.LabelFrame(parent, text="", fg="white", bg="#2e2e2e", padx=5, pady=5)
         frame.grid_columnconfigure(1, weight=1)
 
-        # Row 0: 좌표
-        self._create_ui_row(frame, 0, "좌표", coord_var,
+        # --- 커스텀 타이틀 바: [v] 구역 1 ---
+        title_frame = tk.Frame(frame, bg="#2e2e2e")
+        title_frame.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 5))
+        tk.Checkbutton(title_frame, variable=use_var, text="",
+                                bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", 
+                                activebackground="#2e2e2e", activeforeground="white", 
+                                highlightthickness=0, borderwidth=0).pack(side="left")
+        tk.Label(title_frame, text=f"구역 {area_index}", fg="white", bg="#2e2e2e").pack(side="left")
+
+        # Row 1: 좌표
+        self._create_ui_row(frame, 1, "좌표", coord_var,
                             button_text="선택",
-                            button_command=lambda: self.start_coordinate_picker(area_index + 3), # 1->4, 2->5
-                            checkbox_var=use_var,
-                            checkbox_text="사용")
+                            button_command=lambda: self.start_coordinate_picker(area_index + 3))
         
-        # Row 1: 클릭횟수와 클릭 오차를 한 줄에 배치
+        # Row 2: 클릭횟수와 클릭 오차를 한 줄에 배치
         count_offset_frame = tk.Frame(frame, bg="#2e2e2e")
-        count_offset_frame.grid(row=1, column=0, columnspan=3, sticky="ew", pady=5)
+        count_offset_frame.grid(row=2, column=0, columnspan=3, sticky="ew", pady=5)
         count_offset_frame.grid_columnconfigure(1, weight=1)
         count_offset_frame.grid_columnconfigure(3, weight=1)
-        tk.Label(count_offset_frame, text="클릭횟수", fg="white", bg="#2e2e2e").grid(row=0, column=0, padx=(0, 5))
+        tk.Label(count_offset_frame, text="클릭횟수", fg="white", bg="#2e2e2e").grid(row=0, column=0, padx=(0, 5), sticky='e')
         tk.Entry(count_offset_frame, textvariable=clicks_var, width=5).grid(row=0, column=1, sticky="ew")
-        tk.Label(count_offset_frame, text="클릭 오차", fg="white", bg="#2e2e2e").grid(row=0, column=2, padx=(10, 5))
+        tk.Label(count_offset_frame, text="클릭 오차", fg="white", bg="#2e2e2e").grid(row=0, column=2, padx=(10, 5), sticky='e')
         tk.Entry(count_offset_frame, textvariable=offset_var, width=5).grid(row=0, column=3, sticky="ew")
 
-        # Row 2: 찾을색상
-        self._create_ui_row(frame, 2, "찾을색상", color_var,
-                            button_text="선택",
-                            button_command=lambda: self.start_color_picker(area_index + 3), # 1->4, 2->5
-                            checkbox_var=use_same_color_var,
-                            checkbox_text="기본사용")
+        # Row 3: 찾을색상 (커스텀 레이아웃)
+        color_row = tk.Frame(frame, bg="#2e2e2e")
+        color_row.grid(row=3, column=0, columnspan=3, sticky="ew")
+        color_row.grid_columnconfigure(2, weight=1) # 값 표시 레이블이 확장되도록
+        tk.Checkbutton(color_row, variable=use_same_color_var, bg="#2e2e2e", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, borderwidth=0).grid(row=0, column=0)
+        tk.Label(color_row, text="색상", fg="white", bg="#2e2e2e").grid(row=0, column=1, padx=(0, 5))
+        tk.Label(color_row, textvariable=color_var, width=15, anchor="w", relief="sunken", fg="black", bg="white").grid(row=0, column=2, sticky="ew", padx=(0, 5))
+        tk.Button(color_row, text="선택", command=lambda: self.start_color_picker(area_index + 3)).grid(row=0, column=3)
 
         return frame
 
@@ -408,6 +434,7 @@ class SampleApp:
             self.click_offset3 = int(self.offset3_var.get())
             self.click_offset4 = int(self.offset4_var.get())
             self.click_offset5 = int(self.offset5_var.get())
+            self.complete_click_delay = int(self.complete_delay_var.get()) / 1000.0
 
             # '기본사용' 체크박스 상태에 따라 다음에 찾을 색상을 미리 결정합니다.
             if self.use_same_color4_var.get():
@@ -542,7 +569,7 @@ class SampleApp:
                         offset_y = random.randint(-self.click_offset3, self.click_offset3)
                         final_comp_x += offset_x
                         final_comp_y += offset_y
-                    self.color_finder.click_action(final_comp_x, final_comp_y)
+                    self.color_finder.click_action(final_comp_x, final_comp_y, delay=self.complete_click_delay)
                     status_message = f"색상 클릭 후 완료선택({final_comp_x},{final_comp_y}) 클릭"
                 else:
                     status_message = f"색상 발견 및 클릭 완료: ({abs_x}, {abs_y})"
