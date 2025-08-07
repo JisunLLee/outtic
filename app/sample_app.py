@@ -95,8 +95,8 @@ class SampleApp:
         self.search_thread = None
         self.use_fail_sequence = False
         self.use_position5 = False
-        self.use_same_color4 = True
-        self.use_same_color5 = True
+        self.next_color_after_pos4 = self.color # 구역 1 시퀀스 후 찾을 색상
+        self.next_color_after_pos5 = self.color # 구역 2 시퀀스 후 찾을 색상
         self.current_search_color = self.color # 현재 검색 대상 색상
         self.fail_sequence_step = 0
         self.fail_sequence_click_count = 0
@@ -401,11 +401,19 @@ class SampleApp:
             self.use_position5 = self.use_position5_var.get()
             self.pos4_click_count = int(self.pos4_clicks_var.get())
             self.pos5_click_count = int(self.pos5_clicks_var.get())
-            self.use_same_color4 = self.use_same_color4_var.get()
-            self.use_same_color5 = self.use_same_color5_var.get()
             self.click_offset3 = int(self.offset3_var.get())
             self.click_offset4 = int(self.offset4_var.get())
             self.click_offset5 = int(self.offset5_var.get())
+
+            # '기존색상' 체크박스 상태에 따라 다음에 찾을 색상을 미리 결정합니다.
+            if self.use_same_color4_var.get():
+                self.next_color_after_pos4 = self.color
+            else:
+                self.next_color_after_pos4 = self.color4
+            if self.use_same_color5_var.get():
+                self.next_color_after_pos5 = self.color
+            else:
+                self.next_color_after_pos5 = self.color5
 
             selected_display_name = self.direction_var.get()
             reversed_direction_map = {v: k for k, v in self.SEARCH_DIRECTION_MAP.items()}
@@ -592,17 +600,11 @@ class SampleApp:
 
                     # 방금 완료된 스텝에 따라 다음 검색 색상을 업데이트합니다.
                     if self.fail_sequence_step == 1: # 0->1로 변경된 직후 (구역 1 클릭 완료)
-                        if self.use_same_color4:
-                            self.current_search_color = self.color
-                        else:
-                            self.current_search_color = self.color4
-                        print(f"(구역1) 색상:{self.current_search_color} 좌표오차:({offset_x},{offset_y})")
+                        self.current_search_color = self.next_color_after_pos4
+                        print(f"다음 검색 색상 변경 (구역1 규칙): {self.current_search_color}")
                     else: # 1->0으로 변경된 직후 (구역 2 클릭 완료)
-                        if self.use_same_color5:
-                            self.current_search_color = self.color
-                        else:
-                            self.current_search_color = self.color5
-                        print(f"(구역2) 색상:{self.current_search_color} 좌표오차:({offset_x},{offset_y})")
+                        self.current_search_color = self.next_color_after_pos5
+                        print(f"다음 검색 색상 변경 (구역2 규칙): {self.current_search_color}")
 
 
             time.sleep(0.1)
