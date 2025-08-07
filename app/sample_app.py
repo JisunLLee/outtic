@@ -596,13 +596,13 @@ class SampleApp:
                             self.current_search_color = self.color
                         else:
                             self.current_search_color = self.color4
-                        print(f"다음 검색 색상 변경 (구역1 규칙): {self.current_search_color}")
+                        print(f"(구역1) 색상:{self.current_search_color} 좌표오차:({offset_x},{offset_y})")
                     else: # 1->0으로 변경된 직후 (구역 2 클릭 완료)
                         if self.use_same_color5:
                             self.current_search_color = self.color
                         else:
                             self.current_search_color = self.color5
-                        print(f"다음 검색 색상 변경 (구역2 규칙): {self.current_search_color}")
+                        print(f"(구역2) 색상:{self.current_search_color} 좌표오차:({offset_x},{offset_y})")
 
 
             time.sleep(0.1)
