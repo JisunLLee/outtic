@@ -32,8 +32,8 @@ class AppController:
     def _initialize_attributes(self):
         """애플리케이션의 모든 속성을 초기화합니다."""
         # 설정값
-        self.position1 = (75, 193)
-        self.position2 = (451, 485)
+        self.position1 = (88, 219)
+        self.position2 = (398, 462)
         self.position3 = (805, 704)
         self.position4 = (813, 396)
         self.position5 = (815, 429)
