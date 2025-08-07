@@ -100,6 +100,7 @@ class SampleApp:
         self.current_search_color = self.color # 현재 검색 대상 색상
         self.fail_sequence_step = 0
         self.fail_sequence_click_count = 0
+        self.fail_sequence_target_coord = None # 현재 시퀀스 스텝에서 클릭할 고정된 랜덤 좌표
         self.area_window = None # 영역 확인 창을 위한 참조
         self.marker_windows = [] # 좌표 마커 창들을 위한 참조
         self.ui_queue = queue.Queue() # UI 업데이트 작업을 위한 큐
@@ -465,6 +466,7 @@ class SampleApp:
             if "오류" in self.status.get():
                 return
 
+            self.fail_sequence_target_coord = None # 검색 시작 시 시퀀스 목표 좌표 초기화
             self.current_search_color = self.color # 검색 시작 시 항상 기본 색상으로 초기화
             self.fail_sequence_step = 0
             self.fail_sequence_click_count = 0
@@ -549,6 +551,17 @@ class SampleApp:
                     coord_num = 5
                     total_clicks_for_step = self.pos5_click_count
 
+                # 현재 스텝의 첫 번째 클릭인 경우에만 새로운 랜덤 좌표를 계산합니다.
+                if self.fail_sequence_click_count == 0:
+                    base_x, base_y = target_coord
+                    final_x, final_y = base_x, base_y
+                    if target_offset > 0:
+                        offset_x = random.randint(-target_offset, target_offset)
+                        offset_y = random.randint(-target_offset, target_offset)
+                        final_x += offset_x
+                        final_y += offset_y
+                    self.fail_sequence_target_coord = (final_x, final_y)
+
                 # 클릭 실행 여부 결정 (position5는 체크박스 확인)
                 should_click = False
                 if coord_num == 4:
@@ -557,8 +570,8 @@ class SampleApp:
                     should_click = self.use_position5 # position5 사용 여부 확인
 
                 # 조건이 맞으면 클릭 실행
-                if should_click and target_coord and target_coord != (0, 0):
-                    fail_x, fail_y = target_coord
+                if should_click and self.fail_sequence_target_coord and self.fail_sequence_target_coord != (0, 0):
+                    fail_x, fail_y = self.fail_sequence_target_coord
                     # 상태 메시지 업데이트를 큐에 넣습니다.
                     self.ui_queue.put(lambda c=coord_num, cl=self.fail_sequence_click_count, tc=total_clicks_for_step: 
                                       self.status.set(f"구역 선택: 구역{c-3} ({cl + 1}/{tc})"))
@@ -568,11 +581,12 @@ class SampleApp:
                     if self.fail_click_delay > 0:
                         random_offset = random.uniform(-0.1, 0.1)
                         final_delay = self.fail_click_delay + random_offset
-                    self.color_finder.click_action(fail_x, fail_y, delay=max(0, final_delay), offset=target_offset)
+                    self.color_finder.click_action(fail_x, fail_y, delay=max(0, final_delay))
 
                 # 현재 스텝의 클릭 카운트 증가
                 self.fail_sequence_click_count += 1
                 if self.fail_sequence_click_count >= total_clicks_for_step:
+                    self.fail_sequence_target_coord = None # 다음 스텝을 위해 랜덤 좌표 초기화
                     self.fail_sequence_click_count = 0
                     self.fail_sequence_step = 1 - self.fail_sequence_step # 0 -> 1, 1 -> 0
 

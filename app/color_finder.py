@@ -22,21 +22,14 @@ class ColorFinder:
         self.mouse_controller = mouse.Controller()
         self.sleep_time = sleep_time
 
-    def click_action(self, x: int, y: int, delay: Optional[float] = None, offset: int = 0):
+    def click_action(self, x: int, y: int, delay: Optional[float] = None):
         try:
-            final_x, final_y = x, y
-            if offset > 0:
-                offset_x = random.randint(-offset, offset)
-                offset_y = random.randint(-offset, offset)
-                final_x = x + offset_x
-                final_y = y + offset_y
-
-            self.mouse_controller.position = (final_x, final_y)
+            self.mouse_controller.position = (x, y)
             # Use provided delay if available, otherwise use the default sleep_time
             sleep_duration = delay if delay is not None else self.sleep_time
             time.sleep(sleep_duration)
             self.mouse_controller.click(mouse.Button.left, 1)
-            print(f"클릭 완료: ({final_x}, {final_y}) [원래: ({x},{y}), 오차: {offset}]")
+            print(f"클릭 완료: ({x}, {y})")
         except Exception as e:
             print(f"An error occurred: {e}")
 
