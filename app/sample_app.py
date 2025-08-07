@@ -530,8 +530,16 @@ class SampleApp:
                 if self.position3 != (0, 0):
                     time.sleep(0.1)
                     comp_x, comp_y = self.position3
-                    self.color_finder.click_action(comp_x, comp_y, offset=self.click_offset3)
-                    status_message = f"색상 클릭 후 완료선택({comp_x},{comp_y}) 클릭"
+
+                    # '완료' 클릭에 대한 오차 계산
+                    final_comp_x, final_comp_y = comp_x, comp_y
+                    if self.click_offset3 > 0:
+                        offset_x = random.randint(-self.click_offset3, self.click_offset3)
+                        offset_y = random.randint(-self.click_offset3, self.click_offset3)
+                        final_comp_x += offset_x
+                        final_comp_y += offset_y
+                    self.color_finder.click_action(final_comp_x, final_comp_y)
+                    status_message = f"색상 클릭 후 완료선택({final_comp_x},{final_comp_y}) 클릭"
                 else:
                     status_message = f"색상 발견 및 클릭 완료: ({abs_x}, {abs_y})"
 
