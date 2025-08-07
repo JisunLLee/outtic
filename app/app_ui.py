@@ -42,6 +42,7 @@ class AppUI:
         self.offset4_var = tk.StringVar(value=str(c.click_offset4))
         self.complete_delay_var = tk.StringVar(value=str(int(c.complete_click_delay * 1000)))
         self.offset5_var = tk.StringVar(value=str(c.click_offset5))
+        self.max_fail_clicks_var = tk.StringVar(value=str(c.max_fail_clicks))
 
         self.SEARCH_DIRECTION_MAP = {
             SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT.name: "→↓",
@@ -84,6 +85,7 @@ class AppUI:
             'offset4_var': self.offset4_var,
             'complete_delay_var': self.complete_delay_var,
             'offset5_var': self.offset5_var,
+            'max_fail_clicks_var': self.max_fail_clicks_var,
             'direction_var': self.direction_var,
         }
 
@@ -92,7 +94,7 @@ class AppUI:
         self.root.title("샘플 테스터")
 
         window_width = 330
-        window_height = 650
+        window_height = 680 # UI 항목 추가로 높이 증가
 
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
@@ -134,7 +136,9 @@ class AppUI:
         area2_frame = self._create_area_settings_frame(settings_frame, 2, self.coord5_var, self.use_position5_var, self.pos5_clicks_var, self.color5_var, self.use_same_color5_var, self.offset5_var)
         area2_frame.grid(row=7, column=0, columnspan=2, sticky="ew", padx=5, pady=(5,0))
 
-        self._create_entry_row(settings_frame, 8, "구역선택 딜레이(ms)", self.fail_delay_var)
+        self._create_entry_row(settings_frame, 8, "구역 딜레이(ms)", self.fail_delay_var)
+
+        self._create_entry_row(settings_frame, 9, "시도횟수", self.max_fail_clicks_var)
 
         action_frame = tk.Frame(self.root, bg="#2e2e2e")
         action_frame.pack(pady=10, padx=10, fill="x", anchor="n")

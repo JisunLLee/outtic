@@ -92,6 +92,7 @@ class AppController:
             self.click_offset3 = int(ui_vars['offset3_var'].get())
             self.click_offset4 = int(ui_vars['offset4_var'].get())
             self.click_offset5 = int(ui_vars['offset5_var'].get())
+            self.max_fail_clicks = int(ui_vars['max_fail_clicks_var'].get())
             self.complete_click_delay = int(ui_vars['complete_delay_var'].get()) / 1000.0
 
             if ui_vars['use_same_color4_var'].get():
