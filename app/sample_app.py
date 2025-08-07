@@ -55,6 +55,8 @@ class SampleApp:
         self.click_offset3 = 0
         self.click_offset4 = 5
         self.click_offset5 = 5
+        # 자동 중단 설정
+        self.max_fail_clicks = 525
 
         # UI와 연동될 Tkinter 변수
         self.coord1_var = tk.StringVar(value=str(self.position1))
@@ -102,6 +104,7 @@ class SampleApp:
         self.current_search_color = self.color # 현재 검색 대상 색상
         self.fail_sequence_step = 0
         self.fail_sequence_click_count = 0
+        self.total_fail_clicks = 0 # 실패 시퀀스 총 클릭 횟수 카운터
         self.fail_sequence_target_coord = None # 현재 시퀀스 스텝에서 클릭할 고정된 랜덤 좌표
         self.area_window = None # 영역 확인 창을 위한 참조
         self.marker_windows = [] # 좌표 마커 창들을 위한 참조
@@ -121,7 +124,7 @@ class SampleApp:
         self.root.title("샘플 테스터")
 
         window_width = 330
-        window_height = 600
+        window_height = 650
 
         # 화면 크기 가져오기
         screen_width = self.root.winfo_screenwidth()
@@ -514,6 +517,7 @@ class SampleApp:
             self.current_search_color = self.color # 검색 시작 시 항상 기본 색상으로 초기화
             self.fail_sequence_step = 0
             self.fail_sequence_click_count = 0
+            self.total_fail_clicks = 0 # 총 실패 클릭 카운터 초기화
             self.is_searching = True
 
             # --- UI 업데이트 ---
@@ -634,6 +638,14 @@ class SampleApp:
                         random_offset = random.uniform(-0.1, 0.1)
                         final_delay = self.fail_click_delay + random_offset
                     self.color_finder.click_action(fail_x, fail_y, delay=max(0, final_delay))
+
+                    # 자동 중단 로직
+                    self.total_fail_clicks += 1
+                    if self.total_fail_clicks >= self.max_fail_clicks:
+                        print(f"--- 최대 실패 클릭 횟수({self.max_fail_clicks})에 도달하여 자동 중단합니다. ---")
+                        self.ui_queue.put(lambda: self.status.set("최대 클릭 도달, 자동 중단됨"))
+                        self.ui_queue.put(self.stop_search)
+                        return # 워커 스레드 종료
 
                 # 현재 스텝의 클릭 카운트 증가
                 self.fail_sequence_click_count += 1
