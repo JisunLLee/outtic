@@ -46,15 +46,15 @@ class SampleApp:
         self.color_tolerance = 15
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
         self.sleep_time = 0.02
-        self.fail_click_delay = 0.36 # 색상 찾기 실패 시 클릭 딜레이 (360ms)
+        self.fail_click_delay = 0.50 # 색상 찾기 실패 시 클릭 딜레이 (500ms)
         self.complete_click_delay = 0.02 # 완료 클릭 딜레이
         # 실패 시 시퀀스 클릭 횟수
         self.pos4_click_count = 3
         self.pos5_click_count = 2
         # 클릭 위치 오차
         self.click_offset3 = 0
-        self.click_offset4 = 4
-        self.click_offset5 = 4
+        self.click_offset4 = 5
+        self.click_offset5 = 5
 
         # UI와 연동될 Tkinter 변수
         self.coord1_var = tk.StringVar(value=str(self.position1))
@@ -121,14 +121,13 @@ class SampleApp:
         self.root.title("샘플 테스터")
 
         window_width = 330
-        window_height = 660 # UI 항목 추가로 높이 증가
+        window_height = 600
 
         # 화면 크기 가져오기
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
 
         # 창을 좌측 하단에 위치시키기 위한 x, y 좌표 계산
-        # 작업 표시줄이나 독(Dock)을 고려하여 약간의 여백(offset)을 줍니다.
         x_coordinate = 0
         y_coordinate = screen_height - window_height - 60
 
@@ -138,62 +137,42 @@ class SampleApp:
         # --- 설정 프레임 ---
         settings_frame = tk.Frame(self.root, bg="#2e2e2e")
         settings_frame.pack(padx=10, pady=5, fill="x", anchor="n")
-        settings_frame.grid_columnconfigure(1, weight=1) # 중앙 위젯이 공간을 차지하도록
+        settings_frame.grid_columnconfigure(0, weight=1) # 값 표시 레이블이 확장되도록
 
         # --- UI 위젯 동적 생성 ---
-        self._create_ui_row(settings_frame, 0, "1번 좌표", self.coord1_var,
-                            button_text="선택",
-                            button_command=lambda: self.start_coordinate_picker(1))
+        self._create_value_button_row(settings_frame, 0, self.coord1_var, "1번 좌표", lambda: self.start_coordinate_picker(1))
+        self._create_value_button_row(settings_frame, 1, self.coord2_var, "2번 좌표", lambda: self.start_coordinate_picker(2))
+        self._create_value_button_row(settings_frame, 2, self.color_var, "색상", lambda: self.start_color_picker(0))
 
-        self._create_ui_row(settings_frame, 1, "2번 좌표", self.coord2_var,
-                            button_text="선택",
-                            button_command=lambda: self.start_coordinate_picker(2))
-
-        self._create_ui_row(settings_frame, 2, "색상", self.color_var,
-                            button_text="선택",
-                            button_command=lambda: self.start_color_picker(0))
-
-        # --- 색상 오차, 탐색 방향 설정 (위치 변경) ---
+        # --- 색상 오차, 탐색 방향 설정 ---
         general_settings_frame = tk.Frame(settings_frame, bg="#2e2e2e")
-        general_settings_frame.grid(row=3, column=0, columnspan=3, sticky="ew", pady=5)
-        general_settings_frame.grid_columnconfigure(1, weight=1) # 색상 오차 입력창만 늘어나도록 설정
+        general_settings_frame.grid(row=3, column=0, columnspan=2, sticky="ew", pady=5)
+        general_settings_frame.grid_columnconfigure(1, weight=1)
         tk.Label(general_settings_frame, text="색상 오차", fg="white", bg="#2e2e2e").grid(row=0, column=0, padx=(0, 5))
         tk.Entry(general_settings_frame, textvariable=self.tolerance_var, width=5).grid(row=0, column=1, sticky="ew")
         tk.Label(general_settings_frame, text="탐색 방향", fg="white", bg="#2e2e2e").grid(row=0, column=2, padx=(10, 5))
         option_menu = tk.OptionMenu(general_settings_frame, self.direction_var, *self.SEARCH_DIRECTION_MAP.values())
         option_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0)
         option_menu["menu"].config(bg="#555555", fg="white")
-        option_menu.grid(row=0, column=3, sticky="w") # ew -> w로 변경하여 왼쪽 정렬 및 크기 자동 조절
+        option_menu.grid(row=0, column=3, sticky="w")
 
         # --- 완료 설정 프레임 ---
-        complete_frame = tk.LabelFrame(settings_frame, text="완료 설정", fg="white", bg="#2e2e2e", padx=5, pady=5)
-        complete_frame.grid(row=4, column=0, columnspan=3, sticky="ew", padx=5, pady=(5,0))
-        complete_frame.grid_columnconfigure(1, weight=1)
-        self._create_ui_row(complete_frame, 0, "좌표", self.coord3_var, button_text="선택", button_command=lambda: self.start_coordinate_picker(3))
-        # 클릭 오차와 딜레이를 한 줄에 배치
-        offset_delay_frame = tk.Frame(complete_frame, bg="#2e2e2e")
-        offset_delay_frame.grid(row=1, column=0, columnspan=3, sticky="ew", pady=5)
-        offset_delay_frame.grid_columnconfigure(1, weight=1)
-        offset_delay_frame.grid_columnconfigure(3, weight=1)
-        tk.Label(offset_delay_frame, text="클릭 오차", fg="white", bg="#2e2e2e").grid(row=0, column=0, padx=(0, 5), sticky='e')
-        tk.Entry(offset_delay_frame, textvariable=self.offset3_var, width=5).grid(row=0, column=1, sticky="ew")
-        tk.Label(offset_delay_frame, text="클릭 딜레이", fg="white", bg="#2e2e2e").grid(row=0, column=2, padx=(10, 5), sticky='e')
-        tk.Entry(offset_delay_frame, textvariable=self.complete_delay_var, width=5).grid(row=0, column=3, sticky="ew")
+        complete_frame = self._create_complete_settings_frame(settings_frame)
+        complete_frame.grid(row=4, column=0, columnspan=2, sticky="ew", padx=5, pady=(5,0))
 
-        # --- 상태 메시지 (프레임 내부로 이동) ---
+        # --- 상태 메시지 ---
         tk.Label(settings_frame, textvariable=self.status, fg="lightblue", bg="#2e2e2e", anchor="w").grid(
-            row=5, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
+            row=5, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
 
         # --- 구역 1, 2 설정 프레임 ---
         area1_frame = self._create_area_settings_frame(settings_frame, 1, self.coord4_var, self.use_fail_sequence_var, self.pos4_clicks_var, self.color4_var, self.use_same_color4_var, self.offset4_var)
-        area1_frame.grid(row=6, column=0, columnspan=3, sticky="ew", padx=5, pady=(5,0))
+        area1_frame.grid(row=6, column=0, columnspan=2, sticky="ew", padx=5, pady=(5,0))
 
         area2_frame = self._create_area_settings_frame(settings_frame, 2, self.coord5_var, self.use_position5_var, self.pos5_clicks_var, self.color5_var, self.use_same_color5_var, self.offset5_var)
-        area2_frame.grid(row=7, column=0, columnspan=3, sticky="ew", padx=5, pady=(5,0))
+        area2_frame.grid(row=7, column=0, columnspan=2, sticky="ew", padx=5, pady=(5,0))
 
         # --- 구역선택 딜레이 ---
-        self._create_ui_row(settings_frame, 8, "구역선택 딜레이(ms)", self.fail_delay_var,
-                            widget_type='entry')
+        self._create_entry_row(settings_frame, 8, "구역선택 딜레이(ms)", self.fail_delay_var)
 
         # --- 액션 버튼 프레임 ---
         action_frame = tk.Frame(self.root, bg="#2e2e2e")
@@ -210,64 +189,76 @@ class SampleApp:
         self.find_button.grid(row=0, column=1, sticky="ew", padx=2)
 
         # --- 적용하기 단축키 바인딩 ---
-        # OS에 따라 다른 단축키를 바인딩합니다.
-        if sys.platform == "darwin": # macOS
+        if sys.platform == "darwin":
             self.root.bind("<Command-s>", self._apply_settings)
-        else: # Windows, Linux
+        else:
             self.root.bind("<Control-s>", self._apply_settings)
 
-    def _create_ui_row(self, parent, row, label_text, var, widget_type='label', options=None, button_text=None, button_command=None, checkbox_var=None, checkbox_text=None):
-        """설정 UI 한 줄을 생성하는 범용 헬퍼 메서드"""
+    def _create_entry_row(self, parent, row, label_text, var):
+        """레이블과 입력창으로 구성된 한 줄의 UI를 생성합니다."""
         tk.Label(parent, text=label_text, fg="white", bg="#2e2e2e").grid(row=row, column=0, padx=(0, 10), pady=5, sticky="e")
+        tk.Entry(parent, textvariable=var, width=15).grid(row=row, column=1, sticky="ew")
 
-        # 중앙 위젯(값 표시/입력)과 체크박스를 담을 프레임
-        widget_frame = tk.Frame(parent, bg="#2e2e2e")
-        widget_frame.grid(row=row, column=1, sticky="ew")
-        widget_frame.grid_columnconfigure(0, weight=1) # 주 위젯이 확장되도록 설정
+    def _create_value_button_row(self, parent, row, var, button_text, button_command):
+        """값 표시 레이블과 액션 버튼으로 구성된 한 줄의 UI를 생성합니다."""
+        tk.Label(parent, textvariable=var, width=15, anchor="w", relief="sunken", fg="black", bg="white").grid(row=row, column=0, sticky="ew", pady=2)
+        tk.Button(parent, text=button_text, command=button_command).grid(row=row, column=1, padx=5, sticky="ew")
 
-        if widget_type == 'label':
-            tk.Label(widget_frame, textvariable=var, width=15, anchor="w", relief="sunken", fg="black", bg="white").grid(row=0, column=0, sticky="ew")
-        elif widget_type == 'entry':
-            tk.Entry(widget_frame, textvariable=var, width=15).grid(row=0, column=0, sticky="ew")
-        elif widget_type == 'optionmenu' and options:
-            option_menu = tk.OptionMenu(widget_frame, var, *options.values())
-            option_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0)
-            option_menu["menu"].config(bg="#555555", fg="white")
-            option_menu.grid(row=0, column=0, sticky="ew")
+    def _create_complete_settings_frame(self, parent):
+        """'완료' 설정을 위한 UI 그룹(LabelFrame)을 생성합니다."""
+        frame = tk.LabelFrame(parent, text="완료 설정", fg="white", bg="#2e2e2e", padx=5, pady=5)
+        frame.grid_columnconfigure(0, weight=1)
 
-        if checkbox_var and checkbox_text:
-            cb = tk.Checkbutton(widget_frame, text=checkbox_text, variable=checkbox_var, 
-                                bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", 
-                                activebackground="#2e2e2e", activeforeground="white", 
-                                highlightthickness=0, borderwidth=0)
-            cb.grid(row=0, column=1, padx=5)
-
-        if button_text and button_command:
-            tk.Button(parent, text=button_text, command=button_command).grid(row=row, column=2, padx=5, sticky="w")
+        self._create_value_button_row(frame, 0, self.coord3_var, "완료 좌표", lambda: self.start_coordinate_picker(3))
+        
+        # 클릭 오차와 딜레이를 한 줄에 배치
+        offset_delay_frame = tk.Frame(frame, bg="#2e2e2e")
+        offset_delay_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=5)
+        offset_delay_frame.grid_columnconfigure(1, weight=1)
+        offset_delay_frame.grid_columnconfigure(3, weight=1)
+        tk.Label(offset_delay_frame, text="클릭 오차", fg="white", bg="#2e2e2e").grid(row=0, column=0, padx=(0, 5), sticky='e')
+        tk.Entry(offset_delay_frame, textvariable=self.offset3_var, width=5).grid(row=0, column=1, sticky="ew")
+        tk.Label(offset_delay_frame, text="클릭 딜레이", fg="white", bg="#2e2e2e").grid(row=0, column=2, padx=(10, 5), sticky='e')
+        tk.Entry(offset_delay_frame, textvariable=self.complete_delay_var, width=5).grid(row=0, column=3, sticky="ew")
+        
+        return frame
 
     def _create_area_settings_frame(self, parent, area_index, coord_var, use_var, clicks_var, color_var, use_same_color_var, offset_var):
         """'구역' 설정을 위한 UI 그룹(LabelFrame)을 생성합니다."""
-        # LabelFrame의 text 속성 대신 커스텀 타이틀을 사용합니다.
         frame = tk.LabelFrame(parent, text="", fg="white", bg="#2e2e2e", padx=5, pady=5)
-        frame.grid_columnconfigure(1, weight=1)
+        frame.grid_columnconfigure(0, weight=1)
 
         # --- 커스텀 타이틀 바: [v] 구역 1 ---
         title_frame = tk.Frame(frame, bg="#2e2e2e")
-        title_frame.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 5))
-        tk.Checkbutton(title_frame, variable=use_var, text="",
-                                bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", 
-                                activebackground="#2e2e2e", activeforeground="white", 
+        title_frame.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 5))
+
+        # Row 1: 좌표 (수동 생성하여 상태 제어)
+        coord_row_frame = tk.Frame(frame, bg="#2e2e2e")
+        coord_row_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
+        coord_row_frame.grid_columnconfigure(0, weight=1)
+        coord_value_label = tk.Label(coord_row_frame, textvariable=coord_var, width=15, anchor="w", relief="sunken")
+        coord_select_button = tk.Button(coord_row_frame, text="좌표", command=lambda: self.start_coordinate_picker(area_index + 3))
+        coord_value_label.grid(row=0, column=0, sticky="ew", pady=2)
+        coord_select_button.grid(row=0, column=1, padx=5, sticky="ew")
+
+        def toggle_coord_widgets_state():
+            """'사용' 체크박스 상태에 따라 좌표 위젯의 상태를 변경합니다."""
+            if use_var.get():
+                coord_value_label.config(bg='white', fg='black')
+                coord_select_button.config(state='normal')
+            else:
+                coord_value_label.config(bg='#555555', fg='#999999')
+                coord_select_button.config(state='disabled')
+
+        tk.Checkbutton(title_frame, variable=use_var, text="", command=toggle_coord_widgets_state,
+                                bg="#2e2e2e", fg="white", selectcolor="#2e2e2e",
+                                activebackground="#2e2e2e", activeforeground="white",
                                 highlightthickness=0, borderwidth=0).pack(side="left")
         tk.Label(title_frame, text=f"구역 {area_index}", fg="white", bg="#2e2e2e").pack(side="left")
-
-        # Row 1: 좌표
-        self._create_ui_row(frame, 1, "좌표", coord_var,
-                            button_text="선택",
-                            button_command=lambda: self.start_coordinate_picker(area_index + 3))
         
         # Row 2: 클릭횟수와 클릭 오차를 한 줄에 배치
         count_offset_frame = tk.Frame(frame, bg="#2e2e2e")
-        count_offset_frame.grid(row=2, column=0, columnspan=3, sticky="ew", pady=5)
+        count_offset_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=5)
         count_offset_frame.grid_columnconfigure(1, weight=1)
         count_offset_frame.grid_columnconfigure(3, weight=1)
         tk.Label(count_offset_frame, text="클릭횟수", fg="white", bg="#2e2e2e").grid(row=0, column=0, padx=(0, 5), sticky='e')
@@ -277,20 +268,18 @@ class SampleApp:
 
         # Row 3: 찾을색상 (커스텀 레이아웃)
         color_row = tk.Frame(frame, bg="#2e2e2e")
-        color_row.grid(row=3, column=0, columnspan=3, sticky="ew")
-        color_row.grid_columnconfigure(2, weight=1)
+        color_row.grid(row=3, column=0, columnspan=2, sticky="ew")
+        color_row.grid_columnconfigure(1, weight=1)
 
-        # 위젯들을 변수에 저장하여 상태 변경 함수에서 접근할 수 있도록 합니다.
         color_value_label = tk.Label(color_row, textvariable=color_var, width=15, anchor="w", relief="sunken")
-        color_select_button = tk.Button(color_row, text="선택", command=lambda: self.start_color_picker(area_index + 3))
+        color_select_button = tk.Button(color_row, text="색상", command=lambda: self.start_color_picker(area_index + 3))
 
         def toggle_color_widgets_state():
-            """체크박스 상태에 따라 색상 관련 위젯의 상태를 변경합니다."""
-            if use_same_color_var.get():  # 체크됨 -> 구역별 색상 사용
+            if use_same_color_var.get():
                 color_value_label.config(bg='white', fg='black')
                 color_select_button.config(state='normal')
-            else:  # 체크 해제됨 -> 기본 색상 사용
-                color_value_label.config(bg='#555555', fg='#999999') # 비활성화된 모양
+            else:
+                color_value_label.config(bg='#555555', fg='#999999')
                 color_select_button.config(state='disabled')
 
         color_checkbox = tk.Checkbutton(color_row, variable=use_same_color_var, command=toggle_color_widgets_state,
@@ -298,12 +287,12 @@ class SampleApp:
                                         highlightthickness=0, borderwidth=0)
         
         color_checkbox.grid(row=0, column=0)
-        tk.Label(color_row, text="색상", fg="white", bg="#2e2e2e").grid(row=0, column=1, padx=(0, 5))
-        color_value_label.grid(row=0, column=2, sticky="ew", padx=(0, 5))
-        color_select_button.grid(row=0, column=3)
+        color_value_label.grid(row=0, column=1, sticky="ew", padx=(0, 5))
+        color_select_button.grid(row=0, column=2)
 
-        # 초기 상태를 설정하기 위해 함수를 한 번 호출합니다.
+        # 초기 상태를 설정하기 위해 함수들을 호출합니다.
         toggle_color_widgets_state()
+        toggle_coord_widgets_state()
 
         return frame
 
@@ -311,13 +300,11 @@ class SampleApp:
         """메인 스레드에서 UI 업데이트 큐를 주기적으로 확인하고 처리합니다."""
         try:
             while True:
-                # 큐에서 작업을 가져옵니다. 블로킹하지 않습니다.
                 task = self.ui_queue.get_nowait()
-                task()  # 가져온 함수를 실행합니다.
+                task()
         except queue.Empty:
-            pass  # 큐가 비어있으면 아무것도 하지 않습니다.
+            pass
         finally:
-            # 100ms 후에 다시 이 함수를 호출하도록 예약합니다.
             self.root.after(100, self._process_ui_queue)
 
     def start_coordinate_picker(self, position_index):
@@ -383,7 +370,6 @@ class SampleApp:
 
     def show_area(self):
         """선택된 두 좌표를 기준으로 사각형 영역과 모든 개별 좌표를 화면에 표시합니다."""
-        # 이전에 열려 있던 창들 닫기
         if self.area_window and self.area_window.winfo_exists():
             self.area_window.destroy()
         for marker in self.marker_windows:
@@ -391,12 +377,10 @@ class SampleApp:
                 marker.destroy()
         self.marker_windows.clear()
 
-        # '영역확인' 시 최신 UI 값을 반영하기 위해 설정을 먼저 적용합니다.
         self._apply_settings()
         if "오류" in self.status.get():
             return
 
-        # 1. 메인 검색 영역 표시
         left, top, right, bottom = self.area
         width = self.area_width
         height = self.area_height
@@ -407,20 +391,19 @@ class SampleApp:
         self.area_window.configure(bg="red", highlightthickness=0)
         self.area_window.attributes('-alpha', 0.4)
         self.area_window.attributes('-topmost', True)
-        self.area_window.after(3000, self.area_window.destroy) # 3초 후 자동 닫기
+        self.area_window.after(3000, self.area_window.destroy)
 
-        # 2. 개별 좌표 마커 표시
         coords_to_show = {
-            "1": (self.position1, "#4A90E2"),   # 파란색
-            "2": (self.position2, "#4A90E2"),   # 파란색
-            "완": (self.position3, "#50E3C2"),  # 녹색
-            "G1": (self.position4, "#F5A623"), # 주황색
-            "G2": (self.position5, "#BD10E0")   # 보라색
+            "1": (self.position1, "#4A90E2"),
+            "2": (self.position2, "#4A90E2"),
+            "완": (self.position3, "#50E3C2"),
+            "G1": (self.position4, "#F5A623"),
+            "G2": (self.position5, "#BD10E0")
         }
         marker_size = 20
         for name, (pos, color) in coords_to_show.items():
             x, y = pos
-            if x == 0 and y == 0: continue # (0,0) 좌표는 표시하지 않음
+            if x == 0 and y == 0: continue
 
             marker = tk.Toplevel(self.root)
             marker.overrideredirect(True)
