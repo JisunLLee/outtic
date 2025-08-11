@@ -56,6 +56,8 @@ class AppUI:
             # 각 구역별 탐색 영역을 위한 좌표 변수를 추가합니다.
             'p1_var': tk.StringVar(value="(0, 0)"),
             'p2_var': tk.StringVar(value="(0, 0)"),
+            # 구역별 개별 탐색 영역 사용 여부
+            'use_area_bounds_var': tk.BooleanVar(value=True),
             # 구역별 색상 및 탐색 방향을 위한 변수 추가
             'use_color_var': tk.BooleanVar(value=False), # 기본적으로는 구역별 색상 사용 안 함
             'color_var': tk.StringVar(value="(0, 0, 0)"),
@@ -89,10 +91,10 @@ class AppUI:
             basic_group, weights=[1, 1], expand=True)
         self._create_coordinate_selector(
             left_frame, self.p1_var, "↖영역", command=lambda: self.controller.start_coordinate_picker('p1')
-        ).pack(expand=True, fill=tk.X)
+        )
         self._create_coordinate_selector(
             right_frame, self.p2_var, "↘영역", command=lambda: self.controller.start_coordinate_picker('p2')
-        ).pack(expand=True, fill=tk.X)
+        )
 
         # Row 3: 색상, 완료 
         row3_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
@@ -158,23 +160,63 @@ class AppUI:
         # UI를 좌우로 나누기 위한 컨테이너 생성
         row1_container, (left_frame, right_frame) = self._create_split_container(area_group, weights=[2, 1])
 
+        # --- Row 1 위젯 생성 (pack은 나중에) ---
+        coord_label = tk.Label(left_frame, textvariable=vars['coord_var'], relief="sunken", bg="#555555", width=10, anchor='w')
+        coord_button = tk.Button(left_frame, text=f"구역 {area_number}", width=3, command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_click_coord'))
+        
+        right_inner_frame = tk.Frame(right_frame, bg="#2e2e2e")
+        clicks_frame = self._create_labeled_entry(right_inner_frame, "횟수:", vars['clicks_var'])
+        offset_frame = self._create_labeled_entry(right_inner_frame, "오차:", vars['offset_var'])
+
+        def toggle_search_state():
+            """'탐색' 체크박스 상태에 따라 관련 위젯들을 활성화/비활성화합니다."""
+            is_enabled = vars['use_var'].get()
+            state = 'normal' if is_enabled else 'disabled'
+            label_bg = '#555555'
+            label_fg = 'white' if is_enabled else '#2e2e2e'
+            entry_bg = '#444444' if is_enabled else '#555555'
+
+            coord_label.config(state=state, bg=label_bg, fg=label_fg)
+            coord_button.config(state=state)
+
+            for frame in [clicks_frame, offset_frame]:
+                for widget in frame.winfo_children():
+                    if isinstance(widget, tk.Entry):
+                        widget.config(state=state, disabledbackground=entry_bg)
+                    else: # Label
+                        widget.config(state=state)
+
         # --- Row 1 왼쪽: 탐색 활성화, 클릭 좌표 설정 ---
-        tk.Checkbutton(left_frame, text="탐색", variable=vars['use_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
-        tk.Label(left_frame, textvariable=vars['coord_var'], relief="sunken", bg="#555555", width=10, anchor='w').pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
-        # 컨트롤러가 구역별 '클릭' 좌표임을 명확히 알 수 있도록 키를 수정합니다.
-        tk.Button(left_frame, text=f"구역 {area_number}", width=3, command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_click_coord')).pack(side=tk.LEFT)
+        tk.Checkbutton(left_frame, text="탐색", variable=vars['use_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_search_state).pack(side=tk.LEFT)
+        coord_label.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
+        coord_button.pack(side=tk.LEFT)
 
         # --- Row 1 오른쪽: 선택 횟수, 오차 설정 ---
-        # 위젯들이 붙어있도록 내부 프레임을 하나 더 사용합니다.
-        right_inner_frame = tk.Frame(right_frame, bg="#2e2e2e")
         right_inner_frame.pack(fill=tk.X)
-        self._create_labeled_entry(right_inner_frame, "횟수:", vars['clicks_var']).pack(side=tk.LEFT, expand=True, fill=tk.X)
-        self._create_labeled_entry(right_inner_frame, "오차:", vars['offset_var']).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        clicks_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
+        offset_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
 
         # --- Row 2: 구역별 탐색 영역 설정 ---
         row2_container, (left_frame2, right_frame2) = self._create_split_container(area_group, weights=[1, 1])
-        self._create_coordinate_selector(left_frame2, vars['p1_var'], "↖영역", command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_p1')).pack(expand=True, fill=tk.X)
-        self._create_coordinate_selector(right_frame2, vars['p2_var'], "↘영역", command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_p2')).pack(expand=True, fill=tk.X)
+        
+        p1_selector_frame, p1_label, p1_button = self._create_coordinate_selector(left_frame2, vars['p1_var'], "↖영역", command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_p1'))
+        p2_selector_frame, p2_label, p2_button = self._create_coordinate_selector(right_frame2, vars['p2_var'], "↘영역", command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_p2'))
+
+        def toggle_area_bounds_state():
+            """'개별 영역' 체크박스 상태에 따라 영역 선택 위젯들을 활성화/비활성화합니다."""
+            is_enabled = vars['use_area_bounds_var'].get()
+            state = 'normal' if is_enabled else 'disabled'
+            label_bg = '#555555'
+            label_fg = 'white' if is_enabled else '#2e2e2e'
+            
+            p1_label.config(state=state, bg=label_bg, fg=label_fg)
+            p1_button.config(state=state)
+            p2_label.config(state=state, bg=label_bg, fg=label_fg)
+            p2_button.config(state=state)
+
+        tk.Checkbutton(left_frame2, text="개별", variable=vars['use_area_bounds_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_area_bounds_state).pack(side=tk.LEFT)
+        p1_selector_frame.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
+        p2_selector_frame.pack(expand=True, fill=tk.X)
 
         # --- Row 3: 구역별 색상 및 탐색 방향 설정 ---
         row3_container, (left_frame3, right_frame3) = self._create_split_container(area_group, weights=[1, 1])
@@ -187,8 +229,9 @@ class AppUI:
             """체크박스 상태에 따라 색상 위젯들을 활성화/비활성화합니다."""
             is_enabled = vars['use_color_var'].get()
             state = 'normal' if is_enabled else 'disabled'
-            bg_color = 'white' if is_enabled else '#555555'
-            color_label.config(state=state, bg=bg_color)
+            bg_color = '#555555'
+            label_fg = 'white' if is_enabled else '#2e2e2e'
+            color_label.config(state=state, bg=bg_color, fg=label_fg)
             color_button.config(state=state, bg=bg_color)
 
         tk.Checkbutton(left_frame3, text="개별", variable=vars['use_color_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_color_state).pack(side=tk.LEFT)
@@ -202,7 +245,9 @@ class AppUI:
         direction_menu.pack(fill=tk.X, expand=True)
         
 
+        toggle_search_state() # 초기 상태 설정
         toggle_color_state() # 초기 상태 설정을 위해 호출
+        toggle_area_bounds_state() # 초기 상태 설정
 
         return area_group
 
@@ -322,13 +367,13 @@ class AppUI:
         return frame
 
     def _create_coordinate_selector(self, parent, var, button_text, command=None):
-        """좌표값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성합니다."""
+        """좌표값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성하고, 위젯들을 반환합니다."""
         frame = tk.Frame(parent, bg="#2e2e2e")
-        tk.Label(frame, textvariable=var, relief="sunken", bg="#555555", width=10,anchor='w').pack(
-            side=tk.LEFT, expand=True, fill=tk.X)
-        tk.Button(frame, text=button_text, width=3, command=command).pack(
-            side=tk.LEFT)
-        return frame
+        label = tk.Label(frame, textvariable=var, relief="sunken", bg="#555555", width=8, anchor='w')
+        label.pack(side=tk.LEFT, expand=True, fill=tk.X)
+        button = tk.Button(frame, text=button_text, width=3, command=command)
+        button.pack(side=tk.LEFT)
+        return frame, label, button
 
     def _create_value_button_row(self, parent, var, button_text, command=None):
         """값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성합니다."""
