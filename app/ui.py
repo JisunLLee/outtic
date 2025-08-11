@@ -57,9 +57,9 @@ class AppUI:
             'p1_var': tk.StringVar(value="(0, 0)"),
             'p2_var': tk.StringVar(value="(0, 0)"),
             # 구역별 개별 탐색 영역 사용 여부
-            'use_area_bounds_var': tk.BooleanVar(value=True),
+            'use_area_bounds_var': tk.BooleanVar(value=True), # 기본값: 개별 영역 사용 안 함
             # 구역별 색상 및 탐색 방향을 위한 변수 추가
-            'use_color_var': tk.BooleanVar(value=False), # 기본적으로는 구역별 색상 사용 안 함
+            'use_color_var': tk.BooleanVar(value=True), # 기본적으로는 구역별 색상 사용 안 함
             'color_var': tk.StringVar(value="(0, 0, 0)"),
             'direction_var': tk.StringVar(value=self.SEARCH_DIRECTION_MAP[self.controller.search_direction]),
         }
@@ -203,8 +203,9 @@ class AppUI:
         p2_selector_frame, p2_label, p2_button = self._create_coordinate_selector(right_frame2, vars['p2_var'], "↘영역", command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_p2'))
 
         def toggle_area_bounds_state():
-            """'개별 영역' 체크박스 상태에 따라 영역 선택 위젯들을 활성화/비활성화합니다."""
-            is_enabled = vars['use_area_bounds_var'].get()
+            """'기본' 체크박스 상태에 따라 영역 선택 위젯들을 활성화/비활성화합니다."""
+            # 체크 시(True) 비활성화, 언체크 시(False) 활성화되도록 논리 반전
+            is_enabled = not vars['use_area_bounds_var'].get()
             state = 'normal' if is_enabled else 'disabled'
             label_bg = '#555555'
             label_fg = 'white' if is_enabled else '#2e2e2e'
@@ -214,7 +215,7 @@ class AppUI:
             p2_label.config(state=state, bg=label_bg, fg=label_fg)
             p2_button.config(state=state)
 
-        tk.Checkbutton(left_frame2, text="개별", variable=vars['use_area_bounds_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_area_bounds_state).pack(side=tk.LEFT)
+        tk.Checkbutton(left_frame2, text="기본", variable=vars['use_area_bounds_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_area_bounds_state).pack(side=tk.LEFT)
         p1_selector_frame.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
         p2_selector_frame.pack(expand=True, fill=tk.X)
 
@@ -226,15 +227,16 @@ class AppUI:
         color_button = tk.Button(left_frame3, text="색상", width=3, command=lambda: self.controller.start_color_picker(f'area_{area_number}_color'))
 
         def toggle_color_state():
-            """체크박스 상태에 따라 색상 위젯들을 활성화/비활성화합니다."""
-            is_enabled = vars['use_color_var'].get()
+            """'기본' 체크박스 상태에 따라 색상 위젯들을 활성화/비활성화합니다."""
+            # 체크 시(True) 비활성화, 언체크 시(False) 활성화되도록 논리 반전
+            is_enabled = not vars['use_color_var'].get()
             state = 'normal' if is_enabled else 'disabled'
             bg_color = '#555555'
             label_fg = 'white' if is_enabled else '#2e2e2e'
             color_label.config(state=state, bg=bg_color, fg=label_fg)
-            color_button.config(state=state, bg=bg_color)
+            color_button.config(state=state)
 
-        tk.Checkbutton(left_frame3, text="개별", variable=vars['use_color_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_color_state).pack(side=tk.LEFT)
+        tk.Checkbutton(left_frame3, text="기본", variable=vars['use_color_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_color_state).pack(side=tk.LEFT)
         color_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         color_button.pack(side=tk.LEFT)
 
