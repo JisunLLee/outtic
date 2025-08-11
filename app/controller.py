@@ -2,6 +2,7 @@ import tkinter as tk
 from pynput import mouse
 from typing import Optional, TYPE_CHECKING
 import ast
+from PIL import ImageGrab
 
 # 순환 참조를 피하면서 타입 힌팅을 하기 위한 Forward-declaration
 if TYPE_CHECKING:
@@ -53,19 +54,31 @@ class AppController:
             return False
 
     def show_area(self):
-        """UI에 현재 설정된 탐색 영역을 표시하도록 요청합니다."""
+        """UI에 현재 설정된 탐색 영역과 주요 좌표를 표시하도록 요청합니다."""
         if not self.ui: return
 
         if not self.apply_settings():
             return
 
+        # 표시할 영역들을 리스트로 구성합니다.
+        # 나중에 구역 1, 2가 추가되면 이 리스트에 추가하기만 하면 됩니다.
+        areas_to_display = []
         left = min(self.p1[0], self.p2[0])
         top = min(self.p1[1], self.p2[1])
         right = max(self.p1[0], self.p2[0])
         bottom = max(self.p1[1], self.p2[1])
+        areas_to_display.append({
+            'rect': (left, top, right - left, bottom - top),
+            'color': 'red',
+            'alpha': 0.4
+        })
 
-        width, height = right - left, bottom - top
-        self.ui.display_area_marker(left, top, width, height)
+        # 마커로 표시할 좌표들
+        points_to_mark = {
+            '완료': self.complete_coord,
+        }
+
+        self.ui.display_visual_aids(areas=areas_to_display, points=points_to_mark)
 
     def start_coordinate_picker(self, coord_key: str):
         """
@@ -99,3 +112,37 @@ class AppController:
         
         self.ui.update_status(f"'{display_name}' 좌표 저장 완료: {new_pos}")
         print(f"좌표 저장 완료 ({coord_key}): {new_pos}")
+
+    def start_color_picker(self, color_key: str):
+        """
+        지정된 키에 해당하는 색상을 2초 후에 캡처하는 프로세스를 시작합니다.
+        UI의 버튼과 연결되어 호출됩니다.
+
+        :param color_key: 'main_color' 등 색상을 식별하는 키
+        """
+        if not self.ui:
+            print("UI가 연결되지 않았습니다.")
+            return
+
+        key_map = {'main_color': '기본 색상'}
+        display_name = key_map.get(color_key, color_key)
+        self.ui.update_status(f"'{display_name}' 지정: 2초 후 마우스 위치의 색상을 저장합니다...")
+
+        # 2초 후에 _grab_color_after_delay 함수를 실행
+        self.ui.root.after(2000, lambda: self._grab_color_after_delay(color_key, display_name))
+
+    def _grab_color_after_delay(self, color_key: str, display_name: str):
+        """실제로 마우스 위치의 색상을 가져와서 컨트롤러 상태와 UI를 업데이트합니다."""
+        if not self.ui: return
+
+        x, y = self.mouse_controller.position
+        # 1x1 픽셀만 캡처하면 충분합니다.
+        screenshot = ImageGrab.grab(bbox=(int(x), int(y), int(x) + 1, int(y) + 1))
+        pixel_color = screenshot.getpixel((0, 0))
+        
+        new_color = pixel_color[:3] # RGB 값만 사용 (알파 채널 제외)
+
+        if color_key == 'main_color': self.ui.color_var.set(str(new_color))
+        
+        self.ui.update_status(f"'{display_name}' 저장 완료: {new_color}")
+        print(f"색상 저장 완료 ({color_key}): {new_color}")
