@@ -61,8 +61,8 @@ class AppUI:
 
         # Row 3: 색상, 완료 
         row3_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
-        self._create_value_button_row(left_frame, self.color_var, "색상").pack(expand=True, fill=tk.X)
-        self._create_value_button_row(right_frame, self.complete_coord_var, "완료", command=lambda: self.controller.start_coordinate_picker('complete')).pack(expand=True, fill=tk.X)
+        self._create_value_button_row(left_frame, self.color_var, "색상", command=lambda: self.controller.start_color_picker('main_color')).pack(expand=True, fill=tk.X)
+        self._create_value_button_row(right_frame, self.complete_coord_var, "선택완료", command=lambda: self.controller.start_coordinate_picker('complete')).pack(expand=True, fill=tk.X)
 
         
         # Row 4: 구역 사용, 총 시도횟수, 탐색 방향
