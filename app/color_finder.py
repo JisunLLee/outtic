@@ -1,99 +1,42 @@
-from enum import Enum
 from pynput import mouse
-from typing import Optional
 from PIL import ImageGrab
-import random
 import time
 import numpy as np
 
-class SearchDirection(Enum):
-    """탐색 방향을 정의합니다."""
-    # 좌상단 -> 우하단 (가로 우선)
-    TOP_LEFT_TO_BOTTOM_RIGHT = "tl_br"
-    # 우상단 -> 좌하단 (가로 우선)
-    TOP_RIGHT_TO_BOTTOM_LEFT = "tr_bl"
-    # 좌하단 -> 우상단 (가로 우선)
-    BOTTOM_LEFT_TO_TOP_RIGHT = "bl_tr"
-    # 우하단 -> 좌상단 (가로 우선)
-    BOTTOM_RIGHT_TO_TOP_LEFT = "br_tl"
-
 class ColorFinder:
-    def __init__(self, sleep_time: float = 0.02):
+    """화면에서 특정 색상을 찾고 관련 동작을 수행하는 클래스"""
+    def __init__(self):
         self.mouse_controller = mouse.Controller()
-        self.sleep_time = sleep_time
 
-    def click_action(self, x: int, y: int, delay: Optional[float] = None):
-        try:
-            self.mouse_controller.position = (x, y)
-            # Use provided delay if available, otherwise use the default sleep_time
-            sleep_duration = delay if delay is not None else self.sleep_time
-            time.sleep(sleep_duration)
-            self.mouse_controller.click(mouse.Button.left, 1)
-            print(f"클릭 완료: ({x}, {y})")
-        except Exception as e:
-            print(f"An error occurred: {e}")
-
-    def find_color_in_area(self, area: tuple[int, int, int, int], color: tuple[int, int, int], tolerance: int = 10, direction: SearchDirection = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT):
+    def find_color_in_area(self, area: tuple, color: tuple, tolerance: int) -> tuple[int, int] | None:
+        """
+        지정된 영역(area)에서 주어진 색상(color)을 허용 오차(tolerance) 내에서 찾습니다.
+        NumPy를 사용하여 성능을 최적화했습니다.
+        """
         x1, y1, x2, y2 = area
+        if not (x2 > x1 and y2 > y1):
+            return None
+
         screenshot = ImageGrab.grab(bbox=(x1, y1, x2, y2))
-        color_x, color_y = self._find_color_in_area(screenshot, color, tolerance, direction)
-
-        if color_x is not None and color_y is not None:
-            # 탐색 방향에 따라 클릭 위치 오차를 조정합니다.
-            # 이는 발견된 색상 덩어리의 가장자리 대신 중앙 근처를 클릭하기 위함입니다.
-            base_opt_x = 1.5
-            base_opt_y = 2.5
-
-            if direction in [SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT, SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT]:
-                opt_x = -base_opt_x
-            else:
-                opt_x = base_opt_x
-
-            if direction in [SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT, SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT]:
-                opt_y = -base_opt_y
-            else:
-                opt_y = base_opt_y
-
-            # 최종 좌표는 정수로 변환하여 반환
-            abs_x = int(x1 + color_x + opt_x)
-            abs_y = int(y1 + color_y + opt_y)
-            print(f"Color found at ({abs_x}, {abs_y}) with tolerance {tolerance}")
-            return abs_x, abs_y
-        return None, None
-
-    def _find_color_in_area(self, screenshot, color: tuple[int, int, int], tolerance: int, direction: SearchDirection):
-        # 1. Pillow 이미지를 NumPy 배열로 변환하여 픽셀 접근 속도를 높입니다.
         img_array = np.array(screenshot)
-        height, width, _ = img_array.shape
         
-        r2, g2, b2 = int(color[0]), int(color[1]), int(color[2])
+        # NumPy의 브로드캐스팅을 사용하여 모든 픽셀에 대해 색상 차이를 한 번에 계산
+        target_color = np.array(color)
+        distances = np.sqrt(np.sum((img_array[:, :, :3] - target_color)**2, axis=2))
+        
+        # 허용 오차 내에 있는 픽셀의 위치를 찾음
+        match_coords = np.where(distances <= tolerance)
+        
+        if len(match_coords[0]) > 0:
+            # 첫 번째로 찾은 픽셀의 상대 좌표
+            rel_y, rel_x = match_coords[0][0], match_coords[1][0]
+            # 절대 좌표로 변환하여 반환
+            return x1 + rel_x, y1 + rel_y
+            
+        return None
 
-        # 탐색 방향에 따른 범위 설정
-        if direction == SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT:
-            y_range = range(height)
-            x_range = range(width)
-        elif direction == SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT:
-            y_range = range(height)
-            x_range = range(width - 1, -1, -1)
-        elif direction == SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT:
-            y_range = range(height - 1, -1, -1)
-            x_range = range(width)
-        elif direction == SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT:
-            y_range = range(height - 1, -1, -1)
-            x_range = range(width - 1, -1, -1)
-        else: # Fallback to default
-            y_range = range(height)
-            x_range = range(width)
-
-        # 3. NumPy 배열을 순회하며 색상을 찾습니다.
-        for y in y_range:
-            for x in x_range:
-                # getpixel() 대신 배열에서 직접 픽셀 값을 읽습니다.
-                r1, g1, b1 = img_array[y, x][:3]
-
-                # 4. 각 채널의 차이가 허용 오차(tolerance) 이내인지 확인합니다.
-                if abs(int(r1) - r2) <= tolerance and \
-                   abs(int(g1) - g2) <= tolerance and \
-                   abs(int(b1) - b2) <= tolerance:
-                    return x, y
-        return None, None
+    def click_action(self, x: int, y: int):
+        """지정된 좌표로 마우스를 이동하고 클릭합니다."""
+        self.mouse_controller.position = (x, y)
+        time.sleep(0.05) # 마우스 이동 후 안정화를 위한 짧은 대기
+        self.mouse_controller.click(mouse.Button.left, 1)

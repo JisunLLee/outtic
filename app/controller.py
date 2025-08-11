@@ -1,8 +1,13 @@
 import tkinter as tk
-from pynput import mouse
+import threading
+import time
+from pynput import mouse, keyboard
 from typing import Optional, TYPE_CHECKING
 import ast
 from PIL import ImageGrab # 화면 캡처를 위해 import 합니다.
+
+from .color_finder import ColorFinder
+from .global_hotkey_listener import GlobalHotkeyListener
 
 # 순환 참조를 피하면서 타입 힌팅을 하기 위한 Forward-declaration
 if TYPE_CHECKING:
@@ -16,6 +21,16 @@ class AppController:
     def __init__(self):
         self.ui: Optional['AppUI'] = None
         self.mouse_controller = mouse.Controller()
+        self.color_finder = ColorFinder()
+
+        # --- 백그라운드 작업 관련 ---
+        self.is_searching = False
+        self.search_thread: Optional[threading.Thread] = None
+
+        # --- 전역 단축키 설정 ---
+        hotkey_map = {'shift+esc': self.start_search, keyboard.Key.esc: self.stop_search}
+        self.global_hotkey_listener = GlobalHotkeyListener(hotkey_map)
+        self.global_hotkey_listener.start()
 
         # --- 기본값 설정 ---
         # 이 값들은 UI의 초기값을 설정하는 데 사용됩니다.
@@ -32,6 +47,13 @@ class AppController:
         이 메서드는 애플리케이션 시작 시 한 번 호출됩니다.
         """
         self.ui = ui
+        self.ui.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        """창을 닫을 때 리소스를 안전하게 정리합니다."""
+        self.is_searching = False
+        self.global_hotkey_listener.stop()
+        self.ui.root.destroy()
 
     def apply_settings(self):
         """UI의 설정값들을 컨트롤러의 속성에 적용합니다."""
@@ -147,36 +169,63 @@ class AppController:
         self.ui.update_status(f"'{display_name}' 저장 완료: {new_color}")
         print(f"색상 저장 완료 ({color_key}): {new_color}")
 
-    def start_color_picker(self, color_key: str):
-        """
-        지정된 키에 해당하는 색상을 2초 후에 캡처하는 프로세스를 시작합니다.
-        UI의 버튼과 연결되어 호출됩니다.
+    def toggle_search(self):
+        """UI 버튼 클릭 시 검색 상태를 토글합니다."""
+        if self.is_searching:
+            self.stop_search()
+        else:
+            self.start_search()
 
-        :param color_key: 'main_color' 등 색상을 식별하는 키
-        """
-        if not self.ui:
-            print("UI가 연결되지 않았습니다.")
-            return
-
-        key_map = {'main_color': '기본 색상'}
-        display_name = key_map.get(color_key, color_key)
-        self.ui.update_status(f"'{display_name}' 지정: 2초 후 마우스 위치의 색상을 저장합니다...")
-
-        # 2초 후에 _grab_color_after_delay 함수를 실행
-        self.ui.root.after(2000, lambda: self._grab_color_after_delay(color_key, display_name))
-
-    def _grab_color_after_delay(self, color_key: str, display_name: str):
-        """실제로 마우스 위치의 색상을 가져와서 컨트롤러 상태와 UI를 업데이트합니다."""
+    def start_search(self):
+        """색상 검색 프로세스를 시작합니다."""
+        if self.is_searching: return
         if not self.ui: return
 
-        x, y = self.mouse_controller.position
-        # 1x1 픽셀만 캡처하면 충분합니다.
-        screenshot = ImageGrab.grab(bbox=(int(x), int(y), int(x) + 1, int(y) + 1))
-        pixel_color = screenshot.getpixel((0, 0))
-        
-        new_color = pixel_color[:3] # RGB 값만 사용 (알파 채널 제외)
+        if not self.apply_settings():
+            return
 
-        if color_key == 'main_color': self.ui.color_var.set(str(new_color))
-        
-        self.ui.update_status(f"'{display_name}' 저장 완료: {new_color}")
-        print(f"색상 저장 완료 ({color_key}): {new_color}")
+        self.is_searching = True
+        self.ui.queue_task(lambda: self.ui.update_status("색상 검색 중... (ESC로 중지)"))
+        self.ui.queue_task(lambda: self.ui.update_button_text("중지 (ESC)"))
+        print("--- 색상 검색 시작 ---")
+
+        # 별도 스레드에서 검색 작업 실행
+        self.search_thread = threading.Thread(target=self._search_worker, daemon=True)
+        self.search_thread.start()
+
+    def stop_search(self, message="검색이 중지되었습니다."):
+        """색상 검색 프로세스를 중지합니다."""
+        if not self.is_searching: return
+        if not self.ui: return
+
+        self.is_searching = False
+        self.ui.queue_task(lambda: self.ui.update_status(message))
+        self.ui.queue_task(lambda: self.ui.update_button_text("찾기(Shift+ESC)"))
+        print(f"--- {message} ---")
+
+    def _search_worker(self):
+        """(스레드 워커) 색상을 주기적으로 검색하고,"""
+        # 검색 영역 계산
+        left = min(self.p1[0], self.p2[0])
+        top = min(self.p1[1], self.p2[1])
+        right = max(self.p1[0], self.p2[0])
+        bottom = max(self.p1[1], self.p2[1])
+        search_area = (left, top, right, bottom)
+
+        while self.is_searching:
+            # 색상 찾기
+            found_pos = self.color_finder.find_color_in_area(
+                area=search_area,
+                color=self.color,
+                tolerance=self.color_tolerance
+            )
+
+            if found_pos:
+                abs_x, abs_y = found_pos
+                self.color_finder.click_action(abs_x, abs_y)
+                
+                status_message = f"색상 발견 및 클릭: ({abs_x}, {abs_y})"
+                self.stop_search(message=status_message) 
+                return # 스레드 종료
+
+            time.sleep(0.1) # CPU 과부하 방지를 위한 짧은 대기

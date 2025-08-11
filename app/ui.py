@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+import queue
 
 class AppUI:
     """
@@ -8,9 +9,12 @@ class AppUI:
     def __init__(self, root, controller):
         self.root = root
         self.controller = controller
-        self.area_marker_window = None
+        self.area_marker_windows = []
+        self.point_marker_windows = []
+        self.ui_queue = queue.Queue()
         self._initialize_vars()
         self._setup_ui()
+        self._process_ui_queue()
 
     def _initialize_vars(self):
         """UI에 사용될 Tkinter 변수들을 초기화합니다."""
@@ -87,14 +91,87 @@ class AppUI:
         action_frame.pack(fill=tk.X, side=tk.BOTTOM)
         action_frame.grid_columnconfigure(0, weight=1)
         action_frame.grid_columnconfigure(1, weight=1)
-        tk.Button(action_frame, text="영역확인", command=self.controller.show_area).grid(row=0, column=0, sticky=tk.EW, padx=(0, 5))
-        tk.Button(action_frame, text="찾기(caps+ESC)").grid(row=0, column=1, sticky=tk.EW, padx=(5, 0))
+        self.area_button = tk.Button(action_frame, text="영역확인", command=self.controller.show_area)
+        self.area_button.grid(row=0, column=0, sticky=tk.EW, padx=(0, 5))
+        
+        self.find_button = tk.Button(action_frame, text="찾기(Shift+ESC)", command=self.controller.toggle_search)
+        self.find_button.grid(row=0, column=1, sticky=tk.EW, padx=(5, 0))
+
+    def queue_task(self, task):
+        """다른 스레드에서 UI 업데이트 작업을 큐에 추가합니다."""
+        self.ui_queue.put(task)
+
+    def _process_ui_queue(self):
+        """메인 스레드에서 UI 업데이트 큐를 주기적으로 확인하고 처리합니다."""
+        try:
+            while True:
+                task = self.ui_queue.get_nowait()
+                task()
+        except queue.Empty:
+            pass
+        finally:
+            # 100ms 마다 큐를 다시 확인하도록 예약합니다.
+            self.root.after(100, self._process_ui_queue)
+
+    def update_button_text(self, text: str):
+        """'찾기' 버튼의 텍스트를 변경합니다."""
+        if self.find_button:
+            self.find_button.config(text=text)
 
     def update_status(self, text: str):
         """상태 메시지 레이블의 텍스트를 업데이트합니다."""
         self.status_var.set(text)
 
-    # --- UI 생성을 위한 헬퍼 메서드 ---
+    def display_visual_aids(self, areas=None, points=None):
+        """화면에 영역과 좌표 마커들을 표시합니다."""
+        # 기존 마커 창들 제거
+        for marker in self.area_marker_windows:
+            if marker and marker.winfo_exists():
+                marker.destroy()
+        self.area_marker_windows.clear()
+
+        for marker in self.point_marker_windows:
+            if marker and marker.winfo_exists():
+                marker.destroy()
+        self.point_marker_windows.clear()
+
+        # 여러 영역 마커 표시
+        if areas:
+            for area_info in areas:
+                x, y, width, height = area_info.get('rect', (0,0,0,0))
+                color = area_info.get('color', 'red')
+                alpha = area_info.get('alpha', 0.4)
+
+                if width > 0 and height > 0:
+                    area_marker = tk.Toplevel(self.root)
+                    area_marker.overrideredirect(True)
+                    area_marker.geometry(f"{width}x{height}+{x}+{y}")
+                    area_marker.configure(bg=color)
+                    area_marker.attributes('-alpha', alpha)
+                    area_marker.attributes('-topmost', True)
+                    area_marker.after(3000, area_marker.destroy)
+                    self.area_marker_windows.append(area_marker)
+
+        # 좌표 마커들 표시
+        if points:
+            marker_size = 20
+            color_map = { '완료': '#50E3C2' } # Teal
+            for text, pos in points.items():
+                if not pos or (pos[0] == 0 and pos[1] == 0): continue
+                px, py = pos
+                marker_color = color_map.get(text, "#FFFFFF")
+                marker = tk.Toplevel(self.root)
+                marker.overrideredirect(True)
+                marker.geometry(f"{marker_size}x{marker_size}+{px - marker_size//2}+{py - marker_size//2}")
+                marker.configure(bg=marker_color, highlightthickness=1, highlightbackground="white")
+                marker.attributes('-alpha', 0.7)
+                marker.attributes('-topmost', True)
+                tk.Label(marker, text=text, bg=marker_color, fg="white", font=("Helvetica", 8, "bold")).pack(expand=True, fill='both')
+                marker.after(3000, marker.destroy)
+                self.point_marker_windows.append(marker)
+
+        self.update_status(f"영역 및 좌표 표시 중...")
+
     def _create_labeled_frame(self, parent, text):
         """제목이 있는 프레임을 생성합니다."""
         frame = tk.LabelFrame(parent, text=text, fg="white", bg="#2e2e2e", padx=10, pady=5, relief=tk.SOLID, borderwidth=1)
