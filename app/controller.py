@@ -28,7 +28,7 @@ class AppController:
         self.search_thread: Optional[threading.Thread] = None
 
         # --- 전역 단축키 설정 ---
-        hotkey_map = {'shift+esc': self.start_search, keyboard.Key.esc: self.stop_search}
+        hotkey_map = {'<shift>+s': self.start_search, '<esc>': self.stop_search}
         self.global_hotkey_listener = GlobalHotkeyListener(hotkey_map)
         self.global_hotkey_listener.start()
 
@@ -299,7 +299,7 @@ class AppController:
 
         self.is_searching = False
         self.ui.queue_task(lambda: self.ui.update_status(message))
-        self.ui.queue_task(lambda: self.ui.update_button_text("찾기(Shift+ESC)"))
+        self.ui.queue_task(lambda: self.ui.update_button_text("찾기(Shift+s)"))
         print(f"--- {message} ---")
 
     def _search_worker(self):

@@ -137,7 +137,7 @@ class AppUI:
         self.area_button = tk.Button(action_frame, text="영역확인", command=self.controller.show_area)
         self.area_button.grid(row=0, column=0, sticky=tk.EW, padx=(0, 5))
         
-        self.find_button = tk.Button(action_frame, text="찾기(Shift+ESC)", command=self.controller.toggle_search)
+        self.find_button = tk.Button(action_frame, text="찾기(Shift+s)", command=self.controller.toggle_search)
         self.find_button.grid(row=0, column=1, sticky=tk.EW, padx=(5, 0))
 
     def _create_area_group(self, parent, area_number: int):
