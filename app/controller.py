@@ -44,6 +44,7 @@ class AppController:
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
         self.complete_click_delay = 0.02 # 완료 클릭 전 딜레이 (초)
         self.use_sequence = True # 구역 사용 여부
+        self.area_delay = 0.45 # 구역 클릭 전 딜레이 (초)
 
         # --- 구역별 설정 데이터 ---
         self.areas = {}
@@ -91,6 +92,7 @@ class AppController:
             self.color_tolerance = int(self.ui.color_tolerance_var.get())
             self.color_area_tolerance = int(self.ui.color_area_tolerance_var.get())
             self.complete_click_delay = int(self.ui.complete_delay_var.get()) / 1000.0
+            self.area_delay = int(self.ui.area_delay_var.get()) / 100.0
 
             # UI의 문자열을 SearchDirection Enum으로 변환합니다.
             direction_map = {
@@ -350,6 +352,7 @@ class AppController:
                     if settings['use']:
                         click_coord = settings['click_coord']
                         num_clicks = settings['clicks']
+                        offset = settings['offset'] # 오차 값 가져오기
 
                         # '횟수' 설정만큼 반복 클릭
                         for i in range(num_clicks):
@@ -357,15 +360,20 @@ class AppController:
                             if not self.is_searching:
                                 return
 
-                            # TODO: offset_var를 사용하여 랜덤 위치에 클릭하는 로직 추가
-                            self.color_finder.click_action(click_coord[0], click_coord[1])
+                            # 매 클릭 전, 설정된 '구역 딜레이'만큼 대기합니다.
+                            if self.area_delay > 0:
+                                time.sleep(self.area_delay)
 
-                            # 마지막 클릭이 아니면 짧은 딜레이를 줍니다.
-                            if i < num_clicks - 1:
-                                time.sleep(0.05) # 클릭 사이의 간격
+                            # 오차(offset)를 적용한 최종 클릭 좌표 계산
+                            final_x, final_y = click_coord
+                            if offset > 0:
+                                final_x += random.randint(-offset, offset)
+                                final_y += random.randint(-offset, offset)
+
+                            self.color_finder.click_action(final_x, final_y)
                         
                         # 상태 메시지 업데이트 및 검색 중지
-                        status_message = f"색상 못찾음. 구역{area_number}({click_coord[0]},{click_coord[1]}) {num_clicks}회 클릭."
+                        status_message = f"색상 못찾음. 구역{area_number} 근처 {num_clicks}회 클릭."
                         self.stop_search(message=status_message)
                         return # 스레드 종료
             

@@ -28,7 +28,7 @@ class AppUI:
         self.p1_var = tk.StringVar(value=str(c.p1))
         self.p2_var = tk.StringVar(value=str(c.p2))
         self.color_var = tk.StringVar(value=str(c.color))
-        self.area_delay_var = tk.StringVar(value="45") # 구역 딜레이
+        self.area_delay_var = tk.StringVar(value="20") # 구역 딜레이
         self.complete_coord_var = tk.StringVar(value=str(c.complete_coord)) # 완료 좌표
 
         # 탐색 방향 Enum과 UI 표시 문자열을 매핑합니다.
@@ -53,7 +53,7 @@ class AppUI:
             'use_var': tk.BooleanVar(value=True),
             'coord_var': tk.StringVar(value="(0, 0)"),
             'clicks_var': tk.StringVar(value="6"),
-            'offset_var': tk.StringVar(value="5"),
+            'offset_var': tk.StringVar(value="2"),
             # 각 구역별 탐색 영역을 위한 좌표 변수를 추가합니다.
             'p1_var': tk.StringVar(value="(0, 0)"),
             'p2_var': tk.StringVar(value="(0, 0)"),
