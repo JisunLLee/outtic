@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import ttk
 import queue
 
+from .color_finder import SearchDirection
+
 class AppUI:
     """
     애플리케이션의 모든 UI 요소 생성과 배치를 담당하는 클래스입니다.
@@ -26,7 +28,15 @@ class AppUI:
         self.p2_var = tk.StringVar(value=str(c.p2))
         self.color_var = tk.StringVar(value=str(c.color))
         self.complete_coord_var = tk.StringVar(value=str(c.complete_coord)) # 완료 좌표
-        self.direction_var = tk.StringVar(value="→↓")
+
+        # 탐색 방향 Enum과 UI 표시 문자열을 매핑합니다.
+        self.SEARCH_DIRECTION_MAP = {
+            SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT: "→↓",
+            SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT: "←↓",
+            SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT: "→↑",
+            SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT: "←↑",
+        }
+        self.direction_var = tk.StringVar(value=self.SEARCH_DIRECTION_MAP[c.search_direction])
         self.use_sequence_var = tk.BooleanVar(value=True)
         self.total_tries_var = tk.StringVar(value="225")
         self.status_var = tk.StringVar(value="대기 중...")
@@ -70,17 +80,21 @@ class AppUI:
 
         
         # Row 4: 구역 사용, 총 시도횟수, 탐색 방향
-  
-        row4_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
-        tk.Checkbutton(left_frame, text="구역 사용  |", variable=self.use_sequence_var, bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
-        self._create_labeled_entry(left_frame, "총 시도횟수:", self.total_tries_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
-        self._create_labeled_entry(right_frame, "|  딜레이:", self.complete_delay_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        # 더 나은 정렬을 위해 3개의 프레임으로 분할합니다.
+        row4_container, (frame1, frame2, frame3) = self._create_split_container(basic_group, weights=[3, 2, 1])
         
-        # OptionMenu 스타일링
-        direction_menu = tk.OptionMenu(right_frame, self.direction_var, "→↓", "←↓", "→↑", "←↑")
+        # Part 1: 구역 사용, 총 시도횟수
+        tk.Checkbutton(frame1, text="구역 사용", variable=self.use_sequence_var, bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
+        self._create_labeled_entry(frame1, "시도횟수:", self.total_tries_var).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
+
+        # Part 2: 딜레이
+        self._create_labeled_entry(frame2, "딜레이:", self.complete_delay_var).pack(expand=True, fill=tk.X)
+        
+        # Part 3: 탐색 방향
+        direction_menu = tk.OptionMenu(frame3, self.direction_var, *self.SEARCH_DIRECTION_MAP.values())
         direction_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
         direction_menu["menu"].config(bg="#555555", fg="white")
-        direction_menu.pack(side=tk.LEFT, padx=(10, 0))
+        direction_menu.pack(fill=tk.X, expand=True)
 
         # --- 상태 메시지 ---
         status_label = tk.Label(main_frame, textvariable=self.status_var, fg="lightblue", bg="#2e2e2e", anchor='w')

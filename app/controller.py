@@ -6,7 +6,7 @@ from typing import Optional, TYPE_CHECKING
 import ast
 from PIL import ImageGrab # 화면 캡처를 위해 import 합니다.
 
-from .color_finder import ColorFinder
+from .color_finder import ColorFinder, SearchDirection
 from .global_hotkey_listener import GlobalHotkeyListener
 
 # 순환 참조를 피하면서 타입 힌팅을 하기 위한 Forward-declaration
@@ -40,6 +40,7 @@ class AppController:
         self.complete_coord = (805, 704)
         self.color_tolerance = 15
         self.color_area_tolerance = 5
+        self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
 
     def set_ui(self, ui: 'AppUI'):
         """
@@ -65,6 +66,16 @@ class AppController:
             self.color = ast.literal_eval(self.ui.color_var.get())
             self.color_tolerance = int(self.ui.color_tolerance_var.get())
             self.color_area_tolerance = int(self.ui.color_area_tolerance_var.get())
+
+            # UI의 문자열을 SearchDirection Enum으로 변환합니다.
+            direction_map = {
+                "→↓": SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT,
+                "←↓": SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT,
+                "→↑": SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT,
+                "←↑": SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT,
+            }
+            selected_direction_str = self.ui.direction_var.get()
+            self.search_direction = direction_map.get(selected_direction_str, SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT)
             
             self.ui.update_status("설정이 적용되었습니다.")
             print("설정이 적용되었습니다.")
@@ -217,7 +228,8 @@ class AppController:
             found_pos = self.color_finder.find_color_in_area(
                 area=search_area,
                 color=self.color,
-                tolerance=self.color_tolerance
+                tolerance=self.color_tolerance,
+                direction=self.search_direction
             )
 
             if found_pos:
