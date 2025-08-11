@@ -41,6 +41,7 @@ class AppController:
         self.color_tolerance = 15
         self.color_area_tolerance = 5
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
+        self.complete_click_delay = 0.02 # 완료 클릭 전 딜레이 (초)
 
     def set_ui(self, ui: 'AppUI'):
         """
@@ -66,6 +67,7 @@ class AppController:
             self.color = ast.literal_eval(self.ui.color_var.get())
             self.color_tolerance = int(self.ui.color_tolerance_var.get())
             self.color_area_tolerance = int(self.ui.color_area_tolerance_var.get())
+            self.complete_click_delay = int(self.ui.complete_delay_var.get()) / 1000.0
 
             # UI의 문자열을 SearchDirection Enum으로 변환합니다.
             direction_map = {
@@ -239,7 +241,7 @@ class AppController:
                 
                 # 2. '완료' 좌표가 설정되어 있으면, 잠시 후 해당 좌표를 클릭합니다.
                 if self.complete_coord and self.complete_coord != (0, 0):
-                    time.sleep(0.1) # 색상 클릭과 완료 클릭 사이의 짧은 대기
+                    time.sleep(self.complete_click_delay) # 설정된 딜레이만큼 대기
                     comp_x, comp_y = self.complete_coord
                     self.color_finder.click_action(comp_x, comp_y)
                     status_message = f"색상 클릭 후 완료({comp_x},{comp_y}) 클릭"

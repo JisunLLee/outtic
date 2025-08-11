@@ -14,6 +14,7 @@ class AppUI:
         self.area_marker_windows = []
         self.point_marker_windows = []
         self.ui_queue = queue.Queue()
+        self.area_vars = {}
         self._initialize_vars()
         self._setup_ui()
         self._process_ui_queue()
@@ -40,11 +41,24 @@ class AppUI:
         self.use_sequence_var = tk.BooleanVar(value=True)
         self.total_tries_var = tk.StringVar(value="225")
         self.status_var = tk.StringVar(value="대기 중...")
+        
+        # --- 구역별 변수 초기화 ---
+        # 나중에 구역 2, 3, 4를 추가할 때 아래 라인을 추가하면 됩니다.
+        self._initialize_area_vars(1)
+
+    def _initialize_area_vars(self, area_number: int):
+        """지정된 번호의 구역에 대한 Tkinter 변수들을 초기화하고 저장합니다."""
+        self.area_vars[area_number] = {
+            'use_var': tk.BooleanVar(value=True),
+            'coord_var': tk.StringVar(value="(0, 0)"),
+            'clicks_var': tk.StringVar(value="1"),
+            'offset_var': tk.StringVar(value="5"),
+        }
 
     def _setup_ui(self):
         """메인 UI를 생성하고 배치합니다."""
         self.root.title("Auto Color Clicker")
-        self.root.geometry("400x320")
+        self.root.geometry("400x470") # 구역 UI 추가를 위해 높이 조정
         self.root.configure(bg="#2e2e2e")
         self.root.resizable(True, True)
 
@@ -79,7 +93,7 @@ class AppUI:
         self._create_value_button_row(right_frame, self.complete_coord_var, "완료", command=lambda: self.controller.start_coordinate_picker('complete')).pack(expand=True, fill=tk.X)
 
         
-        # Row 4: 구역 사용, 총 시도횟수, 탐색 방향
+        # Row 4: 구역 사용, 총 시도횟수, 딜레이, 탐색 방향
         # 더 나은 정렬을 위해 3개의 프레임으로 분할합니다.
         row4_container, (frame1, frame2, frame3) = self._create_split_container(basic_group, weights=[3, 2, 1])
         
@@ -96,6 +110,14 @@ class AppUI:
         direction_menu["menu"].config(bg="#555555", fg="white")
         direction_menu.pack(fill=tk.X, expand=True)
 
+        # --- 구역 설정 그룹 ---
+        # 이 프레임은 모든 구역(구역1, 구역2 등)을 감싸는 컨테이너 역할을 합니다.
+        areas_container_group = self._create_labeled_frame(main_frame, "구역 설정")
+        areas_container_group.pack(fill=tk.X, pady=(0, 10))
+
+        # 재사용 가능한 헬퍼 메서드를 사용하여 구역1 그룹 생성
+        self._create_area_group(areas_container_group, 1)
+
         # --- 상태 메시지 ---
         status_label = tk.Label(main_frame, textvariable=self.status_var, fg="lightblue", bg="#2e2e2e", anchor='w')
         status_label.pack(fill=tk.X, pady=5)
@@ -110,6 +132,39 @@ class AppUI:
         
         self.find_button = tk.Button(action_frame, text="찾기(Shift+ESC)", command=self.controller.toggle_search)
         self.find_button.grid(row=0, column=1, sticky=tk.EW, padx=(5, 0))
+
+    def _create_area_group(self, parent, area_number: int):
+        """
+        지정된 번호의 구역 설정 UI 그룹을 생성하고 배치합니다.
+        재사용성을 위해 헬퍼 메서드로 분리했습니다.
+        나중에 구역 2, 3, 4를 추가할 때 이 메서드를 호출하기만 하면 됩니다.
+
+        :param parent: 이 그룹이 속할 부모 위젯
+        :param area_number: 생성할 구역의 번호 (예: 1)
+        """
+        area_group = tk.LabelFrame(parent, text=f"구역{area_number}", fg="white", bg="#2e2e2e", padx=10, pady=5)
+        area_group.pack(fill=tk.X, pady=2, padx=5, ipady=5)
+
+        # 이 구역에 해당하는 변수들을 가져옵니다.
+        vars = self.area_vars[area_number]
+
+        # UI를 좌우로 나누기 위한 컨테이너 생성
+        row_container, (left_frame, right_frame) = self._create_split_container(area_group, weights=[2, 1])
+
+        # --- 왼쪽 프레임: 탐색 활성화, 좌표 설정 ---
+        tk.Checkbutton(left_frame, text="탐색", variable=vars['use_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
+        tk.Label(left_frame, textvariable=vars['coord_var'], relief="sunken", bg="white", width=8, anchor='w').pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
+        # 참고: 컨트롤러에 start_coordinate_picker(f'area_{area_number}') 기능이 추가되어야 완벽하게 동작합니다.
+        tk.Button(left_frame, text=f"색상 {area_number}", width=3, command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}')).pack(side=tk.LEFT)
+
+        # --- 오른쪽 프레임: 선택 횟수, 오차 설정 ---
+        # 위젯들이 붙어있도록 내부 프레임을 하나 더 사용합니다.
+        right_inner_frame = tk.Frame(right_frame, bg="#2e2e2e")
+        right_inner_frame.pack(fill=tk.X)
+        self._create_labeled_entry(right_inner_frame, "횟수:", vars['clicks_var']).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        self._create_labeled_entry(right_inner_frame, "오차:", vars['offset_var']).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
+
+        return area_group
 
     def queue_task(self, task):
         """다른 스레드에서 UI 업데이트 작업을 큐에 추가합니다."""
@@ -222,7 +277,7 @@ class AppUI:
         frame = tk.Frame(parent, bg="#2e2e2e")
         tk.Label(frame, text=label_text, fg="white", bg="#2e2e2e").pack(
             side=tk.LEFT)
-        tk.Entry(frame, textvariable=var, width=5, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0).pack(
+        tk.Entry(frame, textvariable=var, width=2, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0).pack(
             side=tk.LEFT, expand=True, fill=tk.X)
         return frame
 
