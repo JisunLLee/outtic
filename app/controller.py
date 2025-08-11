@@ -354,6 +354,13 @@ class AppController:
                         num_clicks = settings['clicks']
                         offset = settings['offset'] # 오차 값 가져오기
 
+                        # 이 구역을 클릭할 최종 좌표를 한 번만 계산합니다.
+                        # 나중에 구역 순환 로직이 추가되면, 해당 구역에 진입할 때마다 새로 계산됩니다.
+                        final_x, final_y = click_coord
+                        if offset > 0:
+                            final_x += random.randint(-offset, offset)
+                            final_y += random.randint(-offset, offset)
+
                         # '횟수' 설정만큼 반복 클릭
                         for i in range(num_clicks):
                             # 검색이 중간에 중지되면 루프를 빠져나갑니다.
@@ -364,16 +371,10 @@ class AppController:
                             if self.area_delay > 0:
                                 time.sleep(self.area_delay)
 
-                            # 오차(offset)를 적용한 최종 클릭 좌표 계산
-                            final_x, final_y = click_coord
-                            if offset > 0:
-                                final_x += random.randint(-offset, offset)
-                                final_y += random.randint(-offset, offset)
-
                             self.color_finder.click_action(final_x, final_y)
                         
                         # 상태 메시지 업데이트 및 검색 중지
-                        status_message = f"색상 못찾음. 구역{area_number} 근처 {num_clicks}회 클릭."
+                        status_message = f"색상 못찾음. 구역{area_number} 근처({final_x},{final_y}) {num_clicks}회 클릭."
                         self.stop_search(message=status_message)
                         return # 스레드 종료
             
