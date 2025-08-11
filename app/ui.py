@@ -189,7 +189,7 @@ class AppUI:
             state = 'normal' if is_enabled else 'disabled'
             bg_color = 'white' if is_enabled else '#555555'
             color_label.config(state=state, bg=bg_color)
-            color_button.config(state=state)
+            color_button.config(state=state, bg=bg_color)
 
         tk.Checkbutton(left_frame3, text="개별", variable=vars['use_color_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_color_state).pack(side=tk.LEFT)
         color_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
