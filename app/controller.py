@@ -221,11 +221,20 @@ class AppController:
             )
 
             if found_pos:
+                # 1. 색상을 찾으면 해당 위치를 클릭합니다.
                 abs_x, abs_y = found_pos
                 self.color_finder.click_action(abs_x, abs_y)
                 
-                status_message = f"색상 발견 및 클릭: ({abs_x}, {abs_y})"
-                self.stop_search(message=status_message) 
+                # 2. '완료' 좌표가 설정되어 있으면, 잠시 후 해당 좌표를 클릭합니다.
+                if self.complete_coord and self.complete_coord != (0, 0):
+                    time.sleep(0.1) # 색상 클릭과 완료 클릭 사이의 짧은 대기
+                    comp_x, comp_y = self.complete_coord
+                    self.color_finder.click_action(comp_x, comp_y)
+                    status_message = f"색상 클릭 후 완료({comp_x},{comp_y}) 클릭"
+                else:
+                    status_message = f"색상 발견 및 클릭: ({abs_x}, {abs_y})"
+
+                self.stop_search(message=status_message)
                 return # 스레드 종료
 
             time.sleep(0.1) # CPU 과부하 방지를 위한 짧은 대기
