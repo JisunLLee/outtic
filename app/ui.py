@@ -51,7 +51,7 @@ class AppUI:
         self.area_vars[area_number] = {
             'use_var': tk.BooleanVar(value=True),
             'coord_var': tk.StringVar(value="(0, 0)"),
-            'clicks_var': tk.StringVar(value="1"),
+            'clicks_var': tk.StringVar(value="6"),
             'offset_var': tk.StringVar(value="5"),
             # 각 구역별 탐색 영역을 위한 좌표 변수를 추가합니다.
             'p1_var': tk.StringVar(value="(0, 0)"),

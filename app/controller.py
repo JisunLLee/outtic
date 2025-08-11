@@ -4,6 +4,7 @@ import time
 from pynput import mouse, keyboard
 from typing import Optional, TYPE_CHECKING
 import ast
+import random # 오차 적용을 위해 추가
 from PIL import ImageGrab # 화면 캡처를 위해 import 합니다.
 
 from .color_finder import ColorFinder, SearchDirection
@@ -42,6 +43,7 @@ class AppController:
         self.color_area_tolerance = 5
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
         self.complete_click_delay = 0.02 # 완료 클릭 전 딜레이 (초)
+        self.use_sequence = True # 구역 사용 여부
 
         # --- 구역별 설정 데이터 ---
         self.areas = {}
@@ -68,6 +70,7 @@ class AppController:
                 'use_color': False,
                 'color': (0, 0, 0),
                 'direction': self.search_direction,
+                'use_area_bounds': True, # 개별 영역 사용 여부
                 'search_area': (0, 0, 0, 0) # 계산된 탐색 영역
             }
 
@@ -98,6 +101,7 @@ class AppController:
             }
             selected_direction_str = self.ui.direction_var.get()
             self.search_direction = direction_map.get(selected_direction_str, SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT)
+            self.use_sequence = self.ui.use_sequence_var.get()
             
             # --- 구역 설정 적용 ---
             for area_number, area_ui_vars in self.ui.area_vars.items():
@@ -112,6 +116,7 @@ class AppController:
                 area_settings['p1'] = ast.literal_eval(area_ui_vars['p1_var'].get())
                 area_settings['p2'] = ast.literal_eval(area_ui_vars['p2_var'].get())
                 area_settings['use_color'] = area_ui_vars['use_color_var'].get()
+                area_settings['use_area_bounds'] = not area_ui_vars['use_area_bounds_var'].get() # UI와 논리 반대
                 area_settings['color'] = ast.literal_eval(area_ui_vars['color_var'].get())
                 area_settings['direction'] = direction_map.get(area_ui_vars['direction_var'].get(), self.search_direction)
 
@@ -337,4 +342,33 @@ class AppController:
                 self.stop_search(message=status_message)
                 return # 스레드 종료
 
-            time.sleep(0.1) # CPU 과부하 방지를 위한 짧은 대기
+            # --- 색상을 찾지 못했을 때의 로직 ---
+            if self.use_sequence:
+                # 활성화된 첫 번째 구역을 찾아 클릭합니다.
+                # 추후 순차적 구역 클릭 로직으로 확장될 수 있습니다.
+                for area_number, settings in sorted(self.areas.items()):
+                    if settings['use']:
+                        click_coord = settings['click_coord']
+                        num_clicks = settings['clicks']
+
+                        # '횟수' 설정만큼 반복 클릭
+                        for i in range(num_clicks):
+                            # 검색이 중간에 중지되면 루프를 빠져나갑니다.
+                            if not self.is_searching:
+                                return
+
+                            # TODO: offset_var를 사용하여 랜덤 위치에 클릭하는 로직 추가
+                            self.color_finder.click_action(click_coord[0], click_coord[1])
+
+                            # 마지막 클릭이 아니면 짧은 딜레이를 줍니다.
+                            if i < num_clicks - 1:
+                                time.sleep(0.05) # 클릭 사이의 간격
+                        
+                        # 상태 메시지 업데이트 및 검색 중지
+                        status_message = f"색상 못찾음. 구역{area_number}({click_coord[0]},{click_coord[1]}) {num_clicks}회 클릭."
+                        self.stop_search(message=status_message)
+                        return # 스레드 종료
+            
+            # '구역 사용'이 비활성화되었거나, 활성화된 구역이 하나도 없는 경우
+            self.stop_search(message="색상 못찾음. 활성화된 구역이 없어 중지합니다.")
+            return # 스레드 종료
