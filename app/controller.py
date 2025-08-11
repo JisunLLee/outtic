@@ -75,6 +75,14 @@ class AppController:
                 'search_area': (0, 0, 0, 0) # 계산된 탐색 영역
             }
 
+    def _get_global_search_area(self):
+        """기본 탐색 영역 좌표를 계산하여 반환합니다."""
+        left = min(self.p1[0], self.p2[0])
+        top = min(self.p1[1], self.p2[1])
+        right = max(self.p1[0], self.p2[0])
+        bottom = max(self.p1[1], self.p2[1])
+        return (left, top, right, bottom)
+
     def on_closing(self):
         """창을 닫을 때 리소스를 안전하게 정리합니다."""
         self.is_searching = False
@@ -117,7 +125,7 @@ class AppController:
                 area_settings['offset'] = int(area_ui_vars['offset_var'].get())
                 area_settings['p1'] = ast.literal_eval(area_ui_vars['p1_var'].get())
                 area_settings['p2'] = ast.literal_eval(area_ui_vars['p2_var'].get())
-                area_settings['use_color'] = area_ui_vars['use_color_var'].get()
+                area_settings['use_color'] = not area_ui_vars['use_color_var'].get() # UI와 논리 반대. '기본' 체크 해제 시 개별 색상 사용
                 area_settings['use_area_bounds'] = not area_ui_vars['use_area_bounds_var'].get() # UI와 논리 반대
                 area_settings['color'] = ast.literal_eval(area_ui_vars['color_var'].get())
                 area_settings['direction'] = direction_map.get(area_ui_vars['direction_var'].get(), self.search_direction)
@@ -310,74 +318,74 @@ class AppController:
         print(f"--- {message} ---")
 
     def _search_worker(self):
-        """(스레드 워커) 색상을 주기적으로 검색하고,"""
-        # 검색 영역 계산
-        left = min(self.p1[0], self.p2[0])
-        top = min(self.p1[1], self.p2[1])
-        right = max(self.p1[0], self.p2[0])
-        bottom = max(self.p1[1], self.p2[1])
-        search_area = (left, top, right, bottom)
+        """(스레드 워커) 설정된 구역들을 순회하며 색상을 검색하고, 찾으면 클릭 후 완료 동작을 수행합니다."""
+        
+        # 1. 활성화된 모든 구역을 순회하며 색상 검색
+        for area_number, settings in sorted(self.areas.items()):
+            if not self.is_searching: return # 중간에 중지되면 즉시 종료
+            if not settings['use']: continue # '탐색'이 비활성화된 구역은 건너뜀
 
-        while self.is_searching:
-            # 색상 찾기
+            # 현재 구역에 맞는 탐색 파라미터 결정
+            # '기본' 영역 사용이 체크 해제된 경우(use_area_bounds=True) 개별 영역 사용
+            search_area = settings['search_area'] if settings['use_area_bounds'] else self._get_global_search_area()
+            # '기본' 색상 사용이 체크 해제된 경우(use_color=True) 개별 색상 사용
+            search_color = settings['color'] if settings['use_color'] else self.color
+            search_direction = settings['direction']
+            
+            # 유효한 탐색 영역인지 확인
+            if not (search_area[2] > search_area[0] and search_area[3] > search_area[1]):
+                self.ui.queue_task(lambda n=area_number: self.ui.update_status(f"구역{n} 영역이 잘못되어 건너뜁니다."))
+                time.sleep(0.5) # 사용자가 메시지를 볼 수 있도록 잠시 대기
+                continue
+
+            self.ui.queue_task(lambda n=area_number, d=search_direction.value: self.ui.update_status(f"구역{n} 탐색 중 ({d})..."))
+
             found_pos = self.color_finder.find_color_in_area(
                 area=search_area,
-                color=self.color,
+                color=search_color,
                 tolerance=self.color_tolerance,
-                direction=self.search_direction
+                direction=search_direction
             )
 
             if found_pos:
-                # 1. 색상을 찾으면 해당 위치를 클릭합니다.
                 abs_x, abs_y = found_pos
                 self.color_finder.click_action(abs_x, abs_y)
                 
-                # 2. '완료' 좌표가 설정되어 있으면, 잠시 후 해당 좌표를 클릭합니다.
                 if self.complete_coord and self.complete_coord != (0, 0):
-                    time.sleep(self.complete_click_delay) # 설정된 딜레이만큼 대기
+                    time.sleep(self.complete_click_delay)
                     comp_x, comp_y = self.complete_coord
                     self.color_finder.click_action(comp_x, comp_y)
-                    status_message = f"색상 클릭 후 완료({comp_x},{comp_y}) 클릭"
+                    status_message = f"구역{area_number}에서 색상 발견, 완료({comp_x},{comp_y}) 클릭"
                 else:
-                    status_message = f"색상 발견 및 클릭: ({abs_x}, {abs_y})"
+                    status_message = f"구역{area_number}에서 색상 발견 및 클릭: ({abs_x}, {abs_y})"
 
                 self.stop_search(message=status_message)
-                return # 스레드 종료
+                return # 성공했으므로 스레드 종료
 
-            # --- 색상을 찾지 못했을 때의 로직 ---
-            if self.use_sequence:
-                # 활성화된 첫 번째 구역을 찾아 클릭합니다.
-                # 추후 순차적 구역 클릭 로직으로 확장될 수 있습니다.
-                for area_number, settings in sorted(self.areas.items()):
-                    if settings['use']:
-                        click_coord = settings['click_coord']
-                        num_clicks = settings['clicks']
-                        offset = settings['offset'] # 오차 값 가져오기
+        # 2. 모든 활성 구역에서 색상을 찾지 못했을 경우
+        if not self.is_searching: return # 이미 중지된 경우
 
-                        # 이 구역을 클릭할 최종 좌표를 한 번만 계산합니다.
-                        # 나중에 구역 순환 로직이 추가되면, 해당 구역에 진입할 때마다 새로 계산됩니다.
-                        final_x, final_y = click_coord
-                        if offset > 0:
-                            final_x += random.randint(-offset, offset)
-                            final_y += random.randint(-offset, offset)
+        if self.use_sequence:
+            for area_number, settings in sorted(self.areas.items()):
+                if settings['use']:
+                    click_coord = settings['click_coord']
+                    num_clicks = settings['clicks']
+                    offset = settings['offset']
 
-                        # '횟수' 설정만큼 반복 클릭
-                        for i in range(num_clicks):
-                            # 검색이 중간에 중지되면 루프를 빠져나갑니다.
-                            if not self.is_searching:
-                                return
+                    final_x, final_y = click_coord
+                    if offset > 0:
+                        final_x += random.randint(-offset, offset)
+                        final_y += random.randint(-offset, offset)
 
-                            # 매 클릭 전, 설정된 '구역 딜레이'만큼 대기합니다.
-                            if self.area_delay > 0:
-                                time.sleep(self.area_delay)
-
-                            self.color_finder.click_action(final_x, final_y)
-                        
-                        # 상태 메시지 업데이트 및 검색 중지
-                        status_message = f"색상 못찾음. 구역{area_number} 근처({final_x},{final_y}) {num_clicks}회 클릭."
-                        self.stop_search(message=status_message)
-                        return # 스레드 종료
-            
-            # '구역 사용'이 비활성화되었거나, 활성화된 구역이 하나도 없는 경우
-            self.stop_search(message="색상 못찾음. 활성화된 구역이 없어 중지합니다.")
-            return # 스레드 종료
+                    for i in range(num_clicks):
+                        if not self.is_searching: return
+                        if self.area_delay > 0:
+                            time.sleep(self.area_delay)
+                        self.color_finder.click_action(final_x, final_y)
+                    
+                    status_message = f"색상 못찾음. 구역{area_number} 근처({final_x},{final_y}) {num_clicks}회 클릭."
+                    self.stop_search(message=status_message)
+                    return # 실패 동작 후 스레드 종료
+        
+        # '구역 사용'이 비활성화되었거나, 활성화된 구역이 하나도 없는 경우
+        self.stop_search(message="색상 못찾음. 활성화된 구역이 없어 중지합니다.")
