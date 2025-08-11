@@ -12,5 +12,8 @@ if __name__ == "__main__":
     # 3. 애플리케이션의 "얼굴"인 UI 생성, 컨트롤러를 넘겨줌
     ui = AppUI(root, controller)
 
-    # 4. Tkinter 이벤트 루프 시작
+    # 4. 두뇌(컨트롤러)에 얼굴(UI)을 연결하여 서로 통신할 수 있도록 함
+    controller.set_ui(ui)
+    
+    # 5. Tkinter 이벤트 루프 시작
     root.mainloop()
