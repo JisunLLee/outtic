@@ -37,10 +37,23 @@ class ColorFinder:
         x1, y1, x2, y2 = area
         screenshot = ImageGrab.grab(bbox=(x1, y1, x2, y2))
         color_x, color_y = self._find_color_in_area(screenshot, color, tolerance, direction)
-        opt_x = 1.5 # 색상 버튼의 가로 크기에 따라 조정
-        opt_y = 2.5 # 색상 버튼의 세로 크기에 따라 조정
 
         if color_x is not None and color_y is not None:
+            # 탐색 방향에 따라 클릭 위치 오차를 조정합니다.
+            # 이는 발견된 색상 덩어리의 가장자리 대신 중앙 근처를 클릭하기 위함입니다.
+            base_opt_x = 1.5
+            base_opt_y = 2.5
+
+            if direction in [SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT, SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT]:
+                opt_x = -base_opt_x
+            else:
+                opt_x = base_opt_x
+
+            if direction in [SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT, SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT]:
+                opt_y = -base_opt_y
+            else:
+                opt_y = base_opt_y
+
             # 최종 좌표는 정수로 변환하여 반환
             abs_x = int(x1 + color_x + opt_x)
             abs_y = int(y1 + color_y + opt_y)
