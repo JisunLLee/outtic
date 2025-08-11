@@ -10,18 +10,19 @@ class GlobalHotkeyListener:
         self.pressed_keys = set()
 
     def _on_press(self, key):
-        # Shift + ESC 조합 감지
-        if key in {keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r, keyboard.Key.esc}:
-            self.pressed_keys.add(key)
-            
-            # Shift와 Esc가 모두 눌렸는지 확인
-            if any(k in self.pressed_keys for k in {keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r}) and keyboard.Key.esc in self.pressed_keys:
-                if 'shift+esc' in self.hotkey_map:
-                    self.hotkey_map['shift+esc']()
+        # 현재 눌린 키를 집합에 추가합니다.
+        self.pressed_keys.add(key)
 
-        # 단독 ESC 키 감지 (조합키가 아닐 때만)
-        elif key == keyboard.Key.esc and len(self.pressed_keys) == 0:
-             if keyboard.Key.esc in self.hotkey_map:
+        # Shift 키가 눌려있는지 확인합니다.
+        is_shift_pressed = any(k in self.pressed_keys for k in {keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r})
+
+        # Shift + ESC 조합을 확인합니다.
+        if is_shift_pressed and keyboard.Key.esc in self.pressed_keys:
+            if 'shift+esc' in self.hotkey_map:
+                self.hotkey_map['shift+esc']()
+        # Shift가 눌리지 않은 상태에서 ESC 키가 눌렸는지 확인합니다.
+        elif key == keyboard.Key.esc and not is_shift_pressed:
+            if keyboard.Key.esc in self.hotkey_map:
                 self.hotkey_map[keyboard.Key.esc]()
 
     def _on_release(self, key):
