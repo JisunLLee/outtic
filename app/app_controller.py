@@ -19,7 +19,7 @@ class AppController:
         self.color_finder = ColorFinder(sleep_time=self.sleep_time)
         self.mouse_controller = mouse.Controller()
         hotkey_map = {
-            'shift+esc': self.start_search,
+            'tab+esc': self.start_search,
             keyboard.Key.esc: lambda: self.stop_search()
         }
         self.global_hotkey_listener = GlobalHotkeyListener(hotkey_map)
@@ -178,7 +178,7 @@ class AppController:
         self.is_searching = False
 
         def stop_search_task():
-            self.ui.update_button_text("찾기(Shift+ESC)")
+            self.ui.update_button_text("찾기(Tab+ESC)")
             self.ui.update_status(message)
             self.ui.update_window_bg('default')
 
@@ -223,7 +223,7 @@ class AppController:
                 self.is_searching = False
                 self.ui.queue_task(lambda: self.ui.play_sound(4))
                 self.ui.queue_task(lambda: self.ui.update_status(status_message))
-                self.ui.queue_task(lambda: self.ui.update_button_text("찾기(Shift+ESC)"))
+                self.ui.queue_task(lambda: self.ui.update_button_text("찾기(Tab+ESC)"))
                 self.ui.queue_task(lambda: self.ui.update_window_bg('default'))
 
                 print("--- 색상 발견, 작업 완료, 검색 종료 ---")

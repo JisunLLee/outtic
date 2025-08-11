@@ -8,31 +8,31 @@ class GlobalHotkeyListener:
         """
         self.hotkey_map = hotkey_map
         self.keyboard_listener = None
-        self.shift_pressed = False
+        self.tab_pressed = False
         print("--- GlobalHotkeyListener ---")
 
     def _on_press(self, key):
         """전역 단축키가 눌렸을 때 호출됩니다."""
-        if key in (keyboard.Key.shift, keyboard.Key.shift_r):
-            self.shift_pressed = True
+        if key == keyboard.Key.tab:
+            self.tab_pressed = True
         
-        # Shift + ESC 조합
-        if self.shift_pressed and key == keyboard.Key.esc:
-            if 'shift+esc' in self.hotkey_map:
-                print("[Shift+ESC]")
-                self.hotkey_map['shift+esc']()
+        # Tab + ESC 조합
+        if self.tab_pressed and key == keyboard.Key.esc:
+            if 'tab+esc' in self.hotkey_map:
+                print("[Tab+ESC]")
+                self.hotkey_map['tab+esc']()
                 return # 단독 ESC 콜백이 실행되지 않도록 함
 
         # 단독 ESC
-        if not self.shift_pressed and key == keyboard.Key.esc:
+        if not self.tab_pressed and key == keyboard.Key.esc:
             if keyboard.Key.esc in self.hotkey_map:
                 print("[ESC]")
                 self.hotkey_map[keyboard.Key.esc]()
 
     def _on_release(self, key):
         """키에서 손을 뗐을 때 호출됩니다."""
-        if key in (keyboard.Key.shift, keyboard.Key.shift_r):
-            self.shift_pressed = False
+        if key == keyboard.Key.tab:
+            self.tab_pressed = False
 
     def start(self):
         """시스템 전역의 키보드 입력을 감지하는 리스너를 시작합니다."""

@@ -150,7 +150,7 @@ class AppUI:
         self.show_area_button = tk.Button(action_frame, text="영역확인", command=self.show_area)
         self.show_area_button.grid(row=0, column=0, sticky="ew", padx=2)
 
-        self.find_button = tk.Button(action_frame, text="찾기(Shift+ESC)", command=self.controller.toggle_search)
+        self.find_button = tk.Button(action_frame, text="찾기(Tab+ESC)", command=self.controller.toggle_search)
         self.find_button.grid(row=0, column=1, sticky="ew", padx=2)
 
         if sys.platform == "darwin":

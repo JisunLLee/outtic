@@ -23,7 +23,7 @@ class SampleApp:
         self.color_finder = ColorFinder(sleep_time=self.sleep_time)
         self.mouse_controller = mouse.Controller()
         hotkey_map = {
-            'shift+esc': self.start_search,
+            'tab+esc': self.start_search,
             keyboard.Key.esc: lambda: self.stop_search() # 기본 인자로 호출하기 위해 람다 사용
         }
         self.global_hotkey_listener = GlobalHotkeyListener(hotkey_map)
@@ -188,7 +188,7 @@ class SampleApp:
         self.show_area_button.grid(row=0, column=0, sticky="ew", padx=2)
 
         # --- 찾기 버튼 ---
-        self.find_button = tk.Button(action_frame, text="찾기(Shift+ESC)", command=self.toggle_search)
+        self.find_button = tk.Button(action_frame, text="찾기(Tab+ESC)", command=self.toggle_search)
         self.find_button.grid(row=0, column=1, sticky="ew", padx=2)
 
         # --- 적용하기 단축키 바인딩 ---
@@ -544,7 +544,7 @@ class SampleApp:
 
         # UI 업데이트 작업을 큐에 넣습니다.
         def stop_search_task():
-            self.find_button.config(text="찾기(Shift+ESC)")
+            self.find_button.config(text="찾기(Tab+ESC)")
             self.status.set(message)
             self._update_window_bg('default')
 
@@ -594,7 +594,7 @@ class SampleApp:
                 # UI 업데이트 작업을 큐에 넣습니다.
                 self.ui_queue.put(self._play_success_sound)
                 self.ui_queue.put(lambda msg=status_message: self.status.set(msg))
-                self.ui_queue.put(lambda: self.find_button.config(text="찾기(Shift+ESC)"))
+                self.ui_queue.put(lambda: self.find_button.config(text="찾기(Tab+ESC)"))
                 self.ui_queue.put(lambda: self._update_window_bg('default'))
 
                 print("--- 색상 발견, 작업 완료, 검색 종료 ---")
