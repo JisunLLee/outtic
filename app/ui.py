@@ -53,12 +53,19 @@ class AppUI:
             'coord_var': tk.StringVar(value="(0, 0)"),
             'clicks_var': tk.StringVar(value="1"),
             'offset_var': tk.StringVar(value="5"),
+            # 각 구역별 탐색 영역을 위한 좌표 변수를 추가합니다.
+            'p1_var': tk.StringVar(value="(0, 0)"),
+            'p2_var': tk.StringVar(value="(0, 0)"),
+            # 구역별 색상 및 탐색 방향을 위한 변수 추가
+            'use_color_var': tk.BooleanVar(value=False), # 기본적으로는 구역별 색상 사용 안 함
+            'color_var': tk.StringVar(value="(0, 0, 0)"),
+            'direction_var': tk.StringVar(value=self.SEARCH_DIRECTION_MAP[self.controller.search_direction]),
         }
 
     def _setup_ui(self):
         """메인 UI를 생성하고 배치합니다."""
         self.root.title("Auto Color Clicker")
-        self.root.geometry("400x470") # 구역 UI 추가를 위해 높이 조정
+        self.root.geometry("400x560") # 구역 색상 UI 추가를 위해 높이 조정
         self.root.configure(bg="#2e2e2e")
         self.root.resizable(True, True)
 
@@ -149,20 +156,53 @@ class AppUI:
         vars = self.area_vars[area_number]
 
         # UI를 좌우로 나누기 위한 컨테이너 생성
-        row_container, (left_frame, right_frame) = self._create_split_container(area_group, weights=[2, 1])
+        row1_container, (left_frame, right_frame) = self._create_split_container(area_group, weights=[2, 1])
 
-        # --- 왼쪽 프레임: 탐색 활성화, 좌표 설정 ---
+        # --- Row 1 왼쪽: 탐색 활성화, 클릭 좌표 설정 ---
         tk.Checkbutton(left_frame, text="탐색", variable=vars['use_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
-        tk.Label(left_frame, textvariable=vars['coord_var'], relief="sunken", bg="white", width=8, anchor='w').pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
-        # 참고: 컨트롤러에 start_coordinate_picker(f'area_{area_number}') 기능이 추가되어야 완벽하게 동작합니다.
-        tk.Button(left_frame, text=f"색상 {area_number}", width=3, command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}')).pack(side=tk.LEFT)
+        tk.Label(left_frame, textvariable=vars['coord_var'], relief="sunken", bg="#555555", width=10, anchor='w').pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
+        # 컨트롤러가 구역별 '클릭' 좌표임을 명확히 알 수 있도록 키를 수정합니다.
+        tk.Button(left_frame, text=f"구역 {area_number}", width=3, command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_click_coord')).pack(side=tk.LEFT)
 
-        # --- 오른쪽 프레임: 선택 횟수, 오차 설정 ---
+        # --- Row 1 오른쪽: 선택 횟수, 오차 설정 ---
         # 위젯들이 붙어있도록 내부 프레임을 하나 더 사용합니다.
         right_inner_frame = tk.Frame(right_frame, bg="#2e2e2e")
         right_inner_frame.pack(fill=tk.X)
         self._create_labeled_entry(right_inner_frame, "횟수:", vars['clicks_var']).pack(side=tk.LEFT, expand=True, fill=tk.X)
-        self._create_labeled_entry(right_inner_frame, "오차:", vars['offset_var']).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
+        self._create_labeled_entry(right_inner_frame, "오차:", vars['offset_var']).pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        # --- Row 2: 구역별 탐색 영역 설정 ---
+        row2_container, (left_frame2, right_frame2) = self._create_split_container(area_group, weights=[1, 1])
+        self._create_coordinate_selector(left_frame2, vars['p1_var'], "↖영역", command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_p1')).pack(expand=True, fill=tk.X)
+        self._create_coordinate_selector(right_frame2, vars['p2_var'], "↘영역", command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_p2')).pack(expand=True, fill=tk.X)
+
+        # --- Row 3: 구역별 색상 및 탐색 방향 설정 ---
+        row3_container, (left_frame3, right_frame3) = self._create_split_container(area_group, weights=[1, 1])
+
+        # --- Row 3 왼쪽: 색상 사용, 색상 값, 색상 선택 버튼 ---
+        color_label = tk.Label(left_frame3, textvariable=vars['color_var'], relief="sunken", bg="white", anchor='w')
+        color_button = tk.Button(left_frame3, text="색상", width=3, command=lambda: self.controller.start_color_picker(f'area_{area_number}_color'))
+
+        def toggle_color_state():
+            """체크박스 상태에 따라 색상 위젯들을 활성화/비활성화합니다."""
+            is_enabled = vars['use_color_var'].get()
+            state = 'normal' if is_enabled else 'disabled'
+            bg_color = 'white' if is_enabled else '#555555'
+            color_label.config(state=state, bg=bg_color)
+            color_button.config(state=state)
+
+        tk.Checkbutton(left_frame3, text="개별", variable=vars['use_color_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_color_state).pack(side=tk.LEFT)
+        color_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
+        color_button.pack(side=tk.LEFT)
+
+        # --- Row 3 오른쪽: 탐색 방향 ---
+        direction_menu = tk.OptionMenu(right_frame3, vars['direction_var'], *self.SEARCH_DIRECTION_MAP.values())
+        direction_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
+        direction_menu["menu"].config(bg="#555555", fg="white")
+        direction_menu.pack(fill=tk.X, expand=True)
+        
+
+        toggle_color_state() # 초기 상태 설정을 위해 호출
 
         return area_group
 
@@ -284,7 +324,7 @@ class AppUI:
     def _create_coordinate_selector(self, parent, var, button_text, command=None):
         """좌표값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent, bg="#2e2e2e")
-        tk.Label(frame, textvariable=var, relief="sunken", bg="white", width=10,anchor='w').pack(
+        tk.Label(frame, textvariable=var, relief="sunken", bg="#555555", width=10,anchor='w').pack(
             side=tk.LEFT, expand=True, fill=tk.X)
         tk.Button(frame, text=button_text, width=3, command=command).pack(
             side=tk.LEFT)
@@ -293,7 +333,7 @@ class AppUI:
     def _create_value_button_row(self, parent, var, button_text, command=None):
         """값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent, bg="#2e2e2e")
-        tk.Label(frame, textvariable=var, relief="sunken", bg="white", width=10, anchor='w').pack(
+        tk.Label(frame, textvariable=var, relief="sunken", bg="#555555", width=10, anchor='w').pack(
             side=tk.LEFT, expand=True, fill=tk.X)
         tk.Button(frame, text=button_text, width=3, command=command).pack(
             side=tk.LEFT)
