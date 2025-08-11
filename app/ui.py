@@ -28,6 +28,7 @@ class AppUI:
         self.p1_var = tk.StringVar(value=str(c.p1))
         self.p2_var = tk.StringVar(value=str(c.p2))
         self.color_var = tk.StringVar(value=str(c.color))
+        self.area_delay_var = tk.StringVar(value="45") # 구역 딜레이
         self.complete_coord_var = tk.StringVar(value=str(c.complete_coord)) # 완료 좌표
 
         # 탐색 방향 Enum과 UI 표시 문자열을 매핑합니다.
@@ -100,24 +101,27 @@ class AppUI:
         row3_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
         self._create_value_button_row(left_frame, self.color_var, "색상", command=lambda: self.controller.start_color_picker('main_color')).pack(expand=True, fill=tk.X)
         self._create_value_button_row(right_frame, self.complete_coord_var, "완료", command=lambda: self.controller.start_coordinate_picker('complete')).pack(expand=True, fill=tk.X)
-
         
-        # Row 4: 구역 사용, 총 시도횟수, 딜레이, 탐색 방향
+        # Row 4: 총 시도횟수, 딜레이, 탐색 방향
         # 더 나은 정렬을 위해 3개의 프레임으로 분할합니다.
-        row4_container, (frame1, frame2, frame3) = self._create_split_container(basic_group, weights=[3, 2, 1])
+        row4_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
         
-        # Part 1: 구역 사용, 총 시도횟수
-        tk.Checkbutton(frame1, text="구역 사용", variable=self.use_sequence_var, bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
-        self._create_labeled_entry(frame1, "시도횟수:", self.total_tries_var).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
-
+        # Part 1: 총 시도횟수
+        self._create_labeled_entry(left_frame, "시도횟수:", self.total_tries_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        
         # Part 2: 딜레이
-        self._create_labeled_entry(frame2, "딜레이:", self.complete_delay_var).pack(expand=True, fill=tk.X)
-        
+        self._create_labeled_entry(left_frame, "딜레이:", self.complete_delay_var).pack(side=tk.RIGHT, expand=True, fill=tk.X)
+
         # Part 3: 탐색 방향
-        direction_menu = tk.OptionMenu(frame3, self.direction_var, *self.SEARCH_DIRECTION_MAP.values())
+        direction_menu = tk.OptionMenu(right_frame, self.direction_var, *self.SEARCH_DIRECTION_MAP.values())
         direction_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
         direction_menu["menu"].config(bg="#555555", fg="white")
-        direction_menu.pack(fill=tk.X, expand=True)
+        direction_menu.pack(side=tk.RIGHT, padx=5)
+
+        # Row 5: 구역 사용, 구역 딜레이
+        row5_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
+        tk.Checkbutton(left_frame, text="구역 사용", variable=self.use_sequence_var, bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
+        self._create_labeled_entry(right_frame, "구역 딜레이:", self.area_delay_var).pack(expand=True, fill=tk.X)
 
         # --- 구역 설정 그룹 ---
         # 이 프레임은 모든 구역(구역1, 구역2 등)을 감싸는 컨테이너 역할을 합니다.
