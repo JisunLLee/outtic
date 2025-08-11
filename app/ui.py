@@ -43,23 +43,26 @@ class AppUI:
         # Row 1: 색상오차, 색상영역 오차
         # row1_container = tk.Frame(self.root, bg="#2e2e2e")
         # row1_container.pack(fill=tk.X, expand=True)
-        row1_container, (left_frame, right_frame) = self._create_split_container(basic_group, num_columns=2)
+        # 예시: 왼쪽 프레임이 오른쪽 프레임보다 2배 더 넓게 설정 (2:1 비율)
+        row1_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
         self._create_labeled_entry(left_frame, "색상오차:", self.color_tolerance_var).pack(expand=True, fill=tk.X)
-        self._create_labeled_entry(right_frame, "색상영역 오차:", self.color_area_tolerance_var).pack(expand=True, fill=tk.X)
+        self._create_labeled_entry(right_frame, "색영역오차:", self.color_area_tolerance_var).pack(expand=True, fill=tk.X)
 
         # Row 2: 영역 설정
-        row2_container, (left_frame, right_frame) = self._create_split_container(basic_group, num_columns=2)
+        row2_container, (left_frame, right_frame) = self._create_split_container(
+            basic_group, weights=[1, 1], expand=True)
         self._create_coordinate_selector(left_frame, self.p1_var, "↖영역").pack(expand=True, fill=tk.X)
         self._create_coordinate_selector(right_frame, self.p2_var, "↘영역").pack(expand=True, fill=tk.X)
 
         # Row 3: 색상, 완료 
-        row3_container, (left_frame, right_frame) = self._create_split_container(basic_group, num_columns=2)
+        row3_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
         self._create_value_button_row(left_frame, self.color_var, "색상").pack(expand=True, fill=tk.X)
         self._create_value_button_row(right_frame, self.color_var, "완료").pack(expand=True, fill=tk.X)
 
         
         # Row 4: 구역 사용, 총 시도횟수, 탐색 방향
-        row4_container, (left_frame, right_frame) = self._create_split_container(basic_group, num_columns=2)
+  
+        row4_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
         tk.Checkbutton(left_frame, text="구역 사용  |", variable=self.use_sequence_var, bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
         self._create_labeled_entry(left_frame, "총 시도횟수:", self.total_tries_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
         self._create_labeled_entry(right_frame, "|  딜레이:", self.complete_delay_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
@@ -88,21 +91,26 @@ class AppUI:
         frame = tk.LabelFrame(parent, text=text, fg="white", bg="#2e2e2e", padx=10, pady=5, relief=tk.SOLID, borderwidth=1)
         return frame
 
-    def _create_split_container(self, parent, num_columns=2):
+    def _create_split_container(self, parent, weights=[1, 1], **pack_options):
         """
-        지정된 수의 열(column)으로 나뉘는 컨테이너 프레임을 생성합니다.
+        지정된 가중치에 따라 여러 열로 나뉘는 컨테이너 프레임을 생성합니다.
         
         :param parent: 부모 위젯
-        :param num_columns: 생성할 열의 수
+        :param weights: 각 열의 가중치를 담은 리스트. 예: [2, 1] -> 왼쪽이 오른쪽보다 2배 넓음
+        :param pack_options: 컨테이너의 pack() 메서드에 전달할 추가 옵션 (예: ipady, pady)
         :return: (컨테이너 프레임, [각 열의 프레임 리스트])
         """
         container = tk.Frame(parent, bg="#2e2e2e")
-        container.pack(
-            fill=tk.X, pady=2)
         
+        default_options = {'fill': tk.X, 'pady': 2}
+        default_options.update(pack_options)
+        container.pack(**default_options)
+
         frames = []
-        for i in range(num_columns):
-            container.grid_columnconfigure(i, weight=1)
+        num_columns = len(weights)
+        for i, weight in enumerate(weights):
+            # 각 열에 지정된 가중치(weight)를 설정합니다.
+            container.grid_columnconfigure(i, weight=weight)
             frame = tk.Frame(container, bg="#2e2e2e")
             frame.grid(row=0, column=i, sticky=tk.EW, padx=(5 if i > 0 else 0, 0))
             frames.append(frame)
