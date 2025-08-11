@@ -40,33 +40,32 @@ class AppUI:
         basic_group = self._create_labeled_frame(main_frame, "기본")
         basic_group.pack(fill=tk.X, pady=(0, 10))
 
-        # Row 1: 색상오차, 완료 딜레이
-        row1 = tk.Frame(basic_group, bg="#2e2e2e")
-        row1.pack(fill=tk.X, pady=2)
-        self._create_labeled_entry(row1, "색상오차:", self.color_tolerance_var).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 5))
-        self._create_labeled_entry(row1, "색상영역 오차:", self.color_area_tolerance_var).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5, 0))
+        # Row 1: 색상오차, 색상영역 오차
+        # row1_container = tk.Frame(self.root, bg="#2e2e2e")
+        # row1_container.pack(fill=tk.X, expand=True)
+        row1_container, (left_frame, right_frame) = self._create_split_container(basic_group, num_columns=2)
+        self._create_labeled_entry(left_frame, "색상오차:", self.color_tolerance_var).pack(expand=True, fill=tk.X)
+        self._create_labeled_entry(right_frame, "색상영역 오차:", self.color_area_tolerance_var).pack(expand=True, fill=tk.X)
 
         # Row 2: 영역 설정
-        row2 = tk.Frame(basic_group, bg="#2e2e2e")
-        row2.pack(fill=tk.X, pady=2)
-        self._create_coordinate_selector(row2, self.p1_var, "↖영역").pack(side=tk.LEFT, expand=True, fill=tk.X)
-        self._create_coordinate_selector(row2, self.p2_var, "↘영역").pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(10, 0))
+        row2_container, (left_frame, right_frame) = self._create_split_container(basic_group, num_columns=2)
+        self._create_coordinate_selector(left_frame, self.p1_var, "↖영역").pack(expand=True, fill=tk.X)
+        self._create_coordinate_selector(right_frame, self.p2_var, "↘영역").pack(expand=True, fill=tk.X)
 
         # Row 3: 색상, 완료 
-        row3 = tk.Frame(basic_group, bg="#2e2e2e")
-        row3.pack(fill=tk.X, pady=2)
-        self._create_value_button_row(row3, self.color_var, "색상").pack(side=tk.LEFT, expand=True, fill=tk.X)
-        self._create_value_button_row(row3, self.color_var, "완료").pack(side=tk.LEFT, expand=True, fill=tk.X)
+        row3_container, (left_frame, right_frame) = self._create_split_container(basic_group, num_columns=2)
+        self._create_value_button_row(left_frame, self.color_var, "색상").pack(expand=True, fill=tk.X)
+        self._create_value_button_row(right_frame, self.color_var, "완료").pack(expand=True, fill=tk.X)
 
         
         # Row 4: 구역 사용, 총 시도횟수, 탐색 방향
-        row4 = tk.Frame(basic_group, bg="#2e2e2e")
-        row4.pack(fill=tk.X, pady=2)
-        tk.Checkbutton(row4, text="구역", variable=self.use_sequence_var, bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
-        self._create_labeled_entry(row4, "총 시도횟수:", self.total_tries_var).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(10, 0))
-        self._create_labeled_entry(row4, "딜레이:", self.complete_delay_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        row4_container, (left_frame, right_frame) = self._create_split_container(basic_group, num_columns=2)
+        tk.Checkbutton(left_frame, text="구역 사용  |", variable=self.use_sequence_var, bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
+        self._create_labeled_entry(left_frame, "총 시도횟수:", self.total_tries_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        self._create_labeled_entry(right_frame, "|  딜레이:", self.complete_delay_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        
         # OptionMenu 스타일링
-        direction_menu = tk.OptionMenu(row4, self.direction_var, "→↓", "←↓", "→↑", "←↑")
+        direction_menu = tk.OptionMenu(right_frame, self.direction_var, "→↓", "←↓", "→↑", "←↑")
         direction_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
         direction_menu["menu"].config(bg="#555555", fg="white")
         direction_menu.pack(side=tk.LEFT, padx=(10, 0))
@@ -89,23 +88,50 @@ class AppUI:
         frame = tk.LabelFrame(parent, text=text, fg="white", bg="#2e2e2e", padx=10, pady=5, relief=tk.SOLID, borderwidth=1)
         return frame
 
+    def _create_split_container(self, parent, num_columns=2):
+        """
+        지정된 수의 열(column)으로 나뉘는 컨테이너 프레임을 생성합니다.
+        
+        :param parent: 부모 위젯
+        :param num_columns: 생성할 열의 수
+        :return: (컨테이너 프레임, [각 열의 프레임 리스트])
+        """
+        container = tk.Frame(parent, bg="#2e2e2e")
+        container.pack(
+            fill=tk.X, pady=2)
+        
+        frames = []
+        for i in range(num_columns):
+            container.grid_columnconfigure(i, weight=1)
+            frame = tk.Frame(container, bg="#2e2e2e")
+            frame.grid(row=0, column=i, sticky=tk.EW, padx=(5 if i > 0 else 0, 0))
+            frames.append(frame)
+            
+        return container, frames
+
     def _create_labeled_entry(self, parent, label_text, var):
         """레이블과 입력창으로 구성된 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent, bg="#2e2e2e")
-        tk.Label(frame, text=label_text, fg="white", bg="#2e2e2e").pack(side=tk.LEFT)
-        tk.Entry(frame, textvariable=var, width=5, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        tk.Label(frame, text=label_text, fg="white", bg="#2e2e2e").pack(
+            side=tk.LEFT)
+        tk.Entry(frame, textvariable=var, width=5, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0).pack(
+            side=tk.LEFT, expand=True, fill=tk.X)
         return frame
 
     def _create_coordinate_selector(self, parent, var, button_text):
         """좌표값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent, bg="#2e2e2e")
-        tk.Label(frame, textvariable=var, relief="sunken", bg="white", width=10, anchor='w').pack(side=tk.LEFT)
-        tk.Button(frame, text=button_text).pack(side=tk.LEFT, padx=(5, 0))
+        tk.Label(frame, textvariable=var, relief="sunken", bg="white", width=10,anchor='w').pack(
+            side=tk.LEFT, expand=True, fill=tk.X)
+        tk.Button(frame, text=button_text, width=3).pack(
+            side=tk.LEFT)
         return frame
 
     def _create_value_button_row(self, parent, var, button_text):
         """값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent, bg="#2e2e2e")
-        tk.Label(frame, textvariable=var, relief="sunken", bg="white", width=10, anchor='w').pack(side=tk.LEFT, expand=True, fill=tk.X)
-        tk.Button(frame, text=button_text).pack(side=tk.LEFT, padx=(5, 0))
+        tk.Label(frame, textvariable=var, relief="sunken", bg="white", width=10, anchor='w').pack(
+            side=tk.LEFT, expand=True, fill=tk.X)
+        tk.Button(frame, text=button_text, width=3).pack(
+            side=tk.LEFT)
         return frame

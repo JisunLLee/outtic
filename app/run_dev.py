@@ -35,7 +35,7 @@ class AppReloader(FileSystemEventHandler):
 
 
 if __name__ == "__main__":
-    script_to_run = "run_app.py" # 실행할 메인 스크립트
+    script_to_run = "run_auttic.py" # 실행할 메인 스크립트
     event_handler = AppReloader(script_to_run)
 
     observer = Observer()
