@@ -75,8 +75,8 @@ class AppUI:
         self.root.title("LuAuttic")
 
         window_width = 400
-        # 4개의 구역이 모두 보이도록 창 높이를 950으로 설정합니다.
-        window_height = 860
+        # 4개의 구역이 모두 보이도록 창 높이 설정합니다.
+        window_height = 890
 
         # 화면의 너비를 가져옵니다.
         screen_width = self.root.winfo_screenwidth()

@@ -106,7 +106,8 @@ class AppController:
             self.color = ast.literal_eval(self.ui.color_var.get())
             self.color_tolerance = int(self.ui.color_tolerance_var.get())
             self.color_area_tolerance = int(self.ui.color_area_tolerance_var.get())
-            self.complete_click_delay = int(self.ui.complete_delay_var.get()) / 1000.0
+            # UI 입력값을 100으로 나누어 초 단위로 변환합니다. (예: 15 -> 0.15초)
+            self.complete_click_delay = int(self.ui.complete_delay_var.get()) / 100.
             self.area_delay = int(self.ui.area_delay_var.get()) / 100.0
             self.search_delay = int(self.ui.search_delay_var.get()) / 100.0
 
