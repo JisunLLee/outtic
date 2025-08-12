@@ -71,8 +71,20 @@ class AppUI:
 
     def _setup_ui(self):
         """메인 UI를 생성하고 배치합니다."""
-        self.root.title("Auto Color Clicker")
-        self.root.geometry("400x950") # 구역 UI 추가를 위해 높이 조정
+        self.root.title("LuAuttic")
+
+        window_width = 400
+        # 4개의 구역이 모두 보이도록 창 높이를 950으로 설정합니다.
+        window_height = 860
+
+        # 화면의 너비를 가져옵니다.
+        screen_width = self.root.winfo_screenwidth()
+
+        # 창을 모니터 오른쪽 상단에 위치시킵니다.
+        x_pos = screen_width - window_width
+        y_pos = 0 #상단 여백
+
+        self.root.geometry(f"{window_width}x{window_height}+{x_pos}+{y_pos}")
         self.root.configure(bg="#2e2e2e")
         self.root.resizable(True, True)
 
