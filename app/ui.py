@@ -21,18 +21,19 @@ class AppUI:
 
     def _initialize_vars(self):
         """UI에 사용될 Tkinter 변수들을 초기화합니다."""
+        # 모든 기본값은 컨트롤러(c)에서 가져옵니다.
         c = self.controller
-        self.color_tolerance_var = tk.StringVar(value="15") # 색상 오차
-        self.color_area_tolerance_var = tk.StringVar(value="5") # 색영역 오차
-        self.complete_delay_var = tk.StringVar(value="20") # 완료 딜레이 (100 = 1초)
+        self.color_tolerance_var = tk.StringVar(value=str(c.color_tolerance))
+        self.color_area_tolerance_var = tk.StringVar(value=str(c.color_area_tolerance))
+        self.complete_delay_var = tk.StringVar(value=str(int(c.complete_click_delay * 100)))
         self.p1_var = tk.StringVar(value=str(c.p1))
         self.p2_var = tk.StringVar(value=str(c.p2))
         self.color_var = tk.StringVar(value=str(c.color))
-        self.area_delay_var = tk.StringVar(value="30") # 구역 딜레이
-        self.search_delay_var = tk.StringVar(value="15") # 탐색 대기 (100 = 1초)
-        self.complete_coord_var = tk.StringVar(value=str(c.complete_coord)) # 완료 좌표
+        self.area_delay_var = tk.StringVar(value=str(int(c.area_delay * 100)))
+        self.search_delay_var = tk.StringVar(value=str(int(c.search_delay * 100)))
+        self.complete_coord_var = tk.StringVar(value=str(c.complete_coord))
 
-        self.use_sequence_var = tk.BooleanVar(value=False)
+        self.use_sequence_var = tk.BooleanVar(value=c.use_sequence)
         # 탐색 방향 Enum과 UI 표시 문자열을 매핑합니다.
         self.SEARCH_DIRECTION_MAP = {
             SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT: "→↓",
@@ -41,7 +42,7 @@ class AppUI:
             SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT: "←↑",
         }
         self.direction_var = tk.StringVar(value=self.SEARCH_DIRECTION_MAP[c.search_direction])
-        self.total_tries_var = tk.StringVar(value="225")
+        self.total_tries_var = tk.StringVar(value=str(c.total_tries))
         self.status_var = tk.StringVar(value="대기 중...")
         
         # --- 구역별 변수 초기화 ---
@@ -53,26 +54,22 @@ class AppUI:
 
     def _initialize_area_vars(self, area_number: int):
         """지정된 번호의 구역에 대한 Tkinter 변수들을 초기화하고 저장합니다."""
-        # 구역별 기본값 설정
-        coord_val = "(0, 0)"
-        if area_number == 1:
-            coord_val = "(803, 399)"
+        # 컨트롤러에 미리 정의된 구역별 기본값을 가져옵니다.
+        area_defaults = self.controller.areas[area_number]
 
         self.area_vars[area_number] = {
-            'use_var': tk.BooleanVar(value=False),
-            'coord_var': tk.StringVar(value=coord_val),
-            'clicks_var': tk.StringVar(value="6"),
-            'offset_var': tk.StringVar(value="2"),
-            # 각 구역별 탐색 영역을 위한 좌표 변수를 추가합니다.
-            'p1_var': tk.StringVar(value="(0, 0)"),
-            'p2_var': tk.StringVar(value="(0, 0)"),
-            # 구역별 개별 탐색 영역 사용 여부
-            'use_area_bounds_var': tk.BooleanVar(value=True), # 기본값: 개별 영역 사용 안 함
-            # 구역별 색상 및 탐색 방향을 위한 변수 추가
-            'use_color_var': tk.BooleanVar(value=True), # 기본적으로는 구역별 색상 사용 안 함
-            'color_var': tk.StringVar(value="(0, 0, 0)"),
-            'direction_var': tk.StringVar(value=self.SEARCH_DIRECTION_MAP[self.controller.search_direction]),
-            'use_direction_var': tk.BooleanVar(value=True), # 기본적으로 구역별 탐색 방향 사용 안 함
+            'use_var': tk.BooleanVar(value=area_defaults['use']),
+            'coord_var': tk.StringVar(value=str(area_defaults['click_coord'])),
+            'clicks_var': tk.StringVar(value=str(area_defaults['clicks'])),
+            'offset_var': tk.StringVar(value=str(area_defaults['offset'])),
+            'p1_var': tk.StringVar(value=str(area_defaults['p1'])),
+            'p2_var': tk.StringVar(value=str(area_defaults['p2'])),
+            'color_var': tk.StringVar(value=str(area_defaults['color'])),
+            'direction_var': tk.StringVar(value=self.SEARCH_DIRECTION_MAP[area_defaults['direction']]),
+            # '기본' 체크박스들은 컨트롤러 값과 논리가 반대입니다. (UI 체크 True == 컨트롤러 use_... False)
+            'use_area_bounds_var': tk.BooleanVar(value=not area_defaults['use_area_bounds']),
+            'use_color_var': tk.BooleanVar(value=not area_defaults['use_color']),
+            'use_direction_var': tk.BooleanVar(value=not area_defaults['use_direction']),
         }
 
     def _setup_ui(self):

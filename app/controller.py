@@ -43,9 +43,9 @@ class AppController:
         self.color_tolerance = 15
         self.color_area_tolerance = 5
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
-        self.complete_click_delay = 0.02 # 완료 클릭 전 딜레이 (초)
-        self.use_sequence = True # 구역 사용 여부
-        self.area_delay = 0.45 # 구역 클릭 전 딜레이 (초)
+        self.complete_click_delay = 0.2 # 완료 클릭 전 딜레이 (초), UI 기본값 20 -> 200ms
+        self.use_sequence = False # 구역 사용 여부 (UI 체크박스 기본값)
+        self.area_delay = 0.30 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
         self.search_delay = 0.15 # 탐색 대기 (초)
         self.total_tries = 225 # 총 시도 횟수
 
@@ -68,22 +68,55 @@ class AppController:
         """컨트롤러 내부에 지정된 구역의 기본 설정값을 생성합니다."""
         if area_number not in self.areas:
             # 구역별 기본값 설정
+            default_use = False
             default_click_coord = (0, 0)
+            default_clicks = 6
+            default_offset = 2
+            default_use_area_bounds = False 
+            default_p1 = self.p1
+            default_p2 = self.p2
+            default_use_direction = False   # '기본' 방향 사용 (UI 체크박스 True)
+            default_direction = self.search_direction # 기본 탐색 방향으로 초기화
+
+
             if area_number == 1:
+                default_use = True
                 default_click_coord = (803, 399)
+                default_clicks = 3
+                default_use_area_bounds = True
+                default_p1 = (263, 227)
+                default_p2 = (389, 449)
+                default_use_direction = True
+                default_direction = SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT
+            if area_number == 2:
+                default_use = True
+                default_click_coord = (806, 432)
+                default_clicks = 1
+                default_use_area_bounds = True
+                default_p1 = (90, 225)
+                default_p2 = (245, 256)
+            if area_number == 3:
+                default_use = True
+                default_click_coord = (806, 414)
+                default_clicks = 2
+                default_use_area_bounds = True
+                default_p1 = (98, 229)
+                default_p2 = (225, 450)
+                default_use_direction = True
+                default_direction = SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT
 
             self.areas[area_number] = {
-                'use': True,
+                'use': default_use, # UI의 '탐색' 체크박스는 기본적으로 꺼져있습니다.
                 'click_coord': default_click_coord,
-                'clicks': 1,
-                'offset': 5,
-                'p1': (0, 0),
-                'p2': (0, 0),
-                'use_color': False,
+                'clicks': default_clicks, # 구역 클릭 횟수
+                'offset': default_offset, # 구역 클릭 범위 오차
+                'use_area_bounds': default_use_area_bounds, 
+                'p1': default_p1,
+                'p2': default_p2,
+                'use_color': False, # '기본' 색상 사용 (UI 체크박스 True)
                 'color': (0, 0, 0),
-                'direction': self.search_direction,
-                'use_direction': True, # 개별 탐색 방향 사용 여부
-                'use_area_bounds': True, # 개별 영역 사용 여부
+                'direction': default_direction,
+                'use_direction': default_use_direction, 
                 'search_area': (0, 0, 0, 0) # 계산된 탐색 영역
             }
 
@@ -112,7 +145,7 @@ class AppController:
             self.color_tolerance = int(self.ui.color_tolerance_var.get())
             self.color_area_tolerance = int(self.ui.color_area_tolerance_var.get())
             # UI 입력값을 100으로 나누어 초 단위로 변환합니다. (예: 15 -> 0.15초)
-            self.complete_click_delay = int(self.ui.complete_delay_var.get()) / 100.
+            self.complete_click_delay = int(self.ui.complete_delay_var.get()) / 100.0
             self.area_delay = int(self.ui.area_delay_var.get()) / 100.0
             self.search_delay = int(self.ui.search_delay_var.get()) / 100.0
 
