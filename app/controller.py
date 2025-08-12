@@ -319,6 +319,8 @@ class AppController:
         search_plan.append({
             'type': 'initial',
             'search_color': self.color,
+            'search_area': self._get_global_search_area(),
+            'search_direction': self.search_direction,
             'description': '초기 탐색 (기본 색상)'
         })
 
@@ -326,11 +328,17 @@ class AppController:
         if self.use_sequence:
             for area_number, settings in sorted(self.areas.items()):
                 if settings['use']:
+                    # 이 재시도 단계에서 사용할 탐색 영역과 방향을 결정합니다.
+                    retry_search_area = settings['search_area'] if settings['use_area_bounds'] else self._get_global_search_area()
+                    retry_search_direction = settings['direction'] if settings['use_direction'] else self.search_direction
+
                     search_plan.append({
                         'type': 'retry',
                         'area_number': area_number,
                         # 재시도 시 찾을 색상을 이 시점에 고정합니다.
                         'search_color': settings['color'] if settings['use_color'] else self.color,
+                        'search_area': retry_search_area,
+                        'search_direction': retry_search_direction,
                         'click_coord': settings['click_coord'],
                         'num_retries': settings['clicks'],
                         'offset': settings['offset'],
@@ -374,30 +382,22 @@ class AppController:
         """(스레드 워커) 전달받은 검색 계획(search_plan)을 순차적으로 실행합니다."""
         
         # --- 공통 탐색 함수 ---
-        def execute_search(current_search_color: tuple, status_prefix: str = "") -> tuple[Optional[tuple], Optional[int]]:
-            """모든 활성 영역을 탐색하고 결과를 반환합니다."""
-            for area_number, settings in sorted(self.areas.items()):
-                if not self.is_searching: return None, None
-                if not settings['use']: continue
+        def execute_single_search(search_area: tuple, search_color: tuple, search_direction: SearchDirection, status_text: str) -> Optional[tuple]:
+            """지정된 단일 영역을 탐색하고 결과를 반환합니다."""
+            if not self.is_searching: return None
 
-                search_area = settings['search_area'] if settings['use_area_bounds'] else self._get_global_search_area()
-                search_direction = settings['direction'] if settings['use_direction'] else self.search_direction
-                
-                if not (search_area[2] > search_area[0] and search_area[3] > search_area[1]):
-                    continue
+            if not (search_area[2] > search_area[0] and search_area[3] > search_area[1]):
+                # 유효하지 않은 영역은 건너뜁니다.
+                return None
 
-                status_text = f"{status_prefix} 구역{area_number} 탐색 중 ({search_direction.value})..."
-                self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
+            self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
 
-                found_pos = self.color_finder.find_color_in_area(
-                    area=search_area,
-                    color=current_search_color,
-                    tolerance=self.color_tolerance,
-                    direction=search_direction
-                )
-                if found_pos:
-                    return found_pos, area_number # 찾은 위치와 구역 번호 반환
-            return None, None # 못 찾음
+            return self.color_finder.find_color_in_area(
+                area=search_area,
+                color=search_color,
+                tolerance=self.color_tolerance,
+                direction=search_direction
+            )
 
         # --- 검색 계획 실행 ---
         for step in search_plan:
@@ -405,9 +405,10 @@ class AppController:
 
             if step['type'] == 'initial':
                 self.ui.queue_task(lambda desc=step['description']: self.ui.update_status(f"{desc} 시작..."))
-                found_pos, found_area_num = execute_search(step['search_color'], "초기 탐색:")
+                status_text = f"초기 탐색: 기본 영역에서 탐색 중 ({step['search_direction'].value})..."
+                found_pos = execute_single_search(step['search_area'], step['search_color'], step['search_direction'], status_text)
                 if found_pos:
-                    self._handle_found_color(found_pos, f"초기 탐색 중 구역{found_area_num}에서 색상 발견")
+                    self._handle_found_color(found_pos, f"초기 탐색 중 기본 영역에서 색상 발견")
                     return
 
             elif step['type'] == 'retry':
@@ -429,10 +430,10 @@ class AppController:
                     time.sleep(0.1) # 클릭 후 UI 반응 대기
 
                     # 2. 클릭 후 재탐색
-                    status_prefix = f"구역{step['area_number']} 재시도 후"
-                    found_pos, found_area_num = execute_search(step['search_color'], status_prefix)
+                    status_text = f"구역{step['area_number']} 재시도 후: 해당 구역에서 탐색 중 ({step['search_direction'].value})..."
+                    found_pos = execute_single_search(step['search_area'], step['search_color'], step['search_direction'], status_text)
                     if found_pos:
-                        self._handle_found_color(found_pos, f"재시도 중 구역{found_area_num}에서 색상 발견")
+                        self._handle_found_color(found_pos, f"재시도 중 구역{step['area_number']}에서 색상 발견")
                         return
 
         # 모든 계획을 실행했지만 색상을 찾지 못한 경우
