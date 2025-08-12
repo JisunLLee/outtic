@@ -99,7 +99,7 @@ class AppUI:
         self.update_window_bg('default')
         self.root.resizable(True, True)
 
-        main_frame = tk.Frame(self.root, bg="#2e2e2e", padx=10, pady=10)
+        main_frame = tk.Frame(self.root, padx=10, pady=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # --- 기본 설정 그룹 ---
@@ -134,7 +134,7 @@ class AppUI:
 
         # Part 3: 탐색 방향
         direction_menu = tk.OptionMenu(right_frame, self.direction_var, *self.SEARCH_DIRECTION_MAP.values())
-        direction_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
+        direction_menu.config( fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
         direction_menu["menu"].config(bg="#555555", fg="white")
         direction_menu.pack(side=tk.RIGHT, padx=(15,0))
 
@@ -184,7 +184,7 @@ class AppUI:
         :param parent: 이 그룹이 속할 부모 위젯
         :param area_number: 생성할 구역의 번호 (예: 1)
         """
-        area_group = tk.LabelFrame(parent, text=f"구역{area_number}", fg="white", bg="#2e2e2e", padx=10, pady=5)
+        area_group = tk.LabelFrame(parent, text=f"구역{area_number}", fg="white", padx=10, pady=5)
         area_group.pack(fill=tk.X, pady=2, padx=5, ipady=5)
 
         # 이 구역에 해당하는 변수들을 가져옵니다.
@@ -197,7 +197,7 @@ class AppUI:
         coord_label = tk.Label(left_frame, textvariable=vars['coord_var'], relief="sunken", bg="#555555", width=10, anchor='w')
         coord_button = tk.Button(left_frame, text=f"구역 {area_number}", width=3, command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_click_coord'))
         
-        right_inner_frame = tk.Frame(right_frame, bg="#2e2e2e")
+        right_inner_frame = tk.Frame(right_frame)
         clicks_frame = self._create_labeled_entry(right_inner_frame, "횟수:", vars['clicks_var'])
         offset_frame = self._create_labeled_entry(right_inner_frame, "오차:", vars['offset_var'])
 
@@ -476,7 +476,7 @@ class AppUI:
 
     def _create_labeled_frame(self, parent, text):
         """제목이 있는 프레임을 생성합니다."""
-        frame = tk.LabelFrame(parent, text=text, fg="white", bg="#2e2e2e", padx=10, pady=5, relief=tk.SOLID, borderwidth=1)
+        frame = tk.LabelFrame(parent, text=text, fg="white", padx=10, pady=5, relief=tk.SOLID, borderwidth=1)
         return frame
 
     def _create_split_container(self, parent, weights=[1, 1], **pack_options):
@@ -488,7 +488,7 @@ class AppUI:
         :param pack_options: 컨테이너의 pack() 메서드에 전달할 추가 옵션 (예: ipady, pady)
         :return: (컨테이너 프레임, [각 열의 프레임 리스트])
         """
-        container = tk.Frame(parent, bg="#2e2e2e")
+        container = tk.Frame(parent)
         
         default_options = {'fill': tk.X, 'pady': 2}
         default_options.update(pack_options)
@@ -499,7 +499,7 @@ class AppUI:
         for i, weight in enumerate(weights):
             # 각 열에 지정된 가중치(weight)를 설정합니다.
             container.grid_columnconfigure(i, weight=weight)
-            frame = tk.Frame(container, bg="#2e2e2e")
+            frame = tk.Frame(container)
             frame.grid(row=0, column=i, sticky=tk.EW, padx=(5 if i > 0 else 0, 0))
             frames.append(frame)
             
@@ -507,7 +507,7 @@ class AppUI:
 
     def _create_labeled_entry(self, parent, label_text, var):
         """레이블과 입력창으로 구성된 위젯 그룹을 생성합니다."""
-        frame = tk.Frame(parent, bg="#2e2e2e")
+        frame = tk.Frame(parent)
         tk.Label(frame, text=label_text, fg="white", bg="#2e2e2e").pack(
             side=tk.LEFT)
         tk.Entry(frame, textvariable=var, width=2, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0).pack(
@@ -516,8 +516,8 @@ class AppUI:
 
     def _create_coordinate_selector(self, parent, var, button_text, command=None):
         """좌표값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성하고, 위젯들을 반환합니다."""
-        frame = tk.Frame(parent, bg="#2e2e2e")
-        label = tk.Label(frame, textvariable=var, relief="sunken", bg="#555555", width=8, anchor='w')
+        frame = tk.Frame(parent)
+        label = tk.Label(frame, textvariable=var, relief="sunken", width=8, anchor='w')
         label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         button = tk.Button(frame, text=button_text, width=3, command=command)
         button.pack(side=tk.LEFT)
@@ -525,9 +525,8 @@ class AppUI:
 
     def _create_value_button_row(self, parent, var, button_text, command=None):
         """값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성합니다."""
-        frame = tk.Frame(parent, bg="#2e2e2e")
+        frame = tk.Frame(parent)
         tk.Label(frame, textvariable=var, relief="sunken", bg="#555555", width=12, anchor='w').pack(
             side=tk.LEFT, expand=True, fill=tk.X)
-        tk.Button(frame, text=button_text, width=3, command=command).pack(
-            side=tk.LEFT)
+        tk.Button(frame, text=button_text, width=3, command=command).pack(side=tk.LEFT)
         return frame
