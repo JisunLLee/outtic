@@ -28,6 +28,7 @@ class AppController:
         # --- 백그라운드 작업 관련 ---
         self.is_searching = False
         self.search_thread: Optional[threading.Thread] = None
+        self.tries_count = 0 # 현재 시도 횟수
 
         # --- 전역 단축키 설정 ---
         hotkey_map = {'<shift>+s': self.start_search, '<esc>': self.stop_search}
@@ -97,6 +98,14 @@ class AppController:
                 default_p2 = (245, 256)
             if area_number == 3:
                 default_use = True
+                default_click_coord = (824, 397)
+                default_clicks = 2
+                default_use_area_bounds = True
+                default_p1 = (263, 227)
+                default_p2 = (389, 449)
+                default_use_direction = True
+                default_direction = SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT
+            if area_number == 4:
                 default_click_coord = (806, 414)
                 default_clicks = 2
                 default_use_area_bounds = True
@@ -104,6 +113,7 @@ class AppController:
                 default_p2 = (225, 450)
                 default_use_direction = True
                 default_direction = SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT
+
 
             self.areas[area_number] = {
                 'use': default_use, # UI의 '탐색' 체크박스는 기본적으로 꺼져있습니다.
@@ -377,6 +387,8 @@ class AppController:
         if not self.apply_settings():
             return
 
+        self.tries_count = 0 # 검색 시작 시 시도 횟수 초기화
+
         # --- 검색 계획 생성 ---
         # 찾기 버튼을 누르는 시점에 모든 검색 단계를 미리 정의합니다.
         search_plan = []
@@ -422,14 +434,17 @@ class AppController:
         self.search_thread = threading.Thread(target=self._search_worker, args=(search_plan,), daemon=True)
         self.search_thread.start()
 
-    def stop_search(self, message="검색이 중지되었습니다."):
+    def stop_search(self, message=None):
         """색상 검색 프로세스를 중지합니다."""
         if not self.is_searching: return
         if not self.ui: return
         self.is_searching = False
-        self.ui.queue_task(lambda: self.ui.update_status(message))
-        self.ui.queue_task(lambda: self.ui.update_button_text("찾기(Shift+s)"))
-        self.ui.queue_task(lambda: self.ui.update_window_bg('default'))
+
+        if message is None:
+            message = f"검색이 종료되었습니다. 시도 횟수: ({self.tries_count}/{self.total_tries})"
+
+        # 검색 종료와 관련된 모든 UI 업데이트를 하나의 작업으로 묶어 큐에 추가합니다.
+        self.ui.queue_task(lambda msg=message: self.ui.set_final_status(msg))
         print(f"--- {message} ---")
 
     def _handle_found_color(self, found_pos: tuple, success_message: str):
@@ -495,8 +510,7 @@ class AppController:
                 return
 
             retry_cycle = itertools.cycle(retry_steps)
-            tries_count = 0
-            while self.is_searching and tries_count < self.total_tries:
+            while self.is_searching and self.tries_count < self.total_tries:
                 step = next(retry_cycle)
                 final_x, final_y = step['click_coord']
                 if step['offset'] > 0:
@@ -504,10 +518,8 @@ class AppController:
                     final_y += random.randint(-step['offset'], step['offset'])
 
                 for i in range(step['num_retries']):
-                    if not self.is_searching or tries_count >= self.total_tries: break
-                    tries_count += 1
-                    status_text = f"구역{step['area_number']} 클릭 ({i+1}/{step['num_retries']}) | 총 {tries_count}/{self.total_tries}"
-                    self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
+                    if not self.is_searching or self.tries_count >= self.total_tries: break
+                    self.tries_count += 1
 
                     if self.area_delay > 0:
                         # 기본 딜레이에 +-60ms(0.06초)의 랜덤 오차를 추가합니다.
@@ -516,8 +528,12 @@ class AppController:
                         # 최종 딜레이가 음수가 되지 않도록 max(0, ...) 처리합니다.
                         time.sleep(max(0, final_delay))
                     self.color_finder.click_action(final_x, final_y)
+                    # 클릭 액션 직후에 상태를 업데이트하여 UI가 갱신될 기회를 높입니다.
+                    status_text = f"구역{step['area_number']} 클릭 ({i+1}/{step['num_retries']}) | 총 {self.tries_count}/{self.total_tries}"
+                    self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
+
                     time.sleep(0.1)
-                    search_status_text = f"재탐색: 구역{step['area_number']} 영역 ({step['search_direction'].value})..."
+                    search_status_text = f"재탐색: 구역{step['area_number']} ({i+1}/{step['num_retries']}) | ({step['search_direction'].value}) | 총 ({self.tries_count}/{self.total_tries})"
                     found_pos = execute_single_search(step['search_area'], step['search_color'], step['search_direction'], search_status_text)
                     if found_pos:
                         self._handle_found_color(found_pos, f"재시도 중 구역{step['area_number']}에서 색상 발견")

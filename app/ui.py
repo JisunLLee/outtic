@@ -399,6 +399,12 @@ class AppUI:
         """상태 메시지 레이블의 텍스트를 업데이트합니다."""
         self.status_var.set(text)
 
+    def set_final_status(self, message: str):
+        """검색 종료 시 최종 상태를 UI에 한 번에 업데이트합니다."""
+        self.update_status(message)
+        self.update_button_text("찾기(Shift+s)")
+        self.update_window_bg('default')
+
     def display_visual_aids(self, areas=None, points=None):
         """화면에 영역과 좌표 마커들을 표시합니다."""
         # 기존 마커 창들 제거
