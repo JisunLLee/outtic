@@ -331,6 +331,11 @@ class AppUI:
 
         return area_group
 
+    def play_sound(self, count=1, interval_ms=150):
+        """지정된 횟수만큼 시스템 비프음을 재생합니다."""
+        for i in range(count):
+            self.root.after(i * interval_ms, self.root.bell)
+
     def queue_task(self, task):
         """다른 스레드에서 UI 업데이트 작업을 큐에 추가합니다."""
         self.ui_queue.put(task)

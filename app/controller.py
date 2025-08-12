@@ -43,11 +43,11 @@ class AppController:
         self.color_tolerance = 15
         self.color_area_tolerance = 5
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
-        self.complete_click_delay = 0.2 # 완료 클릭 전 딜레이 (초), UI 기본값 20 -> 200ms
+        self.complete_click_delay = 0.1 # 완료 클릭 전 딜레이 (초), UI 기본값 10 -> 100ms
         self.use_sequence = False # 구역 사용 여부 (UI 체크박스 기본값)
         self.area_delay = 0.30 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
         self.search_delay = 0.15 # 탐색 대기 (초)
-        self.total_tries = 225 # 총 시도 횟수
+        self.total_tries = 178 # 총 시도 횟수
 
         # --- 구역별 설정 데이터 ---
         self.areas = {}
@@ -429,6 +429,9 @@ class AppController:
                 time.sleep(self.complete_click_delay)
             
             self.color_finder.click_action(final_x, final_y)
+            # 완료 클릭 성공 시 '삐삐삐' 소리를 내도록 UI에 요청합니다.
+            if self.ui:
+                self.ui.queue_task(lambda: self.ui.play_sound(3))
             status_message = f"{success_message} 후 완료 클릭 ({final_x},{final_y})"
         else:
             status_message = f"{success_message}"
