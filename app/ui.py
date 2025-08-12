@@ -207,9 +207,10 @@ class AppUI:
         p2_selector_frame, p2_label, p2_button = self._create_coordinate_selector(right_frame2, vars['p2_var'], "↘영역", command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_p2'))
 
         def toggle_area_bounds_state():
-            """'기본' 체크박스 상태에 따라 영역 선택 위젯들을 활성화/비활성화합니다."""
+            """'기본' 체크박스 상태에 따라 영역 선택 위젯들을 활성화/비활성화하고 값을 동기화합니다."""
             # 체크 시(True) 비활성화, 언체크 시(False) 활성화되도록 논리 반전
-            is_enabled = not vars['use_area_bounds_var'].get()
+            use_default_bounds = vars['use_area_bounds_var'].get()
+            is_enabled = not use_default_bounds
             state = 'normal' if is_enabled else 'disabled'
             label_bg = '#555555'
             label_fg = 'white' if is_enabled else '#2e2e2e'
@@ -218,6 +219,11 @@ class AppUI:
             p1_button.config(state=state)
             p2_label.config(state=state, bg=label_bg, fg=label_fg)
             p2_button.config(state=state)
+
+            if use_default_bounds:
+                # '기본'이 체크되면, 전역 p1, p2 값을 해당 구역의 변수에 설정합니다.
+                vars['p1_var'].set(self.p1_var.get())
+                vars['p2_var'].set(self.p2_var.get())
 
         tk.Checkbutton(left_frame2, text="기본", variable=vars['use_area_bounds_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_area_bounds_state).pack(side=tk.LEFT)
         p1_selector_frame.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
@@ -231,14 +237,19 @@ class AppUI:
         color_button = tk.Button(left_frame3, text="색상", width=3, command=lambda: self.controller.start_color_picker(f'area_{area_number}_color'))
 
         def toggle_color_state():
-            """'기본' 체크박스 상태에 따라 색상 위젯들을 활성화/비활성화합니다."""
+            """'기본' 체크박스 상태에 따라 색상 위젯들을 활성화/비활성화하고 값을 동기화합니다."""
             # 체크 시(True) 비활성화, 언체크 시(False) 활성화되도록 논리 반전
-            is_enabled = not vars['use_color_var'].get()
+            use_default_color = vars['use_color_var'].get()
+            is_enabled = not use_default_color
             state = 'normal' if is_enabled else 'disabled'
             bg_color = '#555555'
             label_fg = 'white' if is_enabled else '#2e2e2e'
             color_label.config(state=state, bg=bg_color, fg=label_fg)
             color_button.config(state=state)
+
+            if use_default_color:
+                # '기본'이 체크되면, 전역 색상 값을 해당 구역의 변수에 설정합니다.
+                vars['color_var'].set(self.color_var.get())
 
         tk.Checkbutton(left_frame3, text="기본", variable=vars['use_color_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_color_state).pack(side=tk.LEFT)
         color_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
@@ -250,6 +261,22 @@ class AppUI:
         direction_menu["menu"].config(bg="#555555", fg="white")
         direction_menu.pack(fill=tk.X, expand=True)
         
+
+        # --- 전역 변수 변경 감지 및 동기화 ---
+        # 전역(기본) 설정이 변경될 때, '기본'이 체크된 구역의 값도 함께 업데이트합니다.
+        def update_area_p1_from_global(*args):
+            if vars['use_area_bounds_var'].get():
+                vars['p1_var'].set(self.p1_var.get())
+        def update_area_p2_from_global(*args):
+            if vars['use_area_bounds_var'].get():
+                vars['p2_var'].set(self.p2_var.get())
+        def update_area_color_from_global(*args):
+            if vars['use_color_var'].get():
+                vars['color_var'].set(self.color_var.get())
+
+        self.p1_var.trace_add('write', update_area_p1_from_global)
+        self.p2_var.trace_add('write', update_area_p2_from_global)
+        self.color_var.trace_add('write', update_area_color_from_global)
 
         toggle_search_state() # 초기 상태 설정
         toggle_color_state() # 초기 상태 설정을 위해 호출
