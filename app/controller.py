@@ -395,6 +395,9 @@ class AppController:
                             time.sleep(self.area_delay)
                         self.color_finder.click_action(final_x, final_y)
 
+                        # 클릭 후 UI가 반응할 시간을 주기 위한 짧은 대기
+                        time.sleep(0.1) 
+
                         # 2-2. 클릭 후, 다시 모든 활성화된 구역을 처음부터 탐색합니다.
                         for search_area_number, search_settings in sorted(self.areas.items()):
                             if not self.is_searching: return
@@ -415,7 +418,7 @@ class AppController:
 
                     # '횟수'만큼 반복했지만 색상을 찾지 못한 경우
                     status_message = f"구역{area_number} {num_retries}회 재시도 후에도 색상 못찾음."
-                    stop_search(message=status_message)
+                    self.stop_search(message=status_message)
                     return # 재시도 시퀀스가 끝나면 스레드 종료
         
         # '구역 사용'이 비활성화되었거나, 활성화된 구역이 하나도 없는 경우
