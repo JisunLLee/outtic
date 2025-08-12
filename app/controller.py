@@ -444,7 +444,12 @@ class AppController:
                     tries_count += 1
                     status_text = f"구역{step['area_number']} 클릭 ({i+1}/{step['num_retries']}) | 총 {tries_count}/{self.total_tries}"
                     self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
-                    if self.area_delay > 0: time.sleep(self.area_delay)
+                    if self.area_delay > 0:
+                        # 기본 딜레이에 +-60ms(0.06초)의 랜덤 오차를 추가합니다.
+                        random_offset = random.uniform(-0.06, 0.06)
+                        final_delay = self.area_delay + random_offset
+                        # 최종 딜레이가 음수가 되지 않도록 max(0, ...) 처리합니다.
+                        time.sleep(max(0, final_delay))
                     self.color_finder.click_action(final_x, final_y)
                     time.sleep(0.1)
                     search_status_text = f"재탐색: 구역{step['area_number']} 영역 ({step['search_direction'].value})..."
