@@ -46,6 +46,7 @@ class AppController:
         self.complete_click_delay = 0.02 # 완료 클릭 전 딜레이 (초)
         self.use_sequence = True # 구역 사용 여부
         self.area_delay = 0.45 # 구역 클릭 전 딜레이 (초)
+        self.search_delay = 0.15 # 탐색 대기 (초)
         self.total_tries = 225 # 총 시도 횟수
 
         # --- 구역별 설정 데이터 ---
@@ -107,6 +108,7 @@ class AppController:
             self.color_area_tolerance = int(self.ui.color_area_tolerance_var.get())
             self.complete_click_delay = int(self.ui.complete_delay_var.get()) / 1000.0
             self.area_delay = int(self.ui.area_delay_var.get()) / 100.0
+            self.search_delay = int(self.ui.search_delay_var.get()) / 100.0
 
             # UI의 문자열을 SearchDirection Enum으로 변환합니다.
             direction_map = {
@@ -461,4 +463,5 @@ class AppController:
                 if found_pos:
                     self._handle_found_color(found_pos, "기본 영역에서 색상 발견")
                     return
-                time.sleep(0.15)
+                if self.search_delay > 0:
+                    time.sleep(self.search_delay)

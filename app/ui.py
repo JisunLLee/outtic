@@ -29,9 +29,10 @@ class AppUI:
         self.p2_var = tk.StringVar(value=str(c.p2))
         self.color_var = tk.StringVar(value=str(c.color))
         self.area_delay_var = tk.StringVar(value="30") # 구역 딜레이
-        self.search_delay_var = tk.StringVar(value="10") # 탐색 대기
+        self.search_delay_var = tk.StringVar(value="15") # 탐색 대기 (100 = 1초)
         self.complete_coord_var = tk.StringVar(value=str(c.complete_coord)) # 완료 좌표
 
+        self.use_sequence_var = tk.BooleanVar(value=False)
         # 탐색 방향 Enum과 UI 표시 문자열을 매핑합니다.
         self.SEARCH_DIRECTION_MAP = {
             SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT: "→↓",
@@ -40,7 +41,6 @@ class AppUI:
             SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT: "←↑",
         }
         self.direction_var = tk.StringVar(value=self.SEARCH_DIRECTION_MAP[c.search_direction])
-        self.use_sequence_var = tk.BooleanVar(value=True)
         self.total_tries_var = tk.StringVar(value="225")
         self.status_var = tk.StringVar(value="대기 중...")
         
@@ -54,7 +54,7 @@ class AppUI:
     def _initialize_area_vars(self, area_number: int):
         """지정된 번호의 구역에 대한 Tkinter 변수들을 초기화하고 저장합니다."""
         self.area_vars[area_number] = {
-            'use_var': tk.BooleanVar(value=True),
+            'use_var': tk.BooleanVar(value=False),
             'coord_var': tk.StringVar(value="(0, 0)"),
             'clicks_var': tk.StringVar(value="6"),
             'offset_var': tk.StringVar(value="2"),
@@ -111,31 +111,36 @@ class AppUI:
         p2_selector_frame, _, _ = self._create_coordinate_selector(right_frame, self.p2_var, "↘영역", command=lambda: self.controller.start_coordinate_picker('p2'))
         p2_selector_frame.pack(expand=True, fill=tk.X)
         
-        # Row 3: 색상, 완료 
+        # Row 3: 색상, 탐색 방향
         row3_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
-        self._create_value_button_row(left_frame, self.color_var, "색상", command=lambda: self.controller.start_color_picker('main_color')).pack(expand=True, fill=tk.X)
-        self._create_value_button_row(right_frame, self.complete_coord_var, "완료", command=lambda: self.controller.start_coordinate_picker('complete')).pack(expand=True, fill=tk.X)
+       
+        # Part 1: 색상
+        self._create_value_button_row(left_frame, self.color_var, "색상", command=lambda: self.controller.start_color_picker('main_color')).pack(side=tk.LEFT)
         
-        # Row 4: 완료 딜레이, 탐색 방향
+        # Part 2: 탐색 방향
+        direction_menu = tk.OptionMenu(right_frame, self.direction_var, *self.SEARCH_DIRECTION_MAP.values())
+        direction_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
+        direction_menu["menu"].config(bg="#555555", fg="white")
+        direction_menu.pack(side=tk.RIGHT, padx=5)
+        
+        # Row 4: 완료 딜레이, 완료
         # 더 나은 정렬을 위해 3개의 프레임으로 분할합니다.
         row4_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
         
         # Part 1: 딜레이
         self._create_labeled_entry(left_frame, "완료 딜레이:", self.complete_delay_var).pack(expand=True, fill=tk.X)
 
-        # Part 2: 탐색 방향
-        direction_menu = tk.OptionMenu(right_frame, self.direction_var, *self.SEARCH_DIRECTION_MAP.values())
-        direction_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
-        direction_menu["menu"].config(bg="#555555", fg="white")
-        direction_menu.pack(side=tk.RIGHT, padx=5)
+        # Part 2: 완료
+        self._create_value_button_row(right_frame, self.complete_coord_var, "완료", command=lambda: self.controller.start_coordinate_picker('complete')).pack(side=tk.RIGHT)
+      
 
         # --- 상태 메시지 ---
         status_label = tk.Label(main_frame, textvariable=self.status_var, fg="lightblue", bg="#2e2e2e", anchor='w')
         status_label.pack(fill=tk.X, pady=(0, 10))
 
         # --- 구역탐색 사용 여부 ---
-        tk.Checkbutton(main_frame, text="구역 탐색 사용", variable=self.use_sequence_var, bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(
-                        expand=True)
+        area_container, (left_frame, right_frame) = self._create_split_container(main_frame, weights=[1, 1])
+        tk.Checkbutton(left_frame, text="구역 탐색 사용", variable=self.use_sequence_var, bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
    
         # --- 구역 설정 그룹 ---
         # 이 프레임은 모든 구역(구역1, 구역2 등)을 감싸는 컨테이너 역할을 합니다.
@@ -469,7 +474,7 @@ class AppUI:
     def _create_value_button_row(self, parent, var, button_text, command=None):
         """값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent, bg="#2e2e2e")
-        tk.Label(frame, textvariable=var, relief="sunken", bg="#555555", width=10, anchor='w').pack(
+        tk.Label(frame, textvariable=var, relief="sunken", bg="#555555", width=12, anchor='w').pack(
             side=tk.LEFT, expand=True, fill=tk.X)
         tk.Button(frame, text=button_text, width=3, command=command).pack(
             side=tk.LEFT)
