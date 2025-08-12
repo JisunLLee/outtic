@@ -312,20 +312,44 @@ class AppController:
         if not self.apply_settings():
             return
 
+        # --- 검색 계획 생성 ---
+        # 찾기 버튼을 누르는 시점에 모든 검색 단계를 미리 정의합니다.
+        search_plan = []
+        # 1. 초기 탐색 계획
+        search_plan.append({
+            'type': 'initial',
+            'search_color': self.color,
+            'description': '초기 탐색 (기본 색상)'
+        })
+
+        # 2. 재시도 탐색 계획
+        if self.use_sequence:
+            for area_number, settings in sorted(self.areas.items()):
+                if settings['use']:
+                    search_plan.append({
+                        'type': 'retry',
+                        'area_number': area_number,
+                        # 재시도 시 찾을 색상을 이 시점에 고정합니다.
+                        'search_color': settings['color'] if settings['use_color'] else self.color,
+                        'click_coord': settings['click_coord'],
+                        'num_retries': settings['clicks'],
+                        'offset': settings['offset'],
+                        'description': f'구역{area_number} 재시도'
+                    })
+
         self.is_searching = True
         self.ui.queue_task(lambda: self.ui.update_status("색상 검색 중... (ESC로 중지)"))
         self.ui.queue_task(lambda: self.ui.update_button_text("중지 (ESC)"))
         print("--- 색상 검색 시작 ---")
 
-        # 별도 스레드에서 검색 작업 실행
-        self.search_thread = threading.Thread(target=self._search_worker, daemon=True)
+        # 별도 스레드에서 검색 작업 실행 (생성된 계획 전달)
+        self.search_thread = threading.Thread(target=self._search_worker, args=(search_plan,), daemon=True)
         self.search_thread.start()
 
     def stop_search(self, message="검색이 중지되었습니다."):
         """색상 검색 프로세스를 중지합니다."""
         if not self.is_searching: return
         if not self.ui: return
-
         self.is_searching = False
         self.ui.queue_task(lambda: self.ui.update_status(message))
         self.ui.queue_task(lambda: self.ui.update_button_text("찾기(Shift+s)"))
@@ -346,103 +370,70 @@ class AppController:
 
         self.stop_search(message=status_message)
 
-    def _search_worker(self):
-        """(스레드 워커) 설정된 구역들을 순회하며 색상을 검색하고, 찾으면 클릭 후 완료 동작을 수행합니다."""
+    def _search_worker(self, search_plan: list):
+        """(스레드 워커) 전달받은 검색 계획(search_plan)을 순차적으로 실행합니다."""
         
-        # 1. 초기 탐색: 모든 활성화된 구역에서 '기본 색상'을 먼저 찾습니다.
-        self.ui.queue_task(lambda: self.ui.update_status(f"초기 탐색 (기본 색상) 시작..."))
-        for area_number, settings in sorted(self.areas.items()):
-            if not self.is_searching: return # 중간에 중지되면 즉시 종료
-            if not settings['use']: continue # '탐색'이 비활성화된 구역은 건너뜀
+        # --- 공통 탐색 함수 ---
+        def execute_search(current_search_color: tuple, status_prefix: str = "") -> tuple[Optional[tuple], Optional[int]]:
+            """모든 활성 영역을 탐색하고 결과를 반환합니다."""
+            for area_number, settings in sorted(self.areas.items()):
+                if not self.is_searching: return None, None
+                if not settings['use']: continue
 
-            # 초기 탐색에서는 '기본' 영역 또는 '개별' 영역을 사용합니다.
-            search_area = settings['search_area'] if settings['use_area_bounds'] else self._get_global_search_area()
-            # 초기 탐색 방향 결정
-            search_direction = settings['direction'] if settings['use_direction'] else self.search_direction
-            
-            if not (search_area[2] > search_area[0] and search_area[3] > search_area[1]):
-                self.ui.queue_task(lambda n=area_number: self.ui.update_status(f"구역{n} 영역이 잘못되어 건너뜁니다."))
-                time.sleep(0.5) # 사용자가 메시지를 볼 수 있도록 잠시 대기
-                continue
-
-            self.ui.queue_task(lambda n=area_number, d=search_direction.value: self.ui.update_status(f"구역{n}에서 기본 색상 탐색 중 ({d})..."))
-
-            # 초기 탐색에서는 항상 '기본 색상(self.color)'을 찾습니다.
-            found_pos = self.color_finder.find_color_in_area(
-                area=search_area,
-                color=self.color,
-                tolerance=self.color_tolerance,
-                direction=search_direction
-            )
-
-            if found_pos:
-                self._handle_found_color(found_pos, f"초기 탐색 중 구역{area_number}에서 색상 발견")
-                return
-
-        # 2. 초기 탐색 실패 시 재시도 시퀀스 시작
-        if not self.is_searching: return # 이미 중지된 경우
-
-        if self.use_sequence:
-             # 모든 활성화된 구역을 순회하며 재시도 시퀀스를 수행합니다.
-            for retry_area_number, retry_settings in sorted(self.areas.items()):
-                if not self.is_searching: return
-                if not retry_settings['use']: continue
-
-                # --- 이 재시도 시퀀스에서 사용할 파라미터 결정 ---
-                # 재시도 시퀀스에서는 해당 구역의 '개별 색상'을 찾습니다. '기본'이 체크되어 있으면 기본 색상을 사용합니다.
-                retry_search_color = retry_settings['color'] if retry_settings['use_color'] else self.color
+                search_area = settings['search_area'] if settings['use_area_bounds'] else self._get_global_search_area()
+                search_direction = settings['direction'] if settings['use_direction'] else self.search_direction
                 
-                click_coord = retry_settings['click_coord']
-                num_retries = retry_settings['clicks']
-                offset = retry_settings['offset']
+                if not (search_area[2] > search_area[0] and search_area[3] > search_area[1]):
+                    continue
 
-                # 이 시퀀스 동안 클릭할 고정된 랜덤 좌표를 계산합니다.
-                final_x, final_y = click_coord
-                if offset > 0:
-                    final_x += random.randint(-offset, offset)
-                    final_y += random.randint(-offset, offset)
+                status_text = f"{status_prefix} 구역{area_number} 탐색 중 ({search_direction.value})..."
+                self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
 
-                for i in range(num_retries):
+                found_pos = self.color_finder.find_color_in_area(
+                    area=search_area,
+                    color=current_search_color,
+                    tolerance=self.color_tolerance,
+                    direction=search_direction
+                )
+                if found_pos:
+                    return found_pos, area_number # 찾은 위치와 구역 번호 반환
+            return None, None # 못 찾음
+
+        # --- 검색 계획 실행 ---
+        for step in search_plan:
+            if not self.is_searching: return
+
+            if step['type'] == 'initial':
+                self.ui.queue_task(lambda desc=step['description']: self.ui.update_status(f"{desc} 시작..."))
+                found_pos, found_area_num = execute_search(step['search_color'], "초기 탐색:")
+                if found_pos:
+                    self._handle_found_color(found_pos, f"초기 탐색 중 구역{found_area_num}에서 색상 발견")
+                    return
+
+            elif step['type'] == 'retry':
+                # 이 재시도 시퀀스 동안 클릭할 고정된 랜덤 좌표 계산
+                final_x, final_y = step['click_coord']
+                if step['offset'] > 0:
+                    final_x += random.randint(-step['offset'], step['offset'])
+                    final_y += random.randint(-step['offset'], step['offset'])
+
+                for i in range(step['num_retries']):
                     if not self.is_searching: return
 
-                    # 2-1. 상태 업데이트 및 구역 클릭
-                    status_text = f"구역{retry_area_number} 재시도 {i+1}/{num_retries} ({final_x},{final_y}) 클릭"
+                    # 1. 상태 업데이트 및 구역 클릭
+                    status_text = f"구역{step['area_number']} 재시도 {i+1}/{step['num_retries']} ({final_x},{final_y}) 클릭"
                     self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
                     
-                    if self.area_delay > 0:
-                        time.sleep(self.area_delay)
+                    if self.area_delay > 0: time.sleep(self.area_delay)
                     self.color_finder.click_action(final_x, final_y)
+                    time.sleep(0.1) # 클릭 후 UI 반응 대기
 
-                    time.sleep(0.1) 
+                    # 2. 클릭 후 재탐색
+                    status_prefix = f"구역{step['area_number']} 재시도 후"
+                    found_pos, found_area_num = execute_search(step['search_color'], status_prefix)
+                    if found_pos:
+                        self._handle_found_color(found_pos, f"재시도 중 구역{found_area_num}에서 색상 발견")
+                        return
 
-                    # 2-2. 클릭 후, 다시 모든 활성화된 구역을 탐색합니다.
-                    # 이때, 찾을 색상은 이 재시도 시퀀스의 색상(retry_search_color)입니다.
-                    for search_area_number, search_settings in sorted(self.areas.items()):
-                        if not self.is_searching: return
-                        if not search_settings['use']: continue
-
-                        search_area = search_settings['search_area'] if search_settings['use_area_bounds'] else self._get_global_search_area()
-                        # 재탐색 시의 탐색 방향 결정
-                        search_direction = search_settings['direction'] if search_settings['use_direction'] else self.search_direction
-                        
-                        if not (search_area[2] > search_area[0] and search_area[3] > search_area[1]): continue
-
-                        self.ui.queue_task(lambda n=search_area_number, d=search_direction.value, an=retry_area_number: self.ui.update_status(f"구역{n}에서 구역{an} 색상 재탐색 중 ({d})..."))
-                        
-                        # 여기서 'retry_search_color'를 사용해야 합니다.
-                        found_pos = self.color_finder.find_color_in_area(
-                            area=search_area, 
-                            color=retry_search_color, 
-                            tolerance=self.color_tolerance, 
-                            direction=search_direction
-                        )
-                        if found_pos:
-                            self._handle_found_color(found_pos, f"재시도 중 구역{search_area_number}에서 색상 발견")
-                            return
-
-            # 모든 구역의 모든 재시도를 마쳤지만 색상을 찾지 못한 경우
-            self.stop_search(message="모든 구역 재시도 후에도 색상 못찾음.")
-            return
-        
-        # '구역 사용'이 비활성화되었거나, 활성화된 구역이 하나도 없는 경우
-        self.stop_search(message="색상 못찾음. 활성화된 구역이 없어 중지합니다.")
+        # 모든 계획을 실행했지만 색상을 찾지 못한 경우
+        self.stop_search(message="모든 탐색 및 재시도 후에도 색상 못찾음.")
