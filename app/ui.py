@@ -28,7 +28,7 @@ class AppUI:
         self.p1_var = tk.StringVar(value=str(c.p1))
         self.p2_var = tk.StringVar(value=str(c.p2))
         self.color_var = tk.StringVar(value=str(c.color))
-        self.area_delay_var = tk.StringVar(value="20") # 구역 딜레이
+        self.area_delay_var = tk.StringVar(value="30") # 구역 딜레이
         self.complete_coord_var = tk.StringVar(value=str(c.complete_coord)) # 완료 좌표
 
         # 탐색 방향 Enum과 UI 표시 문자열을 매핑합니다.
@@ -63,6 +63,7 @@ class AppUI:
             'use_color_var': tk.BooleanVar(value=True), # 기본적으로는 구역별 색상 사용 안 함
             'color_var': tk.StringVar(value="(0, 0, 0)"),
             'direction_var': tk.StringVar(value=self.SEARCH_DIRECTION_MAP[self.controller.search_direction]),
+            'use_direction_var': tk.BooleanVar(value=True), # 기본적으로 구역별 탐색 방향 사용 안 함
         }
 
     def _setup_ui(self):
@@ -259,9 +260,22 @@ class AppUI:
         direction_menu = tk.OptionMenu(right_frame3, vars['direction_var'], *self.SEARCH_DIRECTION_MAP.values())
         direction_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
         direction_menu["menu"].config(bg="#555555", fg="white")
-        direction_menu.pack(fill=tk.X, expand=True)
-        
 
+        def toggle_direction_state():
+            """'기본' 체크박스 상태에 따라 탐색 방향 메뉴를 활성화/비활성화하고 값을 동기화합니다."""
+            use_default_direction = vars['use_direction_var'].get()
+            is_enabled = not use_default_direction
+            state = 'normal' if is_enabled else 'disabled'
+            
+            direction_menu.config(state=state)
+
+            if use_default_direction:
+                # '기본'이 체크되면, 전역 탐색 방향 값을 해당 구역의 변수에 설정합니다.
+                vars['direction_var'].set(self.direction_var.get())
+
+        tk.Checkbutton(right_frame3, text="기본", variable=vars['use_direction_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_direction_state).pack(side=tk.LEFT)
+        direction_menu.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=(5,0))
+        
         # --- 전역 변수 변경 감지 및 동기화 ---
         # 전역(기본) 설정이 변경될 때, '기본'이 체크된 구역의 값도 함께 업데이트합니다.
         def update_area_p1_from_global(*args):
@@ -273,14 +287,19 @@ class AppUI:
         def update_area_color_from_global(*args):
             if vars['use_color_var'].get():
                 vars['color_var'].set(self.color_var.get())
+        def update_area_direction_from_global(*args):
+            if vars['use_direction_var'].get():
+                vars['direction_var'].set(self.direction_var.get())
 
         self.p1_var.trace_add('write', update_area_p1_from_global)
         self.p2_var.trace_add('write', update_area_p2_from_global)
         self.color_var.trace_add('write', update_area_color_from_global)
+        self.direction_var.trace_add('write', update_area_direction_from_global)
 
         toggle_search_state() # 초기 상태 설정
         toggle_color_state() # 초기 상태 설정을 위해 호출
         toggle_area_bounds_state() # 초기 상태 설정
+        toggle_direction_state() # 초기 상태 설정
 
         return area_group
 

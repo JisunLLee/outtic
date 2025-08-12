@@ -71,6 +71,7 @@ class AppController:
                 'use_color': False,
                 'color': (0, 0, 0),
                 'direction': self.search_direction,
+                'use_direction': True, # 개별 탐색 방향 사용 여부
                 'use_area_bounds': True, # 개별 영역 사용 여부
                 'search_area': (0, 0, 0, 0) # 계산된 탐색 영역
             }
@@ -127,6 +128,7 @@ class AppController:
                 area_settings['p2'] = ast.literal_eval(area_ui_vars['p2_var'].get())
                 area_settings['use_color'] = not area_ui_vars['use_color_var'].get() # UI와 논리 반대. '기본' 체크 해제 시 개별 색상 사용
                 area_settings['use_area_bounds'] = not area_ui_vars['use_area_bounds_var'].get() # UI와 논리 반대
+                area_settings['use_direction'] = not area_ui_vars['use_direction_var'].get() # '기본' 체크 해제 시 개별 방향 사용
                 area_settings['color'] = ast.literal_eval(area_ui_vars['color_var'].get())
                 area_settings['direction'] = direction_map.get(area_ui_vars['direction_var'].get(), self.search_direction)
 
@@ -345,7 +347,8 @@ class AppController:
             search_area = settings['search_area'] if settings['use_area_bounds'] else self._get_global_search_area()
             # '기본' 색상 사용이 체크 해제된 경우(use_color=True) 개별 색상 사용
             search_color = settings['color'] if settings['use_color'] else self.color
-            search_direction = settings['direction']
+            # '기본' 방향 사용이 체크 해제된 경우(use_direction=True) 개별 방향 사용
+            search_direction = settings['direction'] if settings['use_direction'] else self.search_direction
             
             # 유효한 탐색 영역인지 확인
             if not (search_area[2] > search_area[0] and search_area[3] > search_area[1]):
@@ -405,7 +408,7 @@ class AppController:
 
                             search_area = search_settings['search_area'] if search_settings['use_area_bounds'] else self._get_global_search_area()
                             search_color = search_settings['color'] if search_settings['use_color'] else self.color
-                            search_direction = search_settings['direction']
+                            search_direction = search_settings['direction'] if search_settings['use_direction'] else self.search_direction
                             
                             if not (search_area[2] > search_area[0] and search_area[3] > search_area[1]): continue
 
