@@ -119,7 +119,7 @@ class AppUI:
 
         # Row 5: 구역 사용, 구역 딜레이
         row5_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
-        tk.Checkbutton(left_frame, text="구역 사용", variable=self.use_sequence_var, bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
+        tk.Checkbutton(left_frame, text="구역탐색 사용", variable=self.use_sequence_var, bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
         self._create_labeled_entry(right_frame, "구역 딜레이:", self.area_delay_var).pack(expand=True, fill=tk.X)
 
         # --- 상태 메시지 ---
