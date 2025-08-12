@@ -53,9 +53,14 @@ class AppUI:
 
     def _initialize_area_vars(self, area_number: int):
         """지정된 번호의 구역에 대한 Tkinter 변수들을 초기화하고 저장합니다."""
+        # 구역별 기본값 설정
+        coord_val = "(0, 0)"
+        if area_number == 1:
+            coord_val = "(803, 399)"
+
         self.area_vars[area_number] = {
             'use_var': tk.BooleanVar(value=False),
-            'coord_var': tk.StringVar(value="(0, 0)"),
+            'coord_var': tk.StringVar(value=coord_val),
             'clicks_var': tk.StringVar(value="6"),
             'offset_var': tk.StringVar(value="2"),
             # 각 구역별 탐색 영역을 위한 좌표 변수를 추가합니다.
@@ -96,43 +101,37 @@ class AppUI:
         basic_group = self._create_labeled_frame(main_frame, "기본")
         basic_group.pack(fill=tk.X, pady=(0, 10))
 
-        # Row 1: 색상오차, 색상영역 오차
-        # row1_container = tk.Frame(self.root, bg="#2e2e2e")
-        # row1_container.pack(fill=tk.X, expand=True)
-        # 예시: 왼쪽 프레임이 오른쪽 프레임보다 2배 더 넓게 설정 (2:1 비율)
+        # Row 1: 영역 설정
         row1_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
-        self._create_labeled_entry(left_frame, "색상오차:", self.color_tolerance_var).pack(expand=True, fill=tk.X)
-        self._create_labeled_entry(right_frame, "색영역오차:", self.color_area_tolerance_var).pack(expand=True, fill=tk.X)
-
-        # Row 2: 영역 설정
-        row2_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
         p1_selector_frame, _, _ = self._create_coordinate_selector(left_frame, self.p1_var, "↖영역", command=lambda: self.controller.start_coordinate_picker('p1'))
         p1_selector_frame.pack(expand=True, fill=tk.X)
         p2_selector_frame, _, _ = self._create_coordinate_selector(right_frame, self.p2_var, "↘영역", command=lambda: self.controller.start_coordinate_picker('p2'))
         p2_selector_frame.pack(expand=True, fill=tk.X)
         
-        # Row 3: 색상, 탐색 방향
-        row3_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
+        # Row 2: 색상, 탐색 방향
+        row2_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
        
-        # Part 1: 색상
+        # Part 1: 색상, 색상오차, 색상영역 오차
         self._create_value_button_row(left_frame, self.color_var, "색상", command=lambda: self.controller.start_color_picker('main_color')).pack(side=tk.LEFT)
+        self._create_labeled_entry(right_frame, "색상오차:", self.color_tolerance_var).pack(expand=True, fill=tk.X, side=tk.LEFT)
+        self._create_labeled_entry(right_frame, "색영역오차:", self.color_area_tolerance_var).pack(expand=True, fill=tk.X)
+
         
-        # Part 2: 탐색 방향
+        # Row 3: 완료 좌표, 완료 딜레이, 탐색 방향
+        # 더 나은 정렬을 위해 3개의 프레임으로 분할합니다.
+        row3_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
+        
+        # Part 1: 완료 좌표
+        self._create_value_button_row(left_frame, self.complete_coord_var, "완료", command=lambda: self.controller.start_coordinate_picker('complete')).pack(side=tk.LEFT)
+      
+        # Part 2: 완료 선택 딜레이
+        self._create_labeled_entry(right_frame, "완료 딜레이:", self.complete_delay_var).pack(expand=True, fill=tk.X, side=tk.LEFT)
+
+        # Part 3: 탐색 방향
         direction_menu = tk.OptionMenu(right_frame, self.direction_var, *self.SEARCH_DIRECTION_MAP.values())
         direction_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
         direction_menu["menu"].config(bg="#555555", fg="white")
-        direction_menu.pack(side=tk.RIGHT, padx=5)
-        
-        # Row 4: 완료 딜레이, 완료
-        # 더 나은 정렬을 위해 3개의 프레임으로 분할합니다.
-        row4_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
-        
-        # Part 1: 딜레이
-        self._create_labeled_entry(left_frame, "완료 딜레이:", self.complete_delay_var).pack(expand=True, fill=tk.X)
-
-        # Part 2: 완료
-        self._create_value_button_row(right_frame, self.complete_coord_var, "완료", command=lambda: self.controller.start_coordinate_picker('complete')).pack(side=tk.RIGHT)
-      
+        direction_menu.pack(side=tk.RIGHT, padx=(15,0))
 
         # --- 상태 메시지 ---
         status_label = tk.Label(main_frame, textvariable=self.status_var, fg="lightblue", bg="#2e2e2e", anchor='w')
@@ -378,7 +377,8 @@ class AppUI:
             for area_info in areas:
                 x, y, width, height = area_info.get('rect', (0,0,0,0))
                 color = area_info.get('color', 'red')
-                alpha = area_info.get('alpha', 0.4)
+                alpha = area_info.get('alpha', 0.9)
+                text = area_info.get('text') # 영역에 표시할 텍스트
 
                 if width > 0 and height > 0:
                     area_marker = tk.Toplevel(self.root)
@@ -387,6 +387,12 @@ class AppUI:
                     area_marker.configure(bg=color)
                     area_marker.attributes('-alpha', alpha)
                     area_marker.attributes('-topmost', True)
+
+                    # 영역에 텍스트가 있으면, 우측 상단에 레이블 추가
+                    if text:
+                        label = tk.Label(area_marker, text=text, bg=color, fg='white', font=("Helvetica", 10, "bold"))
+                        label.pack(side=tk.TOP, anchor=tk.NE, padx=5, pady=2)
+
                     area_marker.after(3000, area_marker.destroy)
                     self.area_marker_windows.append(area_marker)
 

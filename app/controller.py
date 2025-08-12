@@ -67,9 +67,14 @@ class AppController:
     def _initialize_area_settings(self, area_number: int):
         """컨트롤러 내부에 지정된 구역의 기본 설정값을 생성합니다."""
         if area_number not in self.areas:
+            # 구역별 기본값 설정
+            default_click_coord = (0, 0)
+            if area_number == 1:
+                default_click_coord = (803, 399)
+
             self.areas[area_number] = {
                 'use': True,
-                'click_coord': (0, 0),
+                'click_coord': default_click_coord,
                 'clicks': 1,
                 'offset': 5,
                 'p1': (0, 0),
@@ -188,7 +193,8 @@ class AppController:
                 areas_to_display.append({
                     'rect': (x1, y1, x2 - x1, y2 - y1),
                     'color': overlay_color,
-                    'alpha': 0.4
+                    'alpha': 0.4,
+                    'text': f'{area_number}구역' # 영역에 텍스트 추가
                 })
 
         # 마커로 표시할 좌표들
@@ -200,7 +206,7 @@ class AppController:
             if settings['use']:
                 marker_color = area_overlay_colors[(area_number - 1) % len(area_overlay_colors)]
                 points_to_mark.append({
-                    'text': f'구역{area_number}',
+                    'text': f'{area_number}',
                     'pos': settings['click_coord'],
                     'color': marker_color
                 })
