@@ -44,6 +44,14 @@ class AppUI:
         self.direction_var = tk.StringVar(value=self.SEARCH_DIRECTION_MAP[c.search_direction])
         self.total_tries_var = tk.StringVar(value=str(c.total_tries))
         self.status_var = tk.StringVar(value="대기 중...")
+
+        # --- 창 색상 관리 ---
+        self.WINDOW_COLORS = {
+            'default': "#2e2e2e",
+            'searching': "#c0b38c", # 어두운 노란색
+            'global_setting_change': "#40E0D0", # 기본 설정 변경 시 플래시 색상 (터콰이즈)
+            'area_setting_change': "#00EEEE",   # 구역 설정 변경 시 플래시 색상 (시안)
+        }
         
         # --- 구역별 변수 초기화 ---
         # 나중에 구역 2, 3, 4를 추가할 때 아래 라인을 추가하면 됩니다.
@@ -88,7 +96,7 @@ class AppUI:
         y_pos = 0 #상단 여백
 
         self.root.geometry(f"{window_width}x{window_height}+{x_pos}+{y_pos}")
-        self.root.configure(bg="#2e2e2e")
+        self.update_window_bg('default')
         self.root.resizable(True, True)
 
         main_frame = tk.Frame(self.root, bg="#2e2e2e", padx=10, pady=10)
@@ -330,6 +338,36 @@ class AppUI:
         toggle_direction_state() # 초기 상태 설정
 
         return area_group
+
+    def flash_setting_change(self, state: str, duration_ms=150):
+        """설정 변경 시 창 배경색을 잠시 변경하여 시각적 피드백을 줍니다."""
+        self.update_window_bg(state)
+        self.root.after(duration_ms, lambda: self.update_window_bg('default'))
+
+    def update_window_bg(self, state: str):
+        """창과 모든 자식 위젯의 배경색을 상태에 따라 업데이트합니다."""
+        color = self.WINDOW_COLORS.get(state, self.WINDOW_COLORS['default'])
+        self._set_bg_recursively(self.root, color)
+
+    def _set_bg_recursively(self, widget, color):
+        """지정된 위젯과 그 자식들의 배경색을 재귀적으로 설정합니다."""
+        # 배경색을 변경할 위젯 타입들
+        target_widgets = (tk.Frame, tk.LabelFrame, tk.Label, tk.Checkbutton)
+
+        try:
+            if isinstance(widget, target_widgets):
+                # 체크박스는 배경과 관련된 여러 속성을 함께 변경해야 자연스럽습니다.
+                if isinstance(widget, tk.Checkbutton):
+                    widget.configure(bg=color, activebackground=color, selectcolor=color)
+                else:
+                    widget.configure(bg=color)
+        except tk.TclError:
+            # 'bg' 속성이 없는 위젯은 무시합니다.
+            pass
+
+        # 모든 자식 위젯에 대해 재귀적으로 함수를 호출합니다.
+        for child in widget.winfo_children():
+            self._set_bg_recursively(child, color)
 
     def play_sound(self, count=1, interval_ms=150):
         """지정된 횟수만큼 시스템 비프음을 재생합니다."""

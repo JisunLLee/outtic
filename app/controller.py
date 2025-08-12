@@ -44,7 +44,7 @@ class AppController:
         self.color_area_tolerance = 5
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
         self.complete_click_delay = 0.1 # 완료 클릭 전 딜레이 (초), UI 기본값 10 -> 100ms
-        self.use_sequence = False # 구역 사용 여부 (UI 체크박스 기본값)
+        self.use_sequence = True # 구역 사용 여부 (UI 체크박스 기본값)
         self.area_delay = 0.30 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
         self.search_delay = 0.15 # 탐색 대기 (초)
         self.total_tries = 178 # 총 시도 횟수
@@ -282,9 +282,15 @@ class AppController:
         new_pos = (int(x), int(y))
 
         # 키에 따라 컨트롤러의 속성과 UI의 변수를 업데이트
-        if coord_key == 'p1': self.ui.p1_var.set(str(new_pos))
-        elif coord_key == 'p2': self.ui.p2_var.set(str(new_pos))
-        elif coord_key == 'complete': self.ui.complete_coord_var.set(str(new_pos))
+        if coord_key == 'p1':
+            self.ui.p1_var.set(str(new_pos))
+            self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
+        elif coord_key == 'p2':
+            self.ui.p2_var.set(str(new_pos))
+            self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
+        elif coord_key == 'complete':
+            self.ui.complete_coord_var.set(str(new_pos))
+            self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
         elif coord_key.startswith('area_'): # 예: 'area_1_p1', 'area_1_click_coord'
             try:
                 parts = coord_key.split('_')
@@ -293,10 +299,15 @@ class AppController:
                 var_key_map = {'p1': 'p1_var', 'p2': 'p2_var', 'click_coord': 'coord_var'}
                 var_key = var_key_map[key_type]
                 self.ui.area_vars[area_number][var_key].set(str(new_pos))
+                # 구역의 '영역' 또는 '클릭' 좌표가 변경될 때 색상 플래시
+                if key_type in ['p1', 'p2', 'click_coord']:
+                    self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
             except (IndexError, KeyError, ValueError) as e:
                 print(f"잘못된 구역 좌표 키입니다: {coord_key}, 오류: {e}")
-        
+
         self.ui.update_status(f"'{display_name}' 좌표 저장 완료: {new_pos}")
+        # 좌표 저장 성공 시 소리 1번 재생
+        self.ui.queue_task(lambda: self.ui.play_sound(1))
         print(f"좌표 저장 완료 ({coord_key}): {new_pos}")
 
     def start_color_picker(self, color_key: str):
@@ -332,16 +343,23 @@ class AppController:
         
         new_color = pixel_color[:3] # RGB 값만 사용 (알파 채널 제외)
 
-        if color_key == 'main_color': self.ui.color_var.set(str(new_color))
+        if color_key == 'main_color':
+            self.ui.color_var.set(str(new_color))
+            # 기본 색상 설정 변경 시 색상 플래시
+            self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
         elif color_key.startswith('area_'): # 예: 'area_1_color'
             try:
                 area_number = int(color_key.split('_')[1]) # '1'
                 self.ui.area_vars[area_number]['color_var'].set(str(new_color))
+                # 구역 색상 설정 변경 시 창 색상 플래시
+                self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
             except (IndexError, ValueError) as e:
                 print(f"잘못된 구역 색상 키입니다: {color_key}, 오류: {e}")
 
         
         self.ui.update_status(f"'{display_name}' 저장 완료: {new_color}")
+        # 색상 저장 성공 시 소리 1번 재생
+        self.ui.queue_task(lambda: self.ui.play_sound(1))
         print(f"색상 저장 완료 ({color_key}): {new_color}")
 
     def toggle_search(self):
@@ -397,6 +415,7 @@ class AppController:
         self.ui.queue_task(lambda: self.ui.update_button_text("중지 (ESC)"))
         # 찾기 시작 시 소리 2번 재생
         self.ui.queue_task(lambda: self.ui.play_sound(2))
+        self.ui.queue_task(lambda: self.ui.update_window_bg('searching'))
         print("--- 색상 검색 시작 ---")
 
         # 별도 스레드에서 검색 작업 실행 (생성된 계획 전달)
@@ -410,6 +429,7 @@ class AppController:
         self.is_searching = False
         self.ui.queue_task(lambda: self.ui.update_status(message))
         self.ui.queue_task(lambda: self.ui.update_button_text("찾기(Shift+s)"))
+        self.ui.queue_task(lambda: self.ui.update_window_bg('default'))
         print(f"--- {message} ---")
 
     def _handle_found_color(self, found_pos: tuple, success_message: str):
@@ -488,6 +508,7 @@ class AppController:
                     tries_count += 1
                     status_text = f"구역{step['area_number']} 클릭 ({i+1}/{step['num_retries']}) | 총 {tries_count}/{self.total_tries}"
                     self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
+
                     if self.area_delay > 0:
                         # 기본 딜레이에 +-60ms(0.06초)의 랜덤 오차를 추가합니다.
                         random_offset = random.uniform(-0.06, 0.06)
