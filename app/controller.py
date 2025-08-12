@@ -527,6 +527,8 @@ class AppController:
                         final_delay = self.area_delay + random_offset
                         # 최종 딜레이가 음수가 되지 않도록 max(0, ...) 처리합니다.
                         time.sleep(max(0, final_delay))
+                    
+                    if not self.is_searching: break # 딜레이 후 다시 확인
                     self.color_finder.click_action(final_x, final_y)
 
                     time.sleep(0.1)
