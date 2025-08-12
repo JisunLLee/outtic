@@ -46,6 +46,7 @@ class AppUI:
         # --- 구역별 변수 초기화 ---
         # 나중에 구역 2, 3, 4를 추가할 때 아래 라인을 추가하면 됩니다.
         self._initialize_area_vars(1)
+        self._initialize_area_vars(2)
 
     def _initialize_area_vars(self, area_number: int):
         """지정된 번호의 구역에 대한 Tkinter 변수들을 초기화하고 저장합니다."""
@@ -69,7 +70,7 @@ class AppUI:
     def _setup_ui(self):
         """메인 UI를 생성하고 배치합니다."""
         self.root.title("Auto Color Clicker")
-        self.root.geometry("400x560") # 구역 색상 UI 추가를 위해 높이 조정
+        self.root.geometry("400x720") # 구역 UI 추가를 위해 높이 조정
         self.root.configure(bg="#2e2e2e")
         self.root.resizable(True, True)
 
@@ -89,15 +90,12 @@ class AppUI:
         self._create_labeled_entry(right_frame, "색영역오차:", self.color_area_tolerance_var).pack(expand=True, fill=tk.X)
 
         # Row 2: 영역 설정
-        row2_container, (left_frame, right_frame) = self._create_split_container(
-            basic_group, weights=[1, 1], expand=True)
-        self._create_coordinate_selector(
-            left_frame, self.p1_var, "↖영역", command=lambda: self.controller.start_coordinate_picker('p1')
-        )
-        self._create_coordinate_selector(
-            right_frame, self.p2_var, "↘영역", command=lambda: self.controller.start_coordinate_picker('p2')
-        )
-
+        row2_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
+        p1_selector_frame, _, _ = self._create_coordinate_selector(left_frame, self.p1_var, "↖영역", command=lambda: self.controller.start_coordinate_picker('p1'))
+        p1_selector_frame.pack(expand=True, fill=tk.X)
+        p2_selector_frame, _, _ = self._create_coordinate_selector(right_frame, self.p2_var, "↘영역", command=lambda: self.controller.start_coordinate_picker('p2'))
+        p2_selector_frame.pack(expand=True, fill=tk.X)
+        
         # Row 3: 색상, 완료 
         row3_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
         self._create_value_button_row(left_frame, self.color_var, "색상", command=lambda: self.controller.start_color_picker('main_color')).pack(expand=True, fill=tk.X)
@@ -133,8 +131,9 @@ class AppUI:
         areas_container_group = self._create_labeled_frame(main_frame, "구역 설정")
         areas_container_group.pack(fill=tk.X, pady=(0, 10))
 
-        # 재사용 가능한 헬퍼 메서드를 사용하여 구역1 그룹 생성
+        # 재사용 가능한 헬퍼 메서드를 사용하여 구역 그룹 생성
         self._create_area_group(areas_container_group, 1)
+        self._create_area_group(areas_container_group, 2)
 
         # --- 액션 버튼 ---
         action_frame = tk.Frame(main_frame, bg="#2e2e2e")
@@ -239,8 +238,16 @@ class AppUI:
 
         def toggle_color_state():
             """'기본' 체크박스 상태에 따라 색상 위젯들을 활성화/비활성화하고 값을 동기화합니다."""
-            # 체크 시(True) 비활성화, 언체크 시(False) 활성화되도록 논리 반전
+            # '기본'이 체크되면(True), 개별 설정 위젯은 비활성화됩니다.
             use_default_color = vars['use_color_var'].get()
+            is_enabled = not use_default_color
+            state = 'normal' if is_enabled else 'disabled'
+            # ... (UI 상태 변경 코드) ...
+            color_button.config(state=state)
+
+            if use_default_color:
+                # '기본'이 체크되면, 전역 색상 값을 해당 구역의 변수에 설정합니다.
+                vars['color_var'].set(self.color_var.get())
             is_enabled = not use_default_color
             state = 'normal' if is_enabled else 'disabled'
             bg_color = '#555555'
@@ -361,18 +368,30 @@ class AppUI:
         # 좌표 마커들 표시
         if points:
             marker_size = 20
-            color_map = { '완료': '#50E3C2' } # Teal
-            for text, pos in points.items():
+            for point_info in points:
+                text = point_info.get('text', '')
+                pos = point_info.get('pos')
+                marker_color = point_info.get('color', '#FFFFFF') # 기본값 흰색
+
                 if not pos or (pos[0] == 0 and pos[1] == 0): continue
                 px, py = pos
-                marker_color = color_map.get(text, "#FFFFFF")
+                
                 marker = tk.Toplevel(self.root)
                 marker.overrideredirect(True)
                 marker.geometry(f"{marker_size}x{marker_size}+{px - marker_size//2}+{py - marker_size//2}")
                 marker.configure(bg=marker_color, highlightthickness=1, highlightbackground="white")
                 marker.attributes('-alpha', 0.7)
                 marker.attributes('-topmost', True)
-                tk.Label(marker, text=text, bg=marker_color, fg="white", font=("Helvetica", 8, "bold")).pack(expand=True, fill='both')
+                # 텍스트 색상을 마커 색상에 따라 흑/백으로 자동 조절
+                try:
+                    r, g, b = self.root.winfo_rgb(marker_color)
+                    # YIQ 공식으로 밝기 계산 (0-255000 범위)
+                    brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000
+                    text_color = "black" if brightness > 128000 else "white"
+                except tk.TclError:
+                    text_color = "black" # 색상 이름이 잘못된 경우 기본값
+
+                tk.Label(marker, text=text, bg=marker_color, fg=text_color, font=("Helvetica", 8, "bold")).pack(expand=True, fill='both')
                 marker.after(3000, marker.destroy)
                 self.point_marker_windows.append(marker)
 
