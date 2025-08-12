@@ -47,6 +47,8 @@ class AppUI:
         # 나중에 구역 2, 3, 4를 추가할 때 아래 라인을 추가하면 됩니다.
         self._initialize_area_vars(1)
         self._initialize_area_vars(2)
+        self._initialize_area_vars(3)
+        self._initialize_area_vars(4)
 
     def _initialize_area_vars(self, area_number: int):
         """지정된 번호의 구역에 대한 Tkinter 변수들을 초기화하고 저장합니다."""
@@ -70,7 +72,7 @@ class AppUI:
     def _setup_ui(self):
         """메인 UI를 생성하고 배치합니다."""
         self.root.title("Auto Color Clicker")
-        self.root.geometry("400x720") # 구역 UI 추가를 위해 높이 조정
+        self.root.geometry("400x950") # 구역 UI 추가를 위해 높이 조정
         self.root.configure(bg="#2e2e2e")
         self.root.resizable(True, True)
 
@@ -134,6 +136,8 @@ class AppUI:
         # 재사용 가능한 헬퍼 메서드를 사용하여 구역 그룹 생성
         self._create_area_group(areas_container_group, 1)
         self._create_area_group(areas_container_group, 2)
+        self._create_area_group(areas_container_group, 3)
+        self._create_area_group(areas_container_group, 4)
 
         # --- 액션 버튼 ---
         action_frame = tk.Frame(main_frame, bg="#2e2e2e")

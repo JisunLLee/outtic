@@ -50,6 +50,8 @@ class AppController:
         self.areas = {}
         self._initialize_area_settings(1) # 구역1 초기화
         self._initialize_area_settings(2) # 구역2 초기화
+        self._initialize_area_settings(3) # 구역3 초기화
+        self._initialize_area_settings(4) # 구역4 초기화
 
     def set_ui(self, ui: 'AppUI'):
         """
