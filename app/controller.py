@@ -6,6 +6,7 @@ from typing import Optional, TYPE_CHECKING
 import ast
 import random # 오차 적용을 위해 추가
 from PIL import ImageGrab # 화면 캡처를 위해 import 합니다.
+import itertools # 재시도 순환을 위해 추가
 
 from .color_finder import ColorFinder, SearchDirection
 from .global_hotkey_listener import GlobalHotkeyListener
@@ -45,6 +46,7 @@ class AppController:
         self.complete_click_delay = 0.02 # 완료 클릭 전 딜레이 (초)
         self.use_sequence = True # 구역 사용 여부
         self.area_delay = 0.45 # 구역 클릭 전 딜레이 (초)
+        self.total_tries = 225 # 총 시도 횟수
 
         # --- 구역별 설정 데이터 ---
         self.areas = {}
@@ -116,6 +118,7 @@ class AppController:
             selected_direction_str = self.ui.direction_var.get()
             self.search_direction = direction_map.get(selected_direction_str, SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT)
             self.use_sequence = self.ui.use_sequence_var.get()
+            self.total_tries = int(self.ui.total_tries_var.get())
             
             # --- 구역 설정 적용 ---
             for area_number, area_ui_vars in self.ui.area_vars.items():
@@ -365,31 +368,39 @@ class AppController:
         self.ui.queue_task(lambda: self.ui.update_button_text("찾기(Shift+s)"))
         print(f"--- {message} ---")
 
-    def _handle_found_color(self, found_pos, base_message: str):
-        """색상을 찾았을 때의 공통 로직을 처리합니다 (클릭, 완료 클릭, 상태 업데이트)."""
-        abs_x, abs_y = found_pos
-        self.color_finder.click_action(abs_x, abs_y)
-        
-        if self.complete_coord and self.complete_coord != (0, 0):
-            time.sleep(self.complete_click_delay)
-            comp_x, comp_y = self.complete_coord
-            self.color_finder.click_action(comp_x, comp_y)
-            status_message = f"{base_message}, 완료({comp_x},{comp_y}) 클릭"
+    def _handle_found_color(self, found_pos: tuple, success_message: str):
+        """색상을 찾았을 때의 공통 처리 로직입니다."""
+        if not self.is_searching: return
+
+        # 1. 찾은 위치 클릭
+        self.color_finder.click_action(found_pos[0], found_pos[1])
+
+        # 2. 완료 좌표 클릭 (설정된 경우)
+        if self.complete_coord != (0, 0):
+            final_x, final_y = self.complete_coord
+            # '색영역오차'를 완료 클릭 오차로 재사용합니다.
+            if self.color_area_tolerance > 0:
+                final_x += random.randint(-self.color_area_tolerance, self.color_area_tolerance)
+                final_y += random.randint(-self.color_area_tolerance, self.color_area_tolerance)
+            
+            if self.complete_click_delay > 0:
+                time.sleep(self.complete_click_delay)
+            
+            self.color_finder.click_action(final_x, final_y)
+            status_message = f"{success_message} 후 완료 클릭 ({final_x},{final_y})"
         else:
-            status_message = f"{base_message} 및 클릭: ({abs_x}, {abs_y})"
+            status_message = f"{success_message}"
 
         self.stop_search(message=status_message)
 
     def _search_worker(self, search_plan: list):
         """(스레드 워커) 전달받은 검색 계획(search_plan)을 순차적으로 실행합니다."""
         
-        # --- 공통 탐색 함수 ---
         def execute_single_search(search_area: tuple, search_color: tuple, search_direction: SearchDirection, status_text: str) -> Optional[tuple]:
             """지정된 단일 영역을 탐색하고 결과를 반환합니다."""
             if not self.is_searching: return None
 
             if not (search_area[2] > search_area[0] and search_area[3] > search_area[1]):
-                # 유효하지 않은 영역은 건너뜁니다.
                 return None
 
             self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
@@ -403,55 +414,51 @@ class AppController:
 
         # --- 검색 계획 실행 ---
         if self.use_sequence:
-            # [구역 사용 ON]: 계획대로 초기 탐색 -> 재시도 순차적으로 실행
-            for step in search_plan:
-                if not self.is_searching: return
+            # [구역 사용 ON]: 초기 탐색 후, 시도 횟수만큼 재시도 순환
+            initial_step = search_plan[0]
+            status_text = f"초기 탐색: 기본 영역에서 탐색 중 ({initial_step['search_direction'].value})..."
+            found_pos = execute_single_search(initial_step['search_area'], initial_step['search_color'], initial_step['search_direction'], status_text)
+            if found_pos:
+                self._handle_found_color(found_pos, "초기 탐색 중 기본 영역에서 색상 발견")
+                return
 
-                if step['type'] == 'initial':
-                    self.ui.queue_task(lambda desc=step['description']: self.ui.update_status(f"{desc} 시작..."))
-                    status_text = f"초기 탐색: 기본 영역에서 탐색 중 ({step['search_direction'].value})..."
-                    found_pos = execute_single_search(step['search_area'], step['search_color'], step['search_direction'], status_text)
+            retry_steps = [step for step in search_plan if step['type'] == 'retry']
+            if not retry_steps:
+                self.stop_search("활성화된 재시도 구역이 없어 중지합니다.")
+                return
+
+            retry_cycle = itertools.cycle(retry_steps)
+            tries_count = 0
+            while self.is_searching and tries_count < self.total_tries:
+                step = next(retry_cycle)
+                final_x, final_y = step['click_coord']
+                if step['offset'] > 0:
+                    final_x += random.randint(-step['offset'], step['offset'])
+                    final_y += random.randint(-step['offset'], step['offset'])
+
+                for i in range(step['num_retries']):
+                    if not self.is_searching or tries_count >= self.total_tries: break
+                    tries_count += 1
+                    status_text = f"구역{step['area_number']} 클릭 ({i+1}/{step['num_retries']}) | 총 {tries_count}/{self.total_tries}"
+                    self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
+                    if self.area_delay > 0: time.sleep(self.area_delay)
+                    self.color_finder.click_action(final_x, final_y)
+                    time.sleep(0.1)
+                    search_status_text = f"재탐색: 구역{step['area_number']} 영역 ({step['search_direction'].value})..."
+                    found_pos = execute_single_search(step['search_area'], step['search_color'], step['search_direction'], search_status_text)
                     if found_pos:
-                        self._handle_found_color(found_pos, f"초기 탐색 중 기본 영역에서 색상 발견")
+                        self._handle_found_color(found_pos, f"재시도 중 구역{step['area_number']}에서 색상 발견")
                         return
-
-                elif step['type'] == 'retry':
-                    # 이 재시도 시퀀스 동안 클릭할 고정된 랜덤 좌표 계산
-                    final_x, final_y = step['click_coord']
-                    if step['offset'] > 0:
-                        final_x += random.randint(-step['offset'], step['offset'])
-                        final_y += random.randint(-step['offset'], step['offset'])
-
-                    for i in range(step['num_retries']):
-                        if not self.is_searching: return
-
-                        # 1. 상태 업데이트 및 구역 클릭
-                        status_text = f"구역{step['area_number']} 재시도 {i+1}/{step['num_retries']} ({final_x},{final_y}) 클릭"
-                        self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
-                        
-                        if self.area_delay > 0: time.sleep(self.area_delay)
-                        self.color_finder.click_action(final_x, final_y)
-                        time.sleep(0.1) # 클릭 후 UI 반응 대기
-
-                        # 2. 클릭 후 재탐색
-                        status_text = f"구역{step['area_number']} 재시도 후: 해당 구역에서 탐색 중 ({step['search_direction'].value})..."
-                        found_pos = execute_single_search(step['search_area'], step['search_color'], step['search_direction'], status_text)
-                        if found_pos:
-                            self._handle_found_color(found_pos, f"재시도 중 구역{step['area_number']}에서 색상 발견")
-                            return
-            # 모든 계획을 실행했지만 색상을 찾지 못한 경우
-            self.stop_search(message="모든 탐색 및 재시도 후에도 색상 못찾음.")
+            
+            if self.is_searching:
+                self.stop_search(f"최대 시도 횟수({self.total_tries}) 도달, 검색 중지.")
         else:
             # [구역 사용 OFF]: 색상을 찾을 때까지 초기 탐색만 무한 반복
-            if not search_plan:
-                self.stop_search("검색 계획이 비어있어 중지합니다.")
-                return
-            
             initial_step = search_plan[0]
             while self.is_searching:
                 status_text = f"기본 영역 반복 탐색 중 ({initial_step['search_direction'].value})..."
                 found_pos = execute_single_search(initial_step['search_area'], initial_step['search_color'], initial_step['search_direction'], status_text)
                 if found_pos:
                     self._handle_found_color(found_pos, "기본 영역에서 색상 발견")
-                    return # 작업 완료 후 스레드 종료
-                time.sleep(0.1) # CPU 과부하 방지를 위한 짧은 대기
+                    return
+                time.sleep(0.15)
