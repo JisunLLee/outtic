@@ -395,6 +395,8 @@ class AppController:
         self.is_searching = True
         self.ui.queue_task(lambda: self.ui.update_status("색상 검색 중... (ESC로 중지)"))
         self.ui.queue_task(lambda: self.ui.update_button_text("중지 (ESC)"))
+        # 찾기 시작 시 소리 2번 재생
+        self.ui.queue_task(lambda: self.ui.play_sound(2))
         print("--- 색상 검색 시작 ---")
 
         # 별도 스레드에서 검색 작업 실행 (생성된 계획 전달)
@@ -501,6 +503,8 @@ class AppController:
                         return
             
             if self.is_searching:
+                # 최대 시도 횟수 도달 시 소리 3번 재생
+                self.ui.queue_task(lambda: self.ui.play_sound(3))
                 self.stop_search(f"최대 시도 횟수({self.total_tries}) 도달, 검색 중지.")
         else:
             # [구역 사용 OFF]: 색상을 찾을 때까지 초기 탐색만 무한 반복
