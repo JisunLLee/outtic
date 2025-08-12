@@ -124,6 +124,10 @@ class AppUI:
         tk.Checkbutton(left_frame, text="구역 사용", variable=self.use_sequence_var, bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
         self._create_labeled_entry(right_frame, "구역 딜레이:", self.area_delay_var).pack(expand=True, fill=tk.X)
 
+        # --- 상태 메시지 ---
+        status_label = tk.Label(main_frame, textvariable=self.status_var, fg="lightblue", bg="#2e2e2e", anchor='w')
+        status_label.pack(fill=tk.X, pady=(0, 10))
+
         # --- 구역 설정 그룹 ---
         # 이 프레임은 모든 구역(구역1, 구역2 등)을 감싸는 컨테이너 역할을 합니다.
         areas_container_group = self._create_labeled_frame(main_frame, "구역 설정")
@@ -131,10 +135,6 @@ class AppUI:
 
         # 재사용 가능한 헬퍼 메서드를 사용하여 구역1 그룹 생성
         self._create_area_group(areas_container_group, 1)
-
-        # --- 상태 메시지 ---
-        status_label = tk.Label(main_frame, textvariable=self.status_var, fg="lightblue", bg="#2e2e2e", anchor='w')
-        status_label.pack(fill=tk.X, pady=5)
 
         # --- 액션 버튼 ---
         action_frame = tk.Frame(main_frame, bg="#2e2e2e")
