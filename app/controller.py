@@ -441,7 +441,7 @@ class AppController:
         self.is_searching = False
 
         if message is None:
-            message = f"검색이 종료되었습니다. 시도 횟수: ({self.tries_count}/{self.total_tries})"
+            message = f"검색 종료. 시도 횟수: ({self.tries_count}/{self.total_tries})"
 
         # 검색 종료와 관련된 모든 UI 업데이트를 하나의 작업으로 묶어 큐에 추가합니다.
         self.ui.queue_task(lambda msg=message: self.ui.set_final_status(msg))
@@ -528,9 +528,6 @@ class AppController:
                         # 최종 딜레이가 음수가 되지 않도록 max(0, ...) 처리합니다.
                         time.sleep(max(0, final_delay))
                     self.color_finder.click_action(final_x, final_y)
-                    # 클릭 액션 직후에 상태를 업데이트하여 UI가 갱신될 기회를 높입니다.
-                    status_text = f"구역{step['area_number']} 클릭 ({i+1}/{step['num_retries']}) | 총 {self.tries_count}/{self.total_tries}"
-                    self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
 
                     time.sleep(0.1)
                     search_status_text = f"재탐색: 구역{step['area_number']} ({i+1}/{step['num_retries']}) | ({step['search_direction'].value}) | 총 ({self.tries_count}/{self.total_tries})"
