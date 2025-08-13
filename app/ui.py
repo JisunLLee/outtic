@@ -48,9 +48,9 @@ class AppUI:
         # --- 창 색상 관리 ---
         self.WINDOW_COLORS = {
             'default': "#2e2e2e",
-            'searching': "#c0b38c", # 어두운 노란색
+            'searching': "medium turquoise",
             'global_setting_change': "#40E0D0", # 기본 설정 변경 시 플래시 색상 (터콰이즈)
-            'area_setting_change': "#00EEEE",   # 구역 설정 변경 시 플래시 색상 (시안)
+            'area_setting_change': "LemonChiffon",   # 구역 설정 변경 시 플래시 색상
         }
         
         # --- 구역별 변수 초기화 ---
@@ -86,7 +86,7 @@ class AppUI:
 
         window_width = 400
         # 4개의 구역이 모두 보이도록 창 높이 설정합니다.
-        window_height = 890
+        window_height = 870
 
         # 화면의 너비를 가져옵니다.
         screen_width = self.root.winfo_screenwidth()
@@ -139,12 +139,12 @@ class AppUI:
         direction_menu.pack(side=tk.RIGHT, padx=(15,0))
 
         # --- 상태 메시지 ---
-        status_label = tk.Label(main_frame, textvariable=self.status_var, fg="lightblue", bg="#2e2e2e", anchor='w')
+        status_label = tk.Label(main_frame, bg="#555555", textvariable=self.status_var, fg="lightblue", anchor='w', padx=10, pady=3)
         status_label.pack(fill=tk.X, pady=(0, 10))
 
         # --- 구역탐색 사용 여부 ---
         area_container, (left_frame, right_frame) = self._create_split_container(main_frame, weights=[1, 1])
-        tk.Checkbutton(left_frame, text="구역 탐색 사용", variable=self.use_sequence_var, bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
+        tk.Checkbutton(left_frame, text="구역 탐색 사용", variable=self.use_sequence_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
    
         # --- 구역 설정 그룹 ---
         # 이 프레임은 모든 구역(구역1, 구역2 등)을 감싸는 컨테이너 역할을 합니다.
@@ -165,8 +165,8 @@ class AppUI:
         self._create_area_group(areas_container_group, 4)
 
         # --- 액션 버튼 ---
-        action_frame = tk.Frame(main_frame, bg="#2e2e2e")
-        action_frame.pack(fill=tk.X, side=tk.BOTTOM)
+        action_frame = tk.Frame(main_frame)
+        action_frame.pack(fill=tk.X)
         action_frame.grid_columnconfigure(0, weight=1)
         action_frame.grid_columnconfigure(1, weight=1)
         self.area_button = tk.Button(action_frame, text="영역확인", command=self.controller.show_area)
@@ -294,7 +294,7 @@ class AppUI:
 
         # --- Row 3 오른쪽: 탐색 방향 ---
         direction_menu = tk.OptionMenu(right_frame3, vars['direction_var'], *self.SEARCH_DIRECTION_MAP.values())
-        direction_menu.config(bg="#555555", fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
+        direction_menu.config(fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
         direction_menu["menu"].config(bg="#555555", fg="white")
 
         def toggle_direction_state():
@@ -508,7 +508,7 @@ class AppUI:
     def _create_labeled_entry(self, parent, label_text, var):
         """레이블과 입력창으로 구성된 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent)
-        tk.Label(frame, text=label_text, fg="white", bg="#2e2e2e").pack(
+        tk.Label(frame, text=label_text, fg="white").pack(
             side=tk.LEFT)
         tk.Entry(frame, textvariable=var, width=2, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0).pack(
             side=tk.LEFT, expand=True, fill=tk.X)
