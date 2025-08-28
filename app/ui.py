@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+import sys
 import queue
 
 from .color_finder import SearchDirection
@@ -13,6 +14,8 @@ class AppUI:
         self.controller = controller
         self.area_marker_windows = []
         self.point_marker_windows = []
+        self.scrollable_canvas = None
+        self.scrollable_content_frame = None
         self.area_toggles = {}
         self.ui_queue = queue.Queue()
         self.area_vars = {}
@@ -84,9 +87,9 @@ class AppUI:
         """메인 UI를 생성하고 배치합니다."""
         self.root.title("LuAuttic")
 
-        window_width = 400
+        window_width = 430
         # 4개의 구역이 모두 보이도록 창 높이 설정합니다.
-        window_height = 930
+        window_height = 940
 
         # 화면의 너비를 가져옵니다.
         screen_width = self.root.winfo_screenwidth()
@@ -150,7 +153,7 @@ class AppUI:
         # --- 구역 설정 그룹 ---
         # 이 프레임은 모든 구역(구역1, 구역2 등)을 감싸는 컨테이너 역할을 합니다.
         areas_container_group = self._create_labeled_frame(main_frame, "구역 설정")
-        areas_container_group.pack(fill=tk.X, pady=(0, 10))
+        areas_container_group.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
 
         # 구역 세팅: 구역 사용, 탐색딜레이, 총 시도횟수, 구역 딜레이
         area_set_container, (left_frame, right_frame) = self._create_split_container(areas_container_group, weights=[1, 1])
@@ -167,12 +170,46 @@ class AppUI:
         operation_check, (left_frame, right_frame) = self._create_split_container(operation_check, weights=[1, 1])
         self._create_value_button_row(left_frame, None, "좌표", command=lambda: None).pack(side=tk.LEFT)
         self._create_value_button_row(right_frame, None, "색상", command=lambda: None).pack(side=tk.RIGHT)
-        
+
+        # --- 스크롤 가능한 구역 영역 생성 ---
+        scroll_container = tk.Frame(areas_container_group)
+        scroll_container.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
+
+        self.scrollable_canvas = tk.Canvas(scroll_container, borderwidth=0)
+        scrollbar = ttk.Scrollbar(scroll_container, orient="vertical", command=self.scrollable_canvas.yview)
+        self.scrollable_canvas.configure(yscrollcommand=scrollbar.set)
+
+        scrollbar.pack(side="right", fill="y")
+        self.scrollable_canvas.pack(side="left", fill=tk.BOTH, expand=True)
+
+        self.scrollable_content_frame = tk.Frame(self.scrollable_canvas)
+        self.scrollable_canvas.create_window((0, 0), window=self.scrollable_content_frame, anchor="nw")
+
+        def on_frame_configure(event):
+            self.scrollable_canvas.configure(scrollregion=self.scrollable_canvas.bbox("all"))
+
+        self.scrollable_content_frame.bind("<Configure>", on_frame_configure)
+
+        def on_mouse_wheel(event):
+            # 플랫폼에 따라 스크롤 처리
+            if sys.platform.startswith("win"):
+                self.scrollable_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            elif sys.platform == "darwin": # macOS
+                self.scrollable_canvas.yview_scroll(int(-1 * event.delta), "units")
+            else: # Linux
+                if event.num == 4: self.scrollable_canvas.yview_scroll(-1, "units")
+                elif event.num == 5: self.scrollable_canvas.yview_scroll(1, "units")
+
+        # 캔버스 및 그 자식 위젯들에서 마우스 휠 이벤트가 발생할 때 스크롤되도록 바인딩
+        self.root.bind_all("<MouseWheel>", on_mouse_wheel)
+        self.root.bind_all("<Button-4>", on_mouse_wheel)
+        self.root.bind_all("<Button-5>", on_mouse_wheel)
+
         # 재사용 가능한 헬퍼 메서드를 사용하여 구역 그룹 생성
-        self._create_area_group(areas_container_group, 1)
-        self._create_area_group(areas_container_group, 2)
-        self._create_area_group(areas_container_group, 3)
-        self._create_area_group(areas_container_group, 4)
+        self._create_area_group(self.scrollable_content_frame, 1)
+        self._create_area_group(self.scrollable_content_frame, 2)
+        self._create_area_group(self.scrollable_content_frame, 3)
+        self._create_area_group(self.scrollable_content_frame, 4)
 
         # --- 액션 버튼 ---
         action_frame = tk.Frame(main_frame)
@@ -373,17 +410,22 @@ class AppUI:
         """창과 모든 자식 위젯의 배경색을 상태에 따라 업데이트합니다."""
         color = self.WINDOW_COLORS.get(state, self.WINDOW_COLORS['default'])
         self._set_bg_recursively(self.root, color)
+        # 캔버스 내부에 있는 프레임은 일반적인 자식 위젯이 아니므로 별도 처리
+        if self.scrollable_content_frame:
+            self._set_bg_recursively(self.scrollable_content_frame, color)
 
     def _set_bg_recursively(self, widget, color):
         """지정된 위젯과 그 자식들의 배경색을 재귀적으로 설정합니다."""
         # 배경색을 변경할 위젯 타입들
-        target_widgets = (tk.Frame, tk.LabelFrame, tk.Label, tk.Checkbutton)
+        target_widgets = (tk.Frame, tk.LabelFrame, tk.Label, tk.Checkbutton, tk.Canvas)
 
         try:
             if isinstance(widget, target_widgets):
                 # 체크박스는 배경과 관련된 여러 속성을 함께 변경해야 자연스럽습니다.
                 if isinstance(widget, tk.Checkbutton):
                     widget.configure(bg=color, activebackground=color, selectcolor=color)
+                elif isinstance(widget, tk.Canvas):
+                    widget.configure(bg=color, highlightthickness=0)
                 else:
                     widget.configure(bg=color)
         except tk.TclError:
