@@ -37,10 +37,10 @@ class AppController:
 
         # --- 기본값 설정 ---
         # 이 값들은 UI의 초기값을 설정하는 데 사용됩니다.
-        self.p1 = (88, 219)
-        self.p2 = (398, 462)
-        self.color = (0, 204, 204)
-        self.complete_coord = (805, 704)
+        self.p1 = (48, 193)
+        self.p2 = (639, 735)
+        self.color = (124, 104, 238)
+        self.complete_coord = (769, 648)
         self.color_tolerance = 15
         self.color_area_tolerance = 5
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
@@ -82,36 +82,30 @@ class AppController:
 
             if area_number == 1:
                 default_use = True
-                default_click_coord = (803, 399)
-                default_clicks = 3
-                default_use_area_bounds = True
+                default_click_coord = (734, 288)
+                default_clicks = 2
                 default_p1 = (263, 227)
                 default_p2 = (389, 449)
-                default_use_direction = True
                 default_direction = SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT
             if area_number == 2:
                 default_use = True
-                default_click_coord = (806, 432)
-                default_clicks = 1
-                default_use_area_bounds = True
+                default_click_coord = (727, 304)
+                default_clicks = 2
                 default_p1 = (90, 225)
                 default_p2 = (245, 256)
             if area_number == 3:
                 default_use = True
-                default_click_coord = (824, 397)
-                default_clicks = 2
-                default_use_area_bounds = True
+                default_click_coord = (732, 322)
+                default_clicks = 1
                 default_p1 = (263, 227)
                 default_p2 = (389, 449)
-                default_use_direction = True
                 default_direction = SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT
             if area_number == 4:
-                default_click_coord = (806, 414)
-                default_clicks = 2
-                default_use_area_bounds = True
+                default_use = True
+                default_click_coord = (731, 339)
+                default_clicks = 1
                 default_p1 = (98, 229)
                 default_p2 = (225, 450)
-                default_use_direction = True
                 default_direction = SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT
 
 
@@ -242,7 +236,7 @@ class AppController:
 
         # 마커로 표시할 좌표들
         points_to_mark = [
-            {'text': '완료', 'pos': self.complete_coord, 'color': '#50E3C2'} # Teal
+            {'text': '완료', 'pos': self.complete_coord, 'color': '#50E3C2'}, # Teal
         ]
         # 활성화된 구역들의 클릭 좌표도 함께 표시
         for area_number, settings in self.areas.items():

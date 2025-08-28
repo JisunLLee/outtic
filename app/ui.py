@@ -54,7 +54,6 @@ class AppUI:
         }
         
         # --- 구역별 변수 초기화 ---
-        # 나중에 구역 2, 3, 4를 추가할 때 아래 라인을 추가하면 됩니다.
         self._initialize_area_vars(1)
         self._initialize_area_vars(2)
         self._initialize_area_vars(3)
@@ -86,7 +85,7 @@ class AppUI:
 
         window_width = 400
         # 4개의 구역이 모두 보이도록 창 높이 설정합니다.
-        window_height = 870
+        window_height = 930
 
         # 화면의 너비를 가져옵니다.
         screen_width = self.root.winfo_screenwidth()
@@ -138,14 +137,15 @@ class AppUI:
         direction_menu["menu"].config(bg="#555555", fg="white")
         direction_menu.pack(side=tk.RIGHT, padx=(15,0))
 
-        # --- 상태 메시지 ---
-        status_label = tk.Label(main_frame, bg="#555555", textvariable=self.status_var, fg="lightblue", anchor='w', padx=10, pady=3)
-        status_label.pack(fill=tk.X, pady=(0, 10))
+        
 
+        area_container, (left_frame, right_frame) = self._create_split_container(main_frame, weights=[1, 10])
         # --- 구역탐색 사용 여부 ---
-        area_container, (left_frame, right_frame) = self._create_split_container(main_frame, weights=[1, 1])
         tk.Checkbutton(left_frame, text="구역 탐색 사용", variable=self.use_sequence_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
-   
+        # --- 상태 메시지 ---
+        status_label = tk.Label(right_frame, bg="#555555", textvariable=self.status_var, fg="lightblue", anchor='w')
+        status_label.pack(side=tk.RIGHT, expand=True, fill=tk.X)
+
         # --- 구역 설정 그룹 ---
         # 이 프레임은 모든 구역(구역1, 구역2 등)을 감싸는 컨테이너 역할을 합니다.
         areas_container_group = self._create_labeled_frame(main_frame, "구역 설정")
@@ -158,6 +158,15 @@ class AppUI:
         self._create_labeled_entry(right_frame, "시도횟수:", self.total_tries_var).pack(side=tk.RIGHT, expand=True, padx=5,fill=tk.X)
 
 
+        # --- 탐색 화면 정상 여부 확인용 그룹 ---
+        operation_check = tk.LabelFrame(areas_container_group, text=f"탐색 화면 정상 여부 확인", fg="white", padx=10, pady=5)
+        operation_check.pack(fill=tk.X, pady=12, padx=5, ipady=5)
+
+        # Row 1: 화면 정상 여부 확인: 화면 확인 좌표, 화면 확인 색상
+        operation_check, (left_frame, right_frame) = self._create_split_container(operation_check, weights=[1, 1])
+        self._create_value_button_row(left_frame, None, "좌표", command=lambda: None).pack(side=tk.LEFT)
+        self._create_value_button_row(right_frame, None, "색상", command=lambda: None).pack(side=tk.RIGHT)
+        
         # 재사용 가능한 헬퍼 메서드를 사용하여 구역 그룹 생성
         self._create_area_group(areas_container_group, 1)
         self._create_area_group(areas_container_group, 2)
@@ -205,11 +214,10 @@ class AppUI:
             """'탐색' 체크박스 상태에 따라 관련 위젯들을 활성화/비활성화합니다."""
             is_enabled = vars['use_var'].get()
             state = 'normal' if is_enabled else 'disabled'
-            label_bg = '#555555'
             label_fg = 'white' if is_enabled else '#2e2e2e'
             entry_bg = '#444444' if is_enabled else '#555555'
 
-            coord_label.config(state=state, bg=label_bg, fg=label_fg)
+            coord_label.config(state=state, fg=label_fg)
             coord_button.config(state=state)
 
             for frame in [clicks_frame, offset_frame]:
@@ -220,7 +228,7 @@ class AppUI:
                         widget.config(state=state)
 
         # --- Row 1 왼쪽: 탐색 활성화, 클릭 좌표 설정 ---
-        tk.Checkbutton(left_frame, text="탐색", variable=vars['use_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_search_state).pack(side=tk.LEFT)
+        tk.Checkbutton(left_frame, text="탐색", variable=vars['use_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_search_state).pack(side=tk.LEFT)
         coord_label.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
         coord_button.pack(side=tk.LEFT)
 
@@ -254,7 +262,7 @@ class AppUI:
                 vars['p1_var'].set(self.p1_var.get())
                 vars['p2_var'].set(self.p2_var.get())
 
-        tk.Checkbutton(left_frame2, text="기본", variable=vars['use_area_bounds_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_area_bounds_state).pack(side=tk.LEFT)
+        tk.Checkbutton(left_frame2, text="기본", variable=vars['use_area_bounds_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_area_bounds_state).pack(side=tk.LEFT)
         p1_selector_frame.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
         p2_selector_frame.pack(expand=True, fill=tk.X)
 
@@ -288,7 +296,7 @@ class AppUI:
                 # '기본'이 체크되면, 전역 색상 값을 해당 구역의 변수에 설정합니다.
                 vars['color_var'].set(self.color_var.get())
 
-        tk.Checkbutton(left_frame3, text="기본", variable=vars['use_color_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_color_state).pack(side=tk.LEFT)
+        tk.Checkbutton(left_frame3, text="기본", variable=vars['use_color_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_color_state).pack(side=tk.LEFT)
         color_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         color_button.pack(side=tk.LEFT)
 
@@ -309,7 +317,7 @@ class AppUI:
                 # '기본'이 체크되면, 전역 탐색 방향 값을 해당 구역의 변수에 설정합니다.
                 vars['direction_var'].set(self.direction_var.get())
 
-        tk.Checkbutton(right_frame3, text="기본", variable=vars['use_direction_var'], bg="#2e2e2e", fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_direction_state).pack(side=tk.LEFT)
+        tk.Checkbutton(right_frame3, text="기본", variable=vars['use_direction_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_direction_state).pack(side=tk.LEFT)
         direction_menu.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=(5,0))
         
         # --- 전역 변수 변경 감지 및 동기화 ---
@@ -517,7 +525,7 @@ class AppUI:
     def _create_coordinate_selector(self, parent, var, button_text, command=None):
         """좌표값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성하고, 위젯들을 반환합니다."""
         frame = tk.Frame(parent)
-        label = tk.Label(frame, textvariable=var, relief="sunken", width=8, anchor='w')
+        label = tk.Label(frame, bg="#555555", textvariable=var, relief="sunken", width=8, anchor='w')
         label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         button = tk.Button(frame, text=button_text, width=3, command=command)
         button.pack(side=tk.LEFT)
@@ -528,5 +536,5 @@ class AppUI:
         frame = tk.Frame(parent)
         tk.Label(frame, textvariable=var, relief="sunken", bg="#555555", width=12, anchor='w').pack(
             side=tk.LEFT, expand=True, fill=tk.X)
-        tk.Button(frame, text=button_text, width=3, command=command).pack(side=tk.LEFT)
+        tk.Button(frame, text=button_text, width=3,  bg="white", command=command).pack(side=tk.LEFT)
         return frame
