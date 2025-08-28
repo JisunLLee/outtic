@@ -6,6 +6,8 @@ from typing import Optional, TYPE_CHECKING
 import ast
 import random # 오차 적용을 위해 추가
 from PIL import ImageGrab # 화면 캡처를 위해 import 합니다.
+import json
+from tkinter import filedialog
 import itertools # 재시도 순환을 위해 추가
 
 from .color_finder import ColorFinder, SearchDirection
@@ -249,6 +251,116 @@ class AppController:
                 })
 
         self.ui.display_visual_aids(areas=areas_to_display, points=points_to_mark)
+
+    def save_settings(self):
+        """현재 설정을 JSON 파일로 저장합니다."""
+        if not self.ui: return
+        if not self.apply_settings():
+            self.ui.update_status("설정 저장 실패: 현재 설정에 오류가 있습니다.")
+            return
+
+        settings_data = {
+            'p1': self.p1,
+            'p2': self.p2,
+            'color': self.color,
+            'complete_coord': self.complete_coord,
+            'color_tolerance': self.color_tolerance,
+            'color_area_tolerance': self.color_area_tolerance,
+            'search_direction': self.search_direction.value, # Enum을 문자열로 저장
+            'complete_click_delay': self.complete_click_delay,
+            'use_sequence': self.use_sequence,
+            'area_delay': self.area_delay,
+            'search_delay': self.search_delay,
+            'total_tries': self.total_tries,
+            'areas': {}
+        }
+
+        for area_number, area_settings in self.areas.items():
+            settings_data['areas'][area_number] = {
+                'use': area_settings['use'],
+                'click_coord': area_settings['click_coord'],
+                'clicks': area_settings['clicks'],
+                'offset': area_settings['offset'],
+                'use_area_bounds': area_settings['use_area_bounds'],
+                'p1': area_settings['p1'],
+                'p2': area_settings['p2'],
+                'use_color': area_settings['use_color'],
+                'color': area_settings['color'],
+                'direction': area_settings['direction'].value, # Enum을 문자열로 저장
+                'use_direction': area_settings['use_direction'],
+            }
+
+        filepath = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON 설정 파일", "*.json"), ("모든 파일", "*.*")],
+            title="설정 저장"
+        )
+
+        if not filepath:
+            self.ui.update_status("설정 저장이 취소되었습니다.")
+            return
+
+        try:
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(settings_data, f, ensure_ascii=False, indent=4)
+            self.ui.update_status(f"설정이 '{filepath.split('/')[-1]}'에 저장되었습니다.")
+        except Exception as e:
+            self.ui.update_status(f"파일 저장 오류: {e}")
+
+    def load_settings(self):
+        """JSON 파일에서 설정을 불러옵니다."""
+        if not self.ui: return
+
+        filepath = filedialog.askopenfilename(
+            filetypes=[("JSON 설정 파일", "*.json"), ("모든 파일", "*.*")],
+            title="설정 불러오기"
+        )
+
+        if not filepath:
+            self.ui.update_status("설정 불러오기가 취소되었습니다.")
+            return
+
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                settings_data = json.load(f)
+
+            # 컨트롤러 속성 업데이트 (get 메서드로 기본값 보장)
+            self.p1 = tuple(settings_data.get('p1', self.p1))
+            self.p2 = tuple(settings_data.get('p2', self.p2))
+            self.color = tuple(settings_data.get('color', self.color))
+            self.complete_coord = tuple(settings_data.get('complete_coord', self.complete_coord))
+            self.color_tolerance = int(settings_data.get('color_tolerance', self.color_tolerance))
+            self.color_area_tolerance = int(settings_data.get('color_area_tolerance', self.color_area_tolerance))
+            self.search_direction = SearchDirection(settings_data.get('search_direction', self.search_direction.value))
+            self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
+            self.use_sequence = bool(settings_data.get('use_sequence', self.use_sequence))
+            self.area_delay = float(settings_data.get('area_delay', self.area_delay))
+            self.search_delay = float(settings_data.get('search_delay', self.search_delay))
+            self.total_tries = int(settings_data.get('total_tries', self.total_tries))
+
+            loaded_areas = settings_data.get('areas', {})
+            for area_number_str, loaded in loaded_areas.items():
+                area_number = int(area_number_str)
+                if area_number in self.areas:
+                    area = self.areas[area_number]
+                    area['use'] = bool(loaded.get('use', area['use']))
+                    area['click_coord'] = tuple(loaded.get('click_coord', area['click_coord']))
+                    area['clicks'] = int(loaded.get('clicks', area['clicks']))
+                    area['offset'] = int(loaded.get('offset', area['offset']))
+                    area['use_area_bounds'] = bool(loaded.get('use_area_bounds', area['use_area_bounds']))
+                    area['p1'] = tuple(loaded.get('p1', area['p1']))
+                    area['p2'] = tuple(loaded.get('p2', area['p2']))
+                    area['use_color'] = bool(loaded.get('use_color', area['use_color']))
+                    area['color'] = tuple(loaded.get('color', area['color']))
+                    area['direction'] = SearchDirection(loaded.get('direction', area['direction'].value))
+                    area['use_direction'] = bool(loaded.get('use_direction', area['use_direction']))
+
+            # UI에 변경된 설정값 반영
+            self.ui.update_ui_from_controller()
+            self.ui.update_status(f"'{filepath.split('/')[-1]}'에서 설정을 불러왔습니다.")
+
+        except Exception as e:
+            self.ui.update_status(f"파일 불러오기 오류: {e}")
 
     def start_coordinate_picker(self, coord_key: str):
         """

@@ -13,6 +13,7 @@ class AppUI:
         self.controller = controller
         self.area_marker_windows = []
         self.point_marker_windows = []
+        self.area_toggles = {}
         self.ui_queue = queue.Queue()
         self.area_vars = {}
         self._initialize_vars()
@@ -178,11 +179,19 @@ class AppUI:
         action_frame.pack(fill=tk.X)
         action_frame.grid_columnconfigure(0, weight=1)
         action_frame.grid_columnconfigure(1, weight=1)
+        action_frame.grid_columnconfigure(2, weight=1)
+        action_frame.grid_columnconfigure(3, weight=1)
+
+        self.load_button = tk.Button(action_frame, text="불러오기", command=self.controller.load_settings)
+        self.load_button.grid(row=0, column=0, sticky=tk.EW, padx=(0, 5))
+        self.save_button = tk.Button(action_frame, text="저장하기", command=self.controller.save_settings)
+        self.save_button.grid(row=0, column=1, sticky=tk.EW, padx=(0, 5))
+
         self.area_button = tk.Button(action_frame, text="영역확인", command=self.controller.show_area)
-        self.area_button.grid(row=0, column=0, sticky=tk.EW, padx=(0, 5))
+        self.area_button.grid(row=0, column=2, sticky=tk.EW, padx=(0, 5))
         
         self.find_button = tk.Button(action_frame, text="찾기(Shift+s)", command=self.controller.toggle_search)
-        self.find_button.grid(row=0, column=1, sticky=tk.EW, padx=(5, 0))
+        self.find_button.grid(row=0, column=3, sticky=tk.EW)
 
     def _create_area_group(self, parent, area_number: int):
         """
@@ -340,6 +349,14 @@ class AppUI:
         self.color_var.trace_add('write', update_area_color_from_global)
         self.direction_var.trace_add('write', update_area_direction_from_global)
 
+        # 토글 함수들을 나중에 UI 업데이트 시 사용하기 위해 저장합니다.
+        self.area_toggles[area_number] = {
+            'search': toggle_search_state,
+            'bounds': toggle_area_bounds_state,
+            'color': toggle_color_state,
+            'direction': toggle_direction_state,
+        }
+
         toggle_search_state() # 초기 상태 설정
         toggle_color_state() # 초기 상태 설정을 위해 호출
         toggle_area_bounds_state() # 초기 상태 설정
@@ -412,6 +429,43 @@ class AppUI:
         self.update_status(message)
         self.update_button_text("찾기(Shift+s)")
         self.update_window_bg('default')
+
+    def update_ui_from_controller(self):
+        """컨트롤러의 현재 설정값으로 UI의 모든 변수를 업데이트합니다."""
+        c = self.controller
+        self.color_tolerance_var.set(str(c.color_tolerance))
+        self.color_area_tolerance_var.set(str(c.color_area_tolerance))
+        self.complete_delay_var.set(str(int(c.complete_click_delay * 100)))
+        self.p1_var.set(str(c.p1))
+        self.p2_var.set(str(c.p2))
+        self.color_var.set(str(c.color))
+        self.area_delay_var.set(str(int(c.area_delay * 100)))
+        self.search_delay_var.set(str(int(c.search_delay * 100)))
+        self.complete_coord_var.set(str(c.complete_coord))
+        self.use_sequence_var.set(c.use_sequence)
+        self.direction_var.set(self.SEARCH_DIRECTION_MAP[c.search_direction])
+        self.total_tries_var.set(str(c.total_tries))
+
+        for area_number, area_settings in c.areas.items():
+            if area_number in self.area_vars:
+                vars = self.area_vars[area_number]
+                vars['use_var'].set(area_settings['use'])
+                vars['coord_var'].set(str(area_settings['click_coord']))
+                vars['clicks_var'].set(str(area_settings['clicks']))
+                vars['offset_var'].set(str(area_settings['offset']))
+                vars['p1_var'].set(str(area_settings['p1']))
+                vars['p2_var'].set(str(area_settings['p2']))
+                vars['color_var'].set(str(area_settings['color']))
+                vars['direction_var'].set(self.SEARCH_DIRECTION_MAP[area_settings['direction']])
+                # UI 체크박스(True)는 컨트롤러 값(False)과 반대입니다.
+                vars['use_area_bounds_var'].set(not area_settings['use_area_bounds'])
+                vars['use_color_var'].set(not area_settings['use_color'])
+                vars['use_direction_var'].set(not area_settings['use_direction'])
+        
+        # '기본' 체크박스 상태에 따라 비활성화된 위젯들의 상태를 올바르게 갱신합니다.
+        for area_number, toggles in self.area_toggles.items():
+            for toggle_func in toggles.values():
+                toggle_func()
 
     def display_visual_aids(self, areas=None, points=None):
         """화면에 영역과 좌표 마커들을 표시합니다."""
