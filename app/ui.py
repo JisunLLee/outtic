@@ -16,6 +16,7 @@ class AppUI:
         self.point_marker_windows = []
         self.scrollable_canvas = None
         self.scrollable_content_frame = None
+        self.area_overlay_window = None
         self.global_toggles = {}
         self.area_toggles = {}
         self.ui_queue = queue.Queue()
@@ -104,12 +105,14 @@ class AppUI:
         self.root.geometry(f"{window_width}x{window_height}+{x_pos}+{y_pos}")
         self.update_window_bg('default')
         self.root.resizable(True, True)
+        # 창 크기 변경 이벤트를 바인딩하여 오버레이 위치를 동적으로 조절합니다.
+        self.root.bind('<Configure>', self._update_overlay_geometry)
 
         main_frame = tk.Frame(self.root, padx=10, pady=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # --- 기본 설정 그룹 ---
-        basic_group = self._create_labeled_frame(main_frame, "기본")
+        basic_group = self._create_labeled_frame(main_frame, "기본", name="basic_group")
         basic_group.pack(fill=tk.X, pady=(0, 10))
 
         # Row 1: 영역 설정
@@ -137,10 +140,10 @@ class AppUI:
         secondary_color_selector.pack(expand=True, fill=tk.X)
 
         # Row 3: 색상오차, 색상영역 오차
-        row3_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
-
-        self._create_labeled_entry(right_frame, "색상오차:", self.color_tolerance_var).pack(side=tk.RIGHT)
+        row3_container, (_, _, right_frame) = self._create_split_container(basic_group, weights=[1, 1, 1])
         self._create_labeled_entry(right_frame, "색영역오차:", self.color_area_tolerance_var).pack(side=tk.RIGHT)
+        self._create_labeled_entry(right_frame, "색상오차:", self.color_tolerance_var).pack(side=tk.RIGHT)
+
 
         # Row 4: 완료 좌표, 완료 딜레이, 탐색 방향
         row4_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
@@ -161,25 +164,25 @@ class AppUI:
 
         area_container, (left_frame, right_frame) = self._create_split_container(main_frame, weights=[1, 10])
         # --- 구역탐색 사용 여부 ---
-        tk.Checkbutton(left_frame, text="구역 탐색 사용", variable=self.use_sequence_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
+        tk.Checkbutton(left_frame, text="구역 탐색 사용", variable=self.use_sequence_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=self._toggle_area_settings_active).pack(side=tk.LEFT)
         # --- 상태 메시지 ---
         status_label = tk.Label(right_frame, bg="#555555", textvariable=self.status_var, fg="lightblue", anchor='w')
         status_label.pack(side=tk.RIGHT, expand=True, fill=tk.X)
 
         # --- 구역 설정 그룹 ---
         # 이 프레임은 모든 구역(구역1, 구역2 등)을 감싸는 컨테이너 역할을 합니다.
-        areas_container_group = self._create_labeled_frame(main_frame, "구역 설정")
-        areas_container_group.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        self.areas_container_group = self._create_labeled_frame(main_frame, "구역 설정", name="areas_container_group")
+        self.areas_container_group.pack(fill=tk.BOTH, expand=True, pady=(10))
 
         # 구역 세팅: 구역 사용, 탐색딜레이, 총 시도횟수, 구역 딜레이
-        area_set_container, (left_frame, right_frame) = self._create_split_container(areas_container_group, weights=[1, 1])
+        area_set_container, (left_frame, right_frame) = self._create_split_container(self.areas_container_group, weights=[1, 1])
         self._create_labeled_entry(left_frame, "탐색 딜레이:", self.search_delay_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
         self._create_labeled_entry(left_frame, "구역선택 딜레이:", self.area_delay_var).pack(side=tk.RIGHT,expand=True, fill=tk.X)
         self._create_labeled_entry(right_frame, "시도횟수:", self.total_tries_var).pack(side=tk.RIGHT, expand=True, padx=5,fill=tk.X)
 
 
         # --- 탐색 화면 정상 여부 확인용 그룹 ---
-        operation_check = tk.LabelFrame(areas_container_group, text=f"탐색 화면 정상 여부 확인", fg="white", padx=10, pady=5)
+        operation_check = tk.LabelFrame(self.areas_container_group, text=f"탐색 화면 정상 여부 확인", fg="white", padx=10, pady=5)
         operation_check.pack(fill=tk.X, pady=12, padx=5, ipady=5)
 
         # Row 1: 화면 정상 여부 확인: 화면 확인 좌표, 화면 확인 색상
@@ -188,7 +191,7 @@ class AppUI:
         self._create_value_button_row(right_frame, None, "색상", command=lambda: None).pack(side=tk.RIGHT)
 
         # --- 스크롤 가능한 구역 영역 생성 ---
-        scroll_container = tk.Frame(areas_container_group)
+        scroll_container = tk.Frame(self.areas_container_group)
         scroll_container.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
 
         self.scrollable_canvas = tk.Canvas(scroll_container, borderwidth=0)
@@ -245,6 +248,9 @@ class AppUI:
         
         self.find_button = tk.Button(action_frame, text="찾기(Shift+s)", command=self.controller.toggle_search)
         self.find_button.grid(row=0, column=3, sticky=tk.EW)
+
+        # UI가 모두 생성된 후, 오버레이의 초기 상태를 설정합니다.
+        self._toggle_area_settings_active()
 
     def _create_area_group(self, parent, area_number: int):
         """
@@ -598,9 +604,9 @@ class AppUI:
 
         self.update_status(f"영역 및 좌표 표시 중...")
 
-    def _create_labeled_frame(self, parent, text):
+    def _create_labeled_frame(self, parent, text, name=None):
         """제목이 있는 프레임을 생성합니다."""
-        frame = tk.LabelFrame(parent, text=text, fg="white", padx=10, pady=5, relief=tk.SOLID, borderwidth=1)
+        frame = tk.LabelFrame(parent, text=text, fg="white", padx=10, pady=5, relief=tk.SOLID, borderwidth=1, name=name)
         return frame
 
     def _create_split_container(self, parent, weights=[1, 1], **pack_options):
@@ -680,3 +686,46 @@ class AppUI:
         toggle_state() # 위젯 생성 후 초기 상태를 설정하기 위해 호출합니다.
         
         return frame, toggle_state
+
+    def _toggle_area_settings_active(self):
+        """'구역 탐색 사용' 체크박스 상태에 따라 오버레이를 토글합니다."""
+        is_enabled = self.use_sequence_var.get()
+
+        if not is_enabled:
+            # 비활성화 상태: 오버레이를 생성하거나 보여줍니다.
+            if not self.area_overlay_window or not self.area_overlay_window.winfo_exists():
+                self.area_overlay_window = tk.Toplevel(self.root)
+                self.area_overlay_window.overrideredirect(True)
+                self.area_overlay_window.attributes('-alpha', 0.8)
+                self.area_overlay_window.configure(bg='black')
+                self.area_overlay_window.attributes('-topmost', True)
+            
+            # 오버레이 위치와 크기를 업데이트합니다.
+            self._update_overlay_geometry()
+            self.area_overlay_window.deiconify() # 창을 보이게 합니다.
+        else:
+            # 활성화 상태: 오버레이를 숨깁니다.
+            if self.area_overlay_window and self.area_overlay_window.winfo_exists():
+                self.area_overlay_window.withdraw() # 창을 파괴하지 않고 숨깁니다.
+
+    def _update_overlay_geometry(self, event=None):
+        """창 크기 변경이나 스크롤에 대응하여 오버레이의 위치와 크기를 업데이트합니다."""
+        # 오버레이 창이 존재하고, '구역 탐색 사용'이 비활성화된 경우에만 실행합니다.
+        if self.area_overlay_window and self.area_overlay_window.winfo_exists() and not self.use_sequence_var.get():
+            # 위젯의 지오메트리가 확정된 후 실행하기 위해 짧은 지연을 줍니다.
+            self.root.after(10, self._place_overlay_action)
+
+    def _place_overlay_action(self):
+        """오버레이를 '구역 설정' 그룹 위에 정확히 배치합니다."""
+        if not (self.area_overlay_window and self.area_overlay_window.winfo_exists()):
+            return
+
+        try:
+            x = self.areas_container_group.winfo_rootx()
+            y = self.areas_container_group.winfo_rooty()
+            width = self.areas_container_group.winfo_width()
+            height = self.areas_container_group.winfo_height()
+            self.area_overlay_window.geometry(f"{width}x{height}+{x}+{y}")
+            self.area_overlay_window.lift()
+        except tk.TclError:
+            pass
