@@ -677,4 +677,6 @@ class AppUI:
         color_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         color_button.pack(side=tk.LEFT)
         
+        toggle_state() # 위젯 생성 후 초기 상태를 설정하기 위해 호출합니다.
+        
         return frame, toggle_state
