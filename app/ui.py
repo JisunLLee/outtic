@@ -16,6 +16,7 @@ class AppUI:
         self.point_marker_windows = []
         self.scrollable_canvas = None
         self.scrollable_content_frame = None
+        self.global_toggles = {}
         self.area_toggles = {}
         self.ui_queue = queue.Queue()
         self.area_vars = {}
@@ -33,6 +34,8 @@ class AppUI:
         self.p1_var = tk.StringVar(value=str(c.p1))
         self.p2_var = tk.StringVar(value=str(c.p2))
         self.color_var = tk.StringVar(value=str(c.color))
+        self.use_secondary_color_var = tk.BooleanVar(value=c.use_secondary_color)
+        self.secondary_color_var = tk.StringVar(value=str(c.secondary_color))
         self.area_delay_var = tk.StringVar(value=str(int(c.area_delay * 100)))
         self.search_delay_var = tk.StringVar(value=str(int(c.search_delay * 100)))
         self.complete_coord_var = tk.StringVar(value=str(c.complete_coord))
@@ -116,18 +119,31 @@ class AppUI:
         p2_selector_frame, _, _ = self._create_coordinate_selector(right_frame, self.p2_var, "↘영역", command=lambda: self.controller.start_coordinate_picker('p2'))
         p2_selector_frame.pack(expand=True, fill=tk.X)
         
-        # Row 2: 색상, 탐색 방향
+        # Row 2: 1순위 색상, 2순위 색상
         row2_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
-       
-        # Part 1: 색상, 색상오차, 색상영역 오차
-        self._create_value_button_row(left_frame, self.color_var, "색상", command=lambda: self.controller.start_color_picker('main_color')).pack(side=tk.LEFT)
-        self._create_labeled_entry(right_frame, "색상오차:", self.color_tolerance_var).pack(expand=True, fill=tk.X, side=tk.LEFT)
-        self._create_labeled_entry(right_frame, "색영역오차:", self.color_area_tolerance_var).pack(expand=True, fill=tk.X)
+        # Part 1: 1순위 색상 (기본 색상)
+        self._create_value_button_row(left_frame, self.color_var, "색상 1", command=lambda: self.controller.start_color_picker('main_color')).pack(expand=True, fill=tk.X)
 
-        
-        # Row 3: 완료 좌표, 완료 딜레이, 탐색 방향
-        # 더 나은 정렬을 위해 3개의 프레임으로 분할합니다.
+        # Part 2: 2순위 색상 (토글 가능)
+        secondary_color_selector, toggle_func = self._create_toggleable_color_selector(
+            right_frame,
+            use_var=self.use_secondary_color_var,
+            color_var=self.secondary_color_var,
+            check_text="사용",
+            button_text="색상 2",
+            command=lambda: self.controller.start_color_picker('secondary_color')
+        )
+        self.global_toggles['secondary_color'] = toggle_func
+        secondary_color_selector.pack(expand=True, fill=tk.X)
+
+        # Row 3: 색상오차, 색상영역 오차
         row3_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
+
+        self._create_labeled_entry(right_frame, "색상오차:", self.color_tolerance_var).pack(side=tk.RIGHT)
+        self._create_labeled_entry(right_frame, "색영역오차:", self.color_area_tolerance_var).pack(side=tk.RIGHT)
+
+        # Row 4: 완료 좌표, 완료 딜레이, 탐색 방향
+        row4_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
         
         # Part 1: 완료 좌표
         self._create_value_button_row(left_frame, self.complete_coord_var, "완료", command=lambda: self.controller.start_coordinate_picker('complete')).pack(side=tk.LEFT)
@@ -481,6 +497,8 @@ class AppUI:
         self.p1_var.set(str(c.p1))
         self.p2_var.set(str(c.p2))
         self.color_var.set(str(c.color))
+        self.use_secondary_color_var.set(c.use_secondary_color)
+        self.secondary_color_var.set(str(c.secondary_color))
         self.area_delay_var.set(str(int(c.area_delay * 100)))
         self.search_delay_var.set(str(int(c.search_delay * 100)))
         self.complete_coord_var.set(str(c.complete_coord))
@@ -505,6 +523,8 @@ class AppUI:
                 vars['use_direction_var'].set(not area_settings['use_direction'])
         
         # '기본' 체크박스 상태에 따라 비활성화된 위젯들의 상태를 올바르게 갱신합니다.
+        for toggle_func in self.global_toggles.values():
+            toggle_func()
         for area_number, toggles in self.area_toggles.items():
             for toggle_func in toggles.values():
                 toggle_func()
@@ -634,3 +654,27 @@ class AppUI:
             side=tk.LEFT, expand=True, fill=tk.X)
         tk.Button(frame, text=button_text, width=3,  bg="white", command=command).pack(side=tk.LEFT)
         return frame
+
+    def _create_toggleable_color_selector(self, parent, use_var, color_var, check_text, button_text, command):
+        """체크박스로 활성화/비활성화되는 색상 선택 위젯 그룹을 생성합니다."""
+        frame = tk.Frame(parent)
+        
+        color_label = tk.Label(frame, textvariable=color_var, relief="sunken", bg="#555555", width=12, anchor='w')
+        color_button = tk.Button(frame, text=button_text, width=3, command=command)
+        
+        def toggle_state():
+            is_enabled = use_var.get()
+            state = 'normal' if is_enabled else 'disabled'
+            label_bg = '#555555'
+            label_fg = 'white' if is_enabled else '#2e2e2e'
+            
+            color_label.config(state=state, bg=label_bg, fg=label_fg)
+            color_button.config(state=state)
+        
+        checkbox = tk.Checkbutton(frame, text=check_text, variable=use_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_state)
+        checkbox.pack(side=tk.LEFT)
+        
+        color_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
+        color_button.pack(side=tk.LEFT)
+        
+        return frame, toggle_state

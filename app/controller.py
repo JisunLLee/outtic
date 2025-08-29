@@ -39,14 +39,20 @@ class AppController:
 
         # --- 기본값 설정 ---
         # 이 값들은 UI의 초기값을 설정하는 데 사용됩니다.
-        self.p1 = (48, 193)
-        self.p2 = (639, 735)
+        self.p1 = (165, 228)
+        self.p2 = (344, 363)
         self.color = (124, 104, 238)
         self.complete_coord = (769, 648)
         self.color_tolerance = 15
         self.color_area_tolerance = 5
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
         self.complete_click_delay = 0.1 # 완료 클릭 전 딜레이 (초), UI 기본값 10 -> 100ms
+        
+        # 2순위 색상 추가
+        self.use_secondary_color = False
+        self.secondary_color = (28, 168, 20)
+
+        # --- 구역값 설정 ---
         self.use_sequence = True # 구역 사용 여부 (UI 체크박스 기본값)
         self.area_delay = 0.30 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
         self.search_delay = 0.15 # 탐색 대기 (초)
@@ -148,6 +154,8 @@ class AppController:
             self.p2 = ast.literal_eval(self.ui.p2_var.get())
             self.complete_coord = ast.literal_eval(self.ui.complete_coord_var.get())
             self.color = ast.literal_eval(self.ui.color_var.get())
+            self.use_secondary_color = self.ui.use_secondary_color_var.get()
+            self.secondary_color = ast.literal_eval(self.ui.secondary_color_var.get())
             self.color_tolerance = int(self.ui.color_tolerance_var.get())
             self.color_area_tolerance = int(self.ui.color_area_tolerance_var.get())
             # UI 입력값을 100으로 나누어 초 단위로 변환합니다. (예: 15 -> 0.15초)
@@ -263,6 +271,8 @@ class AppController:
             'p1': self.p1,
             'p2': self.p2,
             'color': self.color,
+            'use_secondary_color': self.use_secondary_color,
+            'secondary_color': self.secondary_color,
             'complete_coord': self.complete_coord,
             'color_tolerance': self.color_tolerance,
             'color_area_tolerance': self.color_area_tolerance,
@@ -328,6 +338,8 @@ class AppController:
             self.p1 = tuple(settings_data.get('p1', self.p1))
             self.p2 = tuple(settings_data.get('p2', self.p2))
             self.color = tuple(settings_data.get('color', self.color))
+            self.use_secondary_color = bool(settings_data.get('use_secondary_color', self.use_secondary_color))
+            self.secondary_color = tuple(settings_data.get('secondary_color', self.secondary_color))
             self.complete_coord = tuple(settings_data.get('complete_coord', self.complete_coord))
             self.color_tolerance = int(settings_data.get('color_tolerance', self.color_tolerance))
             self.color_area_tolerance = int(settings_data.get('color_area_tolerance', self.color_area_tolerance))
@@ -439,6 +451,7 @@ class AppController:
 
         display_name = color_key
         if color_key == 'main_color': display_name = '기본 색상'
+        elif color_key == 'secondary_color': display_name = '2순위 색상'
         elif color_key.startswith('area_'): # 예: 'area_1_color'
             area_num = color_key.split('_')[1] # '1'
             display_name = f'구역{area_num} 색상'
@@ -462,6 +475,9 @@ class AppController:
         if color_key == 'main_color':
             self.ui.color_var.set(str(new_color))
             # 기본 색상 설정 변경 시 색상 플래시
+            self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
+        elif color_key == 'secondary_color':
+            self.ui.secondary_color_var.set(str(new_color))
             self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
         elif color_key.startswith('area_'): # 예: 'area_1_color'
             try:
@@ -604,11 +620,21 @@ class AppController:
         if self.use_sequence:
             # [구역 사용 ON]: 초기 탐색 후, 시도 횟수만큼 재시도 순환
             initial_step = search_plan[0]
-            status_text = f"초기 탐색: 기본 영역에서 탐색 중 ({initial_step['search_direction'].value})..."
+            
+            # 1. 1순위 색상 탐색
+            status_text = f"초기 탐색 (1순위): 기본 영역에서 탐색 중 ({initial_step['search_direction'].value})..."
             found_pos = execute_single_search(initial_step['search_area'], initial_step['search_color'], initial_step['search_direction'], status_text)
             if found_pos:
-                self._handle_found_color(found_pos, "초기 탐색 중 기본 영역에서 색상 발견")
+                self._handle_found_color(found_pos, "초기 탐색 중 1순위 색상 발견")
                 return
+
+            # 2. 2순위 색상 탐색 (조건부)
+            if self.is_searching and self.use_secondary_color:
+                status_text = f"초기 탐색 (2순위): 기본 영역에서 탐색 중 ({initial_step['search_direction'].value})..."
+                found_pos_secondary = execute_single_search(initial_step['search_area'], self.secondary_color, initial_step['search_direction'], status_text)
+                if found_pos_secondary:
+                    self._handle_found_color(found_pos_secondary, "초기 탐색 중 2순위 색상 발견")
+                    return
 
             retry_steps = [step for step in search_plan if step['type'] == 'retry']
             if not retry_steps:
@@ -652,10 +678,20 @@ class AppController:
             # [구역 사용 OFF]: 색상을 찾을 때까지 초기 탐색만 무한 반복
             initial_step = search_plan[0]
             while self.is_searching:
-                status_text = f"기본 영역 반복 탐색 중 ({initial_step['search_direction'].value})..."
+                # 1. 1순위 색상 탐색
+                status_text = f"기본 영역 반복 탐색 (1순위) ({initial_step['search_direction'].value})..."
                 found_pos = execute_single_search(initial_step['search_area'], initial_step['search_color'], initial_step['search_direction'], status_text)
                 if found_pos:
-                    self._handle_found_color(found_pos, "기본 영역에서 색상 발견")
+                    self._handle_found_color(found_pos, "기본 영역에서 1순위 색상 발견")
                     return
+
+                # 2. 2순위 색상 탐색 (조건부)
+                if self.is_searching and self.use_secondary_color:
+                    status_text = f"기본 영역 반복 탐색 (2순위) ({initial_step['search_direction'].value})..."
+                    found_pos_secondary = execute_single_search(initial_step['search_area'], self.secondary_color, initial_step['search_direction'], status_text)
+                    if found_pos_secondary:
+                        self._handle_found_color(found_pos_secondary, "기본 영역에서 2순위 색상 발견")
+                        return
+
                 if self.search_delay > 0:
                     time.sleep(self.search_delay)
