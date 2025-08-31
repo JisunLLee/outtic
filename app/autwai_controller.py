@@ -8,7 +8,6 @@ from pynput import mouse, keyboard
 from PIL import ImageGrab
 
 from .color_finder import ColorFinder, SearchDirection
-from .global_hotkey_listener import GlobalHotkeyListener
 
 if TYPE_CHECKING:
     from .autwai_ui import AutwaiUI
@@ -28,14 +27,13 @@ class AutwaiController:
         self.is_running = False
         self.run_thread: Optional[threading.Thread] = None
         self.area_markers = []
+        self.shift_press_count = 0
+        self.shift_press_timer: Optional[threading.Timer] = None
 
         # --- 전역 단축키 설정 ---
-        hotkey_map = {
-            '<shift>+d': self.toggle_run,
-            '<esc>': self.stop_run
-        }
-        self.global_hotkey_listener = GlobalHotkeyListener(hotkey_map)
-        self.global_hotkey_listener.start()
+        # Shift 키의 연속 입력을 감지하기 위해 pynput의 일반 Listener를 사용합니다.
+        self.keyboard_listener = keyboard.Listener(on_press=self.on_key_press)
+        self.keyboard_listener.start()
 
         # --- 설정값 (apply_settings에서 UI로부터 값을 받아 채워짐) ---
         self.color = (0, 0, 0)
@@ -65,7 +63,7 @@ class AutwaiController:
     def on_closing(self):
         """창을 닫을 때 리소스를 안전하게 정리합니다."""
         self.is_running = False
-        self.global_hotkey_listener.stop()
+        self.keyboard_listener.stop()
         if self.ui:
             self.ui.root.destroy()
 
@@ -116,7 +114,8 @@ class AutwaiController:
         if self.ui:
             def ui_update():
                 self.ui.status_var.set("실행 중... (ESC로 중지)")
-                self.ui.run_button.config(text="중지(ESC)")
+                self.ui.run_button.config(text="중지(Shift x2)")
+                self.ui.update_window_bg('searching')
             self.ui.root.after(0, ui_update)
         
         self.run_thread = threading.Thread(target=self._run_worker, daemon=True)
@@ -125,14 +124,40 @@ class AutwaiController:
     def stop_run(self, message="실행이 중지되었습니다."):
         """메인 로직 실행을 중지하고, 다시 시작할 수 있도록 상태를 초기화합니다."""
         if not self.is_running: return
+
         self.is_running = False
         
         if self.ui:
             def ui_update():
                 self.ui.status_var.set(message)
-                self.ui.run_button.config(text="실행(shift+d)")
+                self.ui.run_button.config(text="실행(Shift x2)")
+                self.ui.update_window_bg('default')
             self.ui.root.after(0, ui_update)
         print(f"--- {message} ---")
+
+    def on_key_press(self, key):
+        """전역 키 입력을 감지하여 Shift 키를 두 번 눌렀는지 확인합니다."""
+        # Shift 키만 감지합니다 (왼쪽, 오른쪽 모두).
+        if key in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r):
+            if self.shift_press_timer:
+                self.shift_press_timer.cancel()
+
+            self.shift_press_count += 1
+
+            if self.shift_press_count >= 2:
+                # 두 번 눌림 감지, 실행/중지 토글
+                self.shift_press_count = 0
+                self.shift_press_timer = None
+                self.toggle_run()
+            else:
+                # 첫 번째 눌림, 0.4초 타이머 시작
+                self.shift_press_timer = threading.Timer(0.4, self._reset_shift_count)
+                self.shift_press_timer.start()
+
+    def _reset_shift_count(self):
+        """시간이 초과되면 Shift 키 누름 횟수를 초기화합니다."""
+        self.shift_press_count = 0
+        self.shift_press_timer = None
 
     def _click_at(self, coord: tuple):
         """지정된 좌표로 이동하고, 설정된 딜레이 후 클릭합니다."""

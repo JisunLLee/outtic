@@ -39,10 +39,10 @@ class AppController:
 
         # --- 기본값 설정 ---
         # 이 값들은 UI의 초기값을 설정하는 데 사용됩니다.
-        self.p1 = (165, 228)
-        self.p2 = (344, 363)
+        self.p1 = (267, 195)
+        self.p2 = (313, 274)
         self.color = (124, 104, 238)
-        self.complete_coord = (769, 648)
+        self.complete_coord = (770, 403)
         self.color_tolerance = 15
         self.color_area_tolerance = 5
         self.search_direction = SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT
@@ -53,7 +53,7 @@ class AppController:
         self.secondary_color = (28, 168, 20)
 
         # --- 구역값 설정 ---
-        self.use_sequence = True # 구역 사용 여부 (UI 체크박스 기본값)
+        self.use_sequence = False # 구역 사용 여부 (UI 체크박스 기본값)
         self.area_delay = 0.75 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
         self.search_delay = 0.15 # 탐색 대기 (초)
         self.total_tries = 88 # 총 시도 횟수
@@ -89,21 +89,21 @@ class AppController:
 
 
             if area_number == 1:
-                default_use = True
+                default_use = False
                 default_click_coord = (723, 301)
                 default_clicks = 6
                 default_direction = SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT
             if area_number == 2:
-                default_use = True
+                default_use = False
                 default_click_coord = (734, 320)
                 default_clicks = 1
             if area_number == 3:
-                default_use = True
+                default_use = False
                 default_click_coord = (716, 304)
                 default_clicks = 2
                 default_direction = SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT
             if area_number == 4:
-                default_use = True
+                default_use = False
                 default_click_coord = (737, 321)
                 default_clicks = 1
                 default_p1 = (98, 229)

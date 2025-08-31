@@ -12,7 +12,8 @@ class AutwaiUI:
         self.controller = controller
         self.WINDOW_COLORS = {
             'default': root.cget('bg'), # 시스템 기본 배경색 저장
-            'flash': "#d8e6ff"  # 좌표/색상 지정 시 사용할 밝은 파란색
+            'flash': "#d8e6ff",  # 좌표/색상 지정 시 사용할 밝은 파란색
+            'searching': 'LemonChiffon' # 실행 중 배경색
         }
         self._initialize_vars()
         self._setup_ui()
@@ -110,7 +111,7 @@ class AutwaiUI:
         quantity_frame.pack(fill=tk.X, pady=2, anchor='w')
         tk.Radiobutton(quantity_frame, text="수량1", variable=self.quantity_option_var, value="1").pack(side=tk.LEFT)
         tk.Radiobutton(quantity_frame, text="수량2", variable=self.quantity_option_var, value="2").pack(side=tk.LEFT)
-        tk.Radiobutton(quantity_frame, text="수량 직접입력", variable=self.quantity_option_var, value="direct").pack(side=tk.LEFT)
+        tk.Radiobutton(quantity_frame, text="직접입력", variable=self.quantity_option_var, value="direct").pack(side=tk.LEFT)
 
         # 구역
         area_frame = tk.Frame(actions_group)
@@ -129,9 +130,11 @@ class AutwaiUI:
             self.apply_coord_var, 
             "신청", 
             command=lambda: self.controller.start_coordinate_picker('apply')
-        ).pack(fill=tk.X, pady=(0, 2))
+        ).pack(fill=tk.X, pady=(0, 2), padx=(5, 0))
 
-        self._create_labeled_entry(actions_group, "버튼딜레이:", self.button_delay_var, 3).pack(side=tk.LEFT, padx=(0, 5))
+        # 버튼 딜레이
+        self._create_labeled_entry(actions_group, "버튼딜레이:", self.button_delay_var, 3).pack(side=tk.LEFT, padx=(5, 0))
+        
         # --- 상태 및 실행 버튼 ---
         bottom_frame = tk.Frame(main_frame)
         bottom_frame.pack(fill=tk.X)
@@ -151,7 +154,7 @@ class AutwaiUI:
         self.area_button = tk.Button(action_buttons_frame, text="영역확인", command=None) # self.controller.show_area
         self.area_button.grid(row=0, column=0, sticky=tk.EW, padx=(0, 5))
         
-        self.run_button = tk.Button(action_buttons_frame, text="실행(shift+d)", command=None) # self.controller.toggle_run
+        self.run_button = tk.Button(action_buttons_frame, text="실행(Shift x2)", command=None) # self.controller.toggle_run
         self.run_button.grid(row=0, column=1, sticky=tk.EW)
 
     def _create_labeled_entry(self, parent, label_text, var, entry_width=5):
@@ -175,6 +178,11 @@ class AutwaiUI:
             side=tk.LEFT, expand=True, fill=tk.X)
         tk.Button(frame, text=button_text, width=5, command=command).pack(side=tk.LEFT, padx=(5,0))
         return frame
+
+    def update_window_bg(self, state: str):
+        """창과 모든 자식 위젯의 배경색을 상태에 따라 업데이트합니다."""
+        color = self.WINDOW_COLORS.get(state, self.WINDOW_COLORS['default'])
+        self._set_bg_recursively(self.root, color)
 
     def flash_window(self, duration_ms=150):
         """설정 변경 시 창 배경색을 잠시 변경하여 시각적 피드백을 줍니다."""
