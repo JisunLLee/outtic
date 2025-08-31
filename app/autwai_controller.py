@@ -21,6 +21,7 @@ class AutwaiController:
     def __init__(self):
         self.ui: Optional['AutwaiUI'] = None
         self.mouse_controller = mouse.Controller()
+        self.keyboard_controller = keyboard.Controller()
         self.color_finder = ColorFinder()
 
         # --- 상태 변수 ---
@@ -43,13 +44,9 @@ class AutwaiController:
         self.color_tolerance = 0
         self.search_direction = SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
         self.button_delay_ms = 0
-        self.search_delay_ms = 0
+        self.quantity_option = "1"
+        self.use_area = True
         self.area_coord = (0, 0)
-        self.seat_coord = (0, 0)
-        self.use_quantity1 = True
-        self.quantity1_coord = (0, 0)
-        self.use_quantity2 = False
-        self.quantity2_coord = (0, 0)
         self.apply_coord = (0, 0)
 
     def set_ui(self, ui: 'AutwaiUI'):
@@ -85,17 +82,9 @@ class AutwaiController:
             self.search_direction = self.ui.SEARCH_DIRECTION_MAP[direction_str]
             
             self.button_delay_ms = int(self.ui.button_delay_var.get())
-            self.search_delay_ms = int(self.ui.search_delay_var.get())
-            
+            self.quantity_option = self.ui.quantity_option_var.get()
+            self.use_area = self.ui.use_area_var.get()
             self.area_coord = ast.literal_eval(self.ui.area_coord_var.get())
-            self.seat_coord = ast.literal_eval(self.ui.seat_coord_var.get())
-            
-            self.use_quantity1 = self.ui.use_quantity1_var.get()
-            self.quantity1_coord = ast.literal_eval(self.ui.quantity1_coord_var.get())
-            
-            self.use_quantity2 = self.ui.use_quantity2_var.get()
-            self.quantity2_coord = ast.literal_eval(self.ui.quantity2_coord_var.get())
-            
             self.apply_coord = ast.literal_eval(self.ui.apply_coord_var.get())
             
             self.ui.status_var.set("설정 적용 완료.")
@@ -158,25 +147,24 @@ class AutwaiController:
     def _run_worker(self):
         """메인 로직을 순서대로 실행하는 스레드 워커입니다."""
         try:
-            # --- Part 1: 초기 클릭 시퀀스 (좌석수 -> 수량 -> 구역) ---
-            # 1. 좌석수 버튼 클릭
+            # --- Part 1: 초기 시퀀스 (수량 -> 구역) ---
+            # 1. 수량 입력
             if not self.is_running: return
-            self._update_status_safe("좌석수 버튼 클릭 중...")
-            self._click_at(self.seat_coord)
+            self._update_status_safe(f"수량 '{self.quantity_option}' 입력 중...")
+            if self.quantity_option == "1":
+                self.keyboard_controller.press('1')
+                self.keyboard_controller.release('1')
+            elif self.quantity_option == "2":
+                self.keyboard_controller.press('2')
+                self.keyboard_controller.release('2')
+            # "direct"는 사용자가 직접 입력하므로 프로그램은 아무것도 하지 않습니다.
+            time.sleep(0.1) # 키보드 입력 후 짧은 대기
 
-            # 2. 수량 버튼 클릭
-            if not self.is_running: return
-            if self.use_quantity1:
-                self._update_status_safe("수량1 버튼 클릭 중...")
-                self._click_at(self.quantity1_coord)
-            elif self.use_quantity2:
-                self._update_status_safe("수량2 버튼 클릭 중...")
-                self._click_at(self.quantity2_coord)
-
-            # 3. 구역 버튼 클릭
-            if not self.is_running: return
-            self._update_status_safe("구역 버튼 클릭 중...")
-            self._click_at(self.area_coord)
+            # 2. 구역 버튼 클릭 (체크된 경우)
+            if self.use_area:
+                if not self.is_running: return
+                self._update_status_safe("구역 버튼 클릭 중...")
+                self._click_at(self.area_coord)
 
             # --- Part 2: 색상 반복 탐색 ---
             self._update_status_safe("색상 탐색 대기 중...")
@@ -231,8 +219,7 @@ class AutwaiController:
         self.area_markers.append(area_marker)
         
         # 주요 좌표들 표시
-        points_to_show = {"구역": (self.area_coord, "blue"), "좌석": (self.seat_coord, "green"),
-                          "수량1": (self.quantity1_coord, "orange"), "수량2": (self.quantity2_coord, "purple"),
+        points_to_show = {"구역": (self.area_coord, "blue"),
                           "신청": (self.apply_coord, "cyan")}
         
         for name, (pos, color) in points_to_show.items():
@@ -252,8 +239,7 @@ class AutwaiController:
         """지정된 키에 해당하는 좌표를 2초 후에 캡처하는 프로세스를 시작합니다."""
         if not self.ui: return
         
-        key_map = {'p1': '↖영역', 'p2': '↘영역', 'area': '구역', 'seat': '좌석수',
-                   'quantity1': '수량1', 'quantity2': '수량2', 'apply': '신청'}
+        key_map = {'p1': '↖영역', 'p2': '↘영역', 'area': '구역', 'apply': '신청'}
         display_name = key_map.get(coord_key, coord_key)
         self.ui.status_var.set(f"'{display_name}' 좌표 지정: 2초 후 위치 저장...")
         self.ui.root.after(2000, lambda: self._grab_coordinate(coord_key, display_name))
@@ -264,8 +250,7 @@ class AutwaiController:
         new_pos = (int(x), int(y))
         
         var_map = {'p1': self.ui.p1_var, 'p2': self.ui.p2_var, 'area': self.ui.area_coord_var,
-                   'seat': self.ui.seat_coord_var, 'quantity1': self.ui.quantity1_coord_var,
-                   'quantity2': self.ui.quantity2_coord_var, 'apply': self.ui.apply_coord_var}
+                   'apply': self.ui.apply_coord_var}
         
         if coord_key in var_map:
             var_map[coord_key].set(str(new_pos))

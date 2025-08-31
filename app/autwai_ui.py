@@ -20,8 +20,8 @@ class AutwaiUI:
     def _initialize_vars(self):
         """UI에 사용될 Tkinter 변수들을 초기화합니다."""
         self.color_var = tk.StringVar(value="(124, 104, 238)")
-        self.p1_var = tk.StringVar(value="(116, 179)")
-        self.p2_var = tk.StringVar(value="(404, 374)")
+        self.p1_var = tk.StringVar(value="(267, 195)")
+        self.p2_var = tk.StringVar(value="(313, 274)")
         self.color_tolerance_var = tk.StringVar(value="35")
         
         self.SEARCH_DIRECTION_MAP = {
@@ -33,18 +33,11 @@ class AutwaiUI:
         self.direction_var = tk.StringVar(value="←↓") # 기본값
         
         self.button_delay_var = tk.StringVar(value="10")
-        self.search_delay_var = tk.StringVar(value="45")
-
-        self.area_coord_var = tk.StringVar(value="(708, 112)") # Renamed from wait_coord_var
-        self.seat_coord_var = tk.StringVar(value="(773, 242)")
         
-        self.use_quantity1_var = tk.BooleanVar(value=True)
-        self.quantity1_coord_var = tk.StringVar(value="(780, 274)")
-        
-        self.use_quantity2_var = tk.BooleanVar(value=False)
-        self.quantity2_coord_var = tk.StringVar(value="(817, 288)")
-        
-        self.apply_coord_var = tk.StringVar(value="(809, 405)")
+        self.quantity_option_var = tk.StringVar(value="direct") # "1", "2", "direct"
+        self.use_area_var = tk.BooleanVar(value=True)
+        self.area_coord_var = tk.StringVar(value="(315, 391)")
+        self.apply_coord_var = tk.StringVar(value="(770, 403)")
         
         self.status_var = tk.StringVar(value="대기 중...")
 
@@ -53,7 +46,7 @@ class AutwaiUI:
         self.root.title("Autwai")
 
         window_width = 500
-        window_height = 250 # UI 재배치에 따라 높이 조정
+        window_height = 230 # UI 재배치에 따라 높이 조정
 
         # 화면 크기를 정확히 가져오기 위해 update_idletasks()를 호출합니다.
         self.root.update_idletasks()
@@ -111,59 +104,24 @@ class AutwaiUI:
         direction_menu = tk.OptionMenu(options_frame1, self.direction_var, *self.SEARCH_DIRECTION_MAP.keys())
         direction_menu.pack(side=tk.LEFT, padx=(0, 5))
 
-        # Row 5: 버튼딜레이, 탐색딜레이
-        options_frame2 = tk.Frame(settings_group)
-        options_frame2.pack(fill=tk.X)
-        self._create_labeled_entry(options_frame2, "버튼딜레이:", self.button_delay_var, 3).pack(side=tk.LEFT, padx=(0, 5))
-        self._create_labeled_entry(options_frame2, "탐색딜레이:", self.search_delay_var, 3).pack(side=tk.LEFT)
-
-        # --- 동작 순서 그룹 위젯 배치 ---        
-        # 좌석수
-        self._create_coordinate_selector(
-            actions_group, 
-            self.seat_coord_var, 
-            "좌석수", 
-            command=lambda: self.controller.start_coordinate_picker('seat')
-        ).pack(fill=tk.X, pady=2)
-
-        # 수량1, 수량2 체크박스가 서로 연동되도록 함수 정의
-        def set_q1():
-            if self.use_quantity1_var.get():
-                self.use_quantity2_var.set(False)
-        
-        def set_q2():
-            if self.use_quantity2_var.get():
-                self.use_quantity1_var.set(False)
-
-        # 수량1
-        q1_frame = tk.Frame(actions_group)
-        q1_frame.pack(fill=tk.X, pady=2)
-        tk.Checkbutton(q1_frame, variable=self.use_quantity1_var, command=set_q1).pack(side=tk.LEFT)
-        self._create_coordinate_selector(
-            q1_frame, 
-            self.quantity1_coord_var, 
-            "수량1", 
-            command=lambda: self.controller.start_coordinate_picker('quantity1')
-        ).pack(expand=True, fill=tk.X)
-
-        # 수량2
-        q2_frame = tk.Frame(actions_group)
-        q2_frame.pack(fill=tk.X, pady=2)
-        tk.Checkbutton(q2_frame, variable=self.use_quantity2_var, command=set_q2).pack(side=tk.LEFT)
-        self._create_coordinate_selector(
-            q2_frame, 
-            self.quantity2_coord_var, 
-            "수량2", 
-            command=lambda: self.controller.start_coordinate_picker('quantity2')
-        ).pack(expand=True, fill=tk.X)
+        # --- 동작 순서 그룹 위젯 배치 ---
+        # 수량 선택
+        quantity_frame = tk.Frame(actions_group)
+        quantity_frame.pack(fill=tk.X, pady=2, anchor='w')
+        tk.Radiobutton(quantity_frame, text="수량1", variable=self.quantity_option_var, value="1").pack(side=tk.LEFT)
+        tk.Radiobutton(quantity_frame, text="수량2", variable=self.quantity_option_var, value="2").pack(side=tk.LEFT)
+        tk.Radiobutton(quantity_frame, text="수량 직접입력", variable=self.quantity_option_var, value="direct").pack(side=tk.LEFT)
 
         # 구역
+        area_frame = tk.Frame(actions_group)
+        area_frame.pack(fill=tk.X, pady=2)
+        tk.Checkbutton(area_frame, variable=self.use_area_var).pack(side=tk.LEFT)
         self._create_coordinate_selector(
-            actions_group,
+            area_frame,
             self.area_coord_var,
             "구역",
             command=lambda: self.controller.start_coordinate_picker('area')
-        ).pack(fill=tk.X, pady=2)
+        ).pack(expand=True, fill=tk.X)
 
         # 신청
         self._create_coordinate_selector(
@@ -173,6 +131,7 @@ class AutwaiUI:
             command=lambda: self.controller.start_coordinate_picker('apply')
         ).pack(fill=tk.X, pady=(0, 2))
 
+        self._create_labeled_entry(actions_group, "버튼딜레이:", self.button_delay_var, 3).pack(side=tk.LEFT, padx=(0, 5))
         # --- 상태 및 실행 버튼 ---
         bottom_frame = tk.Frame(main_frame)
         bottom_frame.pack(fill=tk.X)
