@@ -567,7 +567,7 @@ class AppController:
         """색상을 찾았을 때의 공통 처리 로직입니다."""
         if not self.is_searching: return
 
-        # 1. 찾은 위치 클릭
+        # 1. 찾은 위치(색상 영역의 중심)를 클릭합니다.
         self.color_finder.click_action(found_pos[0], found_pos[1])
 
         # 2. 완료 좌표 클릭 (설정된 경우)

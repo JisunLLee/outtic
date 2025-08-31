@@ -97,10 +97,11 @@ class AppUI:
 
         # 화면의 너비를 가져옵니다.
         screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
 
         # 창을 모니터 오른쪽 상단에 위치시킵니다.
         x_pos = screen_width - window_width
-        y_pos = 0 #상단 여백
+        y_pos = 0 # 상단 여백
 
         self.root.geometry(f"{window_width}x{window_height}+{x_pos}+{y_pos}")
         self.update_window_bg('default')
