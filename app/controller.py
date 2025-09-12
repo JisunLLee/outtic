@@ -53,6 +53,7 @@ class AppController:
         self.secondary_color = (28, 168, 20)
 
         # --- 구역값 설정 ---
+        self.use_initial_search = True # '기본 탐색 사용' 체크박스 기본값
         self.use_sequence = False # 구역 사용 여부 (UI 체크박스 기본값)
         self.area_delay = 0.75 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
         self.search_delay = 0.15 # 탐색 대기 (초)
@@ -166,6 +167,7 @@ class AppController:
             }
             selected_direction_str = self.ui.direction_var.get()
             self.search_direction = direction_map.get(selected_direction_str, SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT)
+            self.use_initial_search = self.ui.use_initial_search_var.get()
             self.use_sequence = self.ui.use_sequence_var.get()
             self.total_tries = int(self.ui.total_tries_var.get())
             
@@ -273,6 +275,7 @@ class AppController:
             'search_direction': self.search_direction.value, # Enum을 문자열로 저장
             'complete_click_delay': self.complete_click_delay,
             'use_sequence': self.use_sequence,
+            'use_initial_search': self.use_initial_search,
             'area_delay': self.area_delay,
             'search_delay': self.search_delay,
             'total_tries': self.total_tries,
@@ -339,6 +342,7 @@ class AppController:
             self.color_area_tolerance = int(settings_data.get('color_area_tolerance', self.color_area_tolerance))
             self.search_direction = SearchDirection(settings_data.get('search_direction', self.search_direction.value))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
+            self.use_initial_search = bool(settings_data.get('use_initial_search', self.use_initial_search))
             self.use_sequence = bool(settings_data.get('use_sequence', self.use_sequence))
             self.area_delay = float(settings_data.get('area_delay', self.area_delay))
             self.search_delay = float(settings_data.get('search_delay', self.search_delay))
@@ -640,21 +644,23 @@ class AppController:
         if self.use_sequence:
             # [구역 사용 ON]: 초기 탐색 후, 시도 횟수만큼 재시도 순환
             initial_step = search_plan[0]
-            
-            # 1. 1순위 색상 탐색
-            status_text = f"초기 탐색 (1순위): 기본 영역에서 탐색 중 ({initial_step['search_direction'].value})..."
-            found_pos = execute_single_search(initial_step['search_area'], initial_step['search_color'], initial_step['search_direction'], status_text)
-            if found_pos:
-                self._handle_found_color(found_pos, "초기 탐색 중 1순위 색상 발견")
-                return
 
-            # 2. 2순위 색상 탐색 (조건부)
-            if self.is_searching and self.use_secondary_color:
-                status_text = f"초기 탐색 (2순위): 기본 영역에서 탐색 중 ({initial_step['search_direction'].value})..."
-                found_pos_secondary = execute_single_search(initial_step['search_area'], self.secondary_color, initial_step['search_direction'], status_text)
-                if found_pos_secondary:
-                    self._handle_found_color(found_pos_secondary, "초기 탐색 중 2순위 색상 발견")
+            # '기본 탐색 사용'이 체크된 경우에만 초기 탐색을 수행합니다.
+            if self.use_initial_search:
+                # 1. 1순위 색상 탐색
+                status_text = f"초기 탐색 (1순위): 기본 영역에서 탐색 중 ({initial_step['search_direction'].value})..."
+                found_pos = execute_single_search(initial_step['search_area'], initial_step['search_color'], initial_step['search_direction'], status_text)
+                if found_pos:
+                    self._handle_found_color(found_pos, "초기 탐색 중 1순위 색상 발견")
                     return
+
+                # 2. 2순위 색상 탐색 (조건부)
+                if self.is_searching and self.use_secondary_color:
+                    status_text = f"초기 탐색 (2순위): 기본 영역에서 탐색 중 ({initial_step['search_direction'].value})..."
+                    found_pos_secondary = execute_single_search(initial_step['search_area'], self.secondary_color, initial_step['search_direction'], status_text)
+                    if found_pos_secondary:
+                        self._handle_found_color(found_pos_secondary, "초기 탐색 중 2순위 색상 발견")
+                        return
 
             retry_steps = [step for step in search_plan if step['type'] == 'retry']
             if not retry_steps:

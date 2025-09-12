@@ -40,6 +40,7 @@ class AppUI:
         self.area_delay_var = tk.StringVar(value=str(int(c.area_delay * 100)))
         self.search_delay_var = tk.StringVar(value=str(int(c.search_delay * 100)))
         self.complete_coord_var = tk.StringVar(value=str(c.complete_coord))
+        self.use_initial_search_var = tk.BooleanVar(value=c.use_initial_search)
 
         self.use_sequence_var = tk.BooleanVar(value=c.use_sequence)
         # 탐색 방향 Enum과 UI 표시 문자열을 매핑합니다.
@@ -164,8 +165,9 @@ class AppUI:
         
 
         area_container, (left_frame, right_frame) = self._create_split_container(main_frame, weights=[1, 10])
-        # --- 구역탐색 사용 여부 ---
+        # --- 구역, 기본 탐색 사용 여부 ---
         tk.Checkbutton(left_frame, text="구역 탐색 사용", variable=self.use_sequence_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=self._toggle_area_settings_active).pack(side=tk.LEFT)
+        tk.Checkbutton(left_frame, text="기본 탐색 사용", variable=self.use_initial_search_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT, padx=(10,0))
         # --- 상태 메시지 ---
         status_label = tk.Label(right_frame, bg="#555555", textvariable=self.status_var, fg="lightblue", anchor='w')
         status_label.pack(side=tk.RIGHT, expand=True, fill=tk.X)
@@ -509,6 +511,7 @@ class AppUI:
         self.area_delay_var.set(str(int(c.area_delay * 100)))
         self.search_delay_var.set(str(int(c.search_delay * 100)))
         self.complete_coord_var.set(str(c.complete_coord))
+        self.use_initial_search_var.set(c.use_initial_search)
         self.use_sequence_var.set(c.use_sequence)
         self.direction_var.set(self.SEARCH_DIRECTION_MAP[c.search_direction])
         self.total_tries_var.set(str(c.total_tries))
