@@ -41,10 +41,10 @@ class AppController:
 
         # --- 기본값 설정 ---
         # 이 값들은 UI의 초기값을 설정하는 데 사용됩니다.
-        self.p1 = (267, 195)
-        self.p2 = (313, 274)
-        self.color = (124, 104, 238)
-        self.complete_coord = (770, 403)
+        self.p1 = (497, 366)
+        self.p2 = (1154, 817)
+        self.color = (13, 192, 192)
+        self.complete_coord = (1314,905)
         self.color_tolerance = 15
         self.color_area_tolerance = 5
         self.search_direction = SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT
@@ -52,7 +52,7 @@ class AppController:
         
         # 2순위 색상 추가
         self.use_secondary_color = False
-        self.secondary_color = (28, 168, 20)
+        self.secondary_color = (85, 41, 221)
 
         # --- 구역값 설정 ---
         self.use_initial_search = True # '기본 탐색 사용' 체크박스 기본값
@@ -547,10 +547,8 @@ class AppController:
         self.is_searching = True
         self.ui.queue_task(lambda: self.ui.update_status("색상 검색 중... (ESC로 중지)"))
         self.ui.queue_task(lambda: self.ui.update_button_text("중지 (ESC)"))
-        # 찾기 시작 시 소리 2번 재생
-        self.ui.queue_task(lambda: self.ui.play_sound(2))
         self.ui.queue_task(lambda: self.ui.update_window_bg('searching'))
-        self.ui.queue_task(lambda: self.ui.update_button_text("중지 (Shift x2)"))
+        self.ui.queue_task(lambda: self.ui.update_button_text("중지 (Shift x2 / ESC)"))
         print("--- 색상 검색 시작 ---")
 
         # 별도 스레드에서 검색 작업 실행 (생성된 계획 전달)
@@ -569,6 +567,7 @@ class AppController:
         # 검색 종료와 관련된 모든 UI 업데이트를 하나의 작업으로 묶어 큐에 추가합니다.
         self.ui.queue_task(lambda msg=message: self.ui.set_final_status(msg))
         self.ui.queue_task(lambda: self.ui.update_button_text("찾기 (Shift x2)"))
+        self.ui.queue_task(lambda: self.ui.update_button_text("찾기 (Shift x2 / ESC)"))
         print(f"--- {message} ---")
 
     def _handle_found_color(self, found_pos: tuple, success_message: str):
@@ -641,6 +640,11 @@ class AppController:
                 # 첫 번째 눌림, 0.4초 후 카운트 리셋 타이머 시작
                 self.shift_press_timer = threading.Timer(0.4, self._reset_shift_count)
                 self.shift_press_timer.start()
+        
+        # ESC 키로 종료
+        if key == keyboard.Key.esc:
+            if self.is_searching:
+                self.stop_search()
 
     def _execute_toggle_without_direction_change(self):
         """숫자 입력 없이 Shift+Shift만 눌렸을 때 검색을 토글합니다."""
