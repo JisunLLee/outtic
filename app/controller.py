@@ -32,8 +32,10 @@ class AppController:
         self.shift_press_count = 0
         self.shift_press_timer: Optional[threading.Timer] = None
         self.tries_count = 0 # 현재 시도 횟수
+        self.direction_change_pending = False
 
         # --- 전역 단축키 설정 ---
+        # on_press 이벤트만 사용하여 Shift 연속 입력을 감지합니다.
         self.keyboard_listener = keyboard.Listener(on_press=self.on_key_press)
         self.keyboard_listener.start()
 
@@ -160,10 +162,10 @@ class AppController:
 
             # UI의 문자열을 SearchDirection Enum으로 변환합니다.
             direction_map = {
-                "→↓": SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT,
-                "←↓": SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT,
-                "→↑": SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT,
-                "←↑": SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT,
+                "→↓ (q)": SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT,
+                "←↓ (w)": SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT,
+                "→↑ (a)": SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT,
+                "←↑ (s)": SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT,
             }
             selected_direction_str = self.ui.direction_var.get()
             self.search_direction = direction_map.get(selected_direction_str, SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT)
@@ -499,12 +501,12 @@ class AppController:
         else:
             self.start_search()
 
-    def start_search(self):
+    def start_search(self, apply_ui_settings=True):
         """색상 검색 프로세스를 시작합니다."""
         if self.is_searching: return
         if not self.ui: return
-
-        if not self.apply_settings():
+        
+        if apply_ui_settings and not self.apply_settings():
             return
 
         self.tries_count = 0 # 검색 시작 시 시도 횟수 초기화
@@ -598,8 +600,30 @@ class AppController:
         self.stop_search(message=status_message)
 
     def on_key_press(self, key):
-        """전역 키 입력을 감지하여 Shift 키를 두 번 눌렀는지 확인합니다."""
-        # Shift 키만 감지합니다 (왼쪽, 오른쪽 모두).
+        """전역 키 입력을 감지하여 단축키 조합을 처리합니다."""
+        # Shift + Shift + Number 조합 처리
+        if self.direction_change_pending:
+            direction_map = {
+                'q': SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT, 'ㅂ': SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT,
+                'w': SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT, 'ㅈ': SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT,
+                'a': SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT, 'ㅁ': SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT,
+                's': SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT, 'ㄴ': SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT,
+            }
+            # key.char가 존재하는지 확인 (특수키가 아닐 경우)
+            if hasattr(key, 'char') and key.char in direction_map:
+                self.search_direction = direction_map[key.char]
+                # UI에도 변경된 방향을 즉시 반영합니다.
+                if self.ui:
+                    self.ui.direction_var.set(self.ui.SEARCH_DIRECTION_MAP[self.search_direction])
+                print(f"탐색 방향이 {self.search_direction.value}로 변경되었습니다.")
+            
+            # 숫자키가 눌렸든 아니든, 방향 변경 상태를 해제하고 검색을 시작합니다.
+            self.direction_change_pending = False
+            # apply_settings를 건너뛰고 검색을 시작하도록 플래그 전달
+            self.start_search(apply_ui_settings=False)
+            return # 추가적인 Shift 처리 방지
+
+        # Shift 키 연속 누름 감지
         if key in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r):
             if self.shift_press_timer:
                 self.shift_press_timer.cancel()
@@ -607,14 +631,22 @@ class AppController:
             self.shift_press_count += 1
 
             if self.shift_press_count >= 2:
-                # 두 번 눌림 감지, 실행/중지 토글
+                # 두 번 눌림 감지. 바로 토글하지 않고, 숫자 입력을 기다립니다.
                 self.shift_press_count = 0
-                self.shift_press_timer = None
-                self.toggle_search()
+                self.direction_change_pending = True
+                # 0.4초 안에 숫자키가 안 눌리면, 방향 변경 없이 그냥 토글합니다.
+                self.shift_press_timer = threading.Timer(0.4, self._execute_toggle_without_direction_change)
+                self.shift_press_timer.start()
             else:
-                # 첫 번째 눌림, 0.4초 타이머 시작
+                # 첫 번째 눌림, 0.4초 후 카운트 리셋 타이머 시작
                 self.shift_press_timer = threading.Timer(0.4, self._reset_shift_count)
                 self.shift_press_timer.start()
+
+    def _execute_toggle_without_direction_change(self):
+        """숫자 입력 없이 Shift+Shift만 눌렸을 때 검색을 토글합니다."""
+        if self.direction_change_pending:
+            self.direction_change_pending = False
+            self.toggle_search() # 일반 토글은 apply_settings를 실행
 
     def _reset_shift_count(self):
         """시간이 초과되면 Shift 키 누름 횟수를 초기화합니다."""
@@ -623,22 +655,6 @@ class AppController:
 
     def _search_worker(self, search_plan: list):
         """(스레드 워커) 전달받은 검색 계획(search_plan)을 순차적으로 실행합니다."""
-        
-        def execute_single_search(search_area: tuple, search_color: tuple, search_direction: SearchDirection, status_text: str) -> Optional[tuple]:
-            """지정된 단일 영역을 탐색하고 결과를 반환합니다."""
-            if not self.is_searching: return None
-
-            if not (search_area[2] > search_area[0] and search_area[3] > search_area[1]):
-                return None
-
-            self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
-
-            return self.color_finder.find_color_in_area(
-                area=search_area,
-                color=search_color,
-                tolerance=self.color_tolerance,
-                direction=search_direction
-            )
 
         # --- 검색 계획 실행 ---
         if self.use_sequence:
@@ -649,7 +665,8 @@ class AppController:
             if self.use_initial_search:
                 # 1. 1순위 색상 탐색
                 status_text = f"초기 탐색 (1순위): 기본 영역에서 탐색 중 ({initial_step['search_direction'].value})..."
-                found_pos = execute_single_search(initial_step['search_area'], initial_step['search_color'], initial_step['search_direction'], status_text)
+                self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
+                found_pos = self.color_finder.find_color_in_area(initial_step['search_area'], initial_step['search_color'], self.color_tolerance, initial_step['search_direction'])
                 if found_pos:
                     self._handle_found_color(found_pos, "초기 탐색 중 1순위 색상 발견")
                     return
@@ -657,7 +674,8 @@ class AppController:
                 # 2. 2순위 색상 탐색 (조건부)
                 if self.is_searching and self.use_secondary_color:
                     status_text = f"초기 탐색 (2순위): 기본 영역에서 탐색 중 ({initial_step['search_direction'].value})..."
-                    found_pos_secondary = execute_single_search(initial_step['search_area'], self.secondary_color, initial_step['search_direction'], status_text)
+                    self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
+                    found_pos_secondary = self.color_finder.find_color_in_area(initial_step['search_area'], self.secondary_color, self.color_tolerance, initial_step['search_direction'])
                     if found_pos_secondary:
                         self._handle_found_color(found_pos_secondary, "초기 탐색 중 2순위 색상 발견")
                         return
@@ -691,7 +709,8 @@ class AppController:
 
                     time.sleep(0.1)
                     search_status_text = f"재탐색: 구역{step['area_number']} ({i+1}/{step['num_retries']}) | ({step['search_direction'].value}) | 총 ({self.tries_count}/{self.total_tries})"
-                    found_pos = execute_single_search(step['search_area'], step['search_color'], step['search_direction'], search_status_text)
+                    self.ui.queue_task(lambda text=search_status_text: self.ui.update_status(text))
+                    found_pos = self.color_finder.find_color_in_area(step['search_area'], step['search_color'], self.color_tolerance, step['search_direction'])
                     if found_pos:
                         self._handle_found_color(found_pos, f"재시도 중 구역{step['area_number']}에서 색상 발견")
                         return
@@ -706,7 +725,8 @@ class AppController:
             while self.is_searching:
                 # 1. 1순위 색상 탐색
                 status_text = f"기본 영역 반복 탐색 (1순위) ({initial_step['search_direction'].value})..."
-                found_pos = execute_single_search(initial_step['search_area'], initial_step['search_color'], initial_step['search_direction'], status_text)
+                self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
+                found_pos = self.color_finder.find_color_in_area(initial_step['search_area'], initial_step['search_color'], self.color_tolerance, initial_step['search_direction'])
                 if found_pos:
                     self._handle_found_color(found_pos, "기본 영역에서 1순위 색상 발견")
                     return
@@ -714,7 +734,8 @@ class AppController:
                 # 2. 2순위 색상 탐색 (조건부)
                 if self.is_searching and self.use_secondary_color:
                     status_text = f"기본 영역 반복 탐색 (2순위) ({initial_step['search_direction'].value})..."
-                    found_pos_secondary = execute_single_search(initial_step['search_area'], self.secondary_color, initial_step['search_direction'], status_text)
+                    self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
+                    found_pos_secondary = self.color_finder.find_color_in_area(initial_step['search_area'], self.secondary_color, self.color_tolerance, initial_step['search_direction'])
                     if found_pos_secondary:
                         self._handle_found_color(found_pos_secondary, "기본 영역에서 2순위 색상 발견")
                         return

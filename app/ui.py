@@ -45,10 +45,10 @@ class AppUI:
         self.use_sequence_var = tk.BooleanVar(value=c.use_sequence)
         # 탐색 방향 Enum과 UI 표시 문자열을 매핑합니다.
         self.SEARCH_DIRECTION_MAP = {
-            SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT: "→↓",
-            SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT: "←↓",
-            SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT: "→↑",
-            SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT: "←↑",
+            SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT: "→↓ (q)",
+            SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT: "←↓ (w)",
+            SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT: "→↑ (a)",
+            SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT: "←↑ (s)",
         }
         self.direction_var = tk.StringVar(value=self.SEARCH_DIRECTION_MAP[c.search_direction])
         self.total_tries_var = tk.StringVar(value=str(c.total_tries))
