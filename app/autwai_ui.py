@@ -154,7 +154,7 @@ class AutwaiUI:
         self.area_button = tk.Button(action_buttons_frame, text="영역확인", command=None) # self.controller.show_area
         self.area_button.grid(row=0, column=0, sticky=tk.EW, padx=(0, 5))
         
-        self.run_button = tk.Button(action_buttons_frame, text="실행(Shift x2)", command=None) # self.controller.toggle_run
+        self.run_button = tk.Button(action_buttons_frame, text="실행(Shift+S)", command=None) # self.controller.toggle_run
         self.run_button.grid(row=0, column=1, sticky=tk.EW)
 
     def _create_labeled_entry(self, parent, label_text, var, entry_width=5):

@@ -11,7 +11,6 @@ from tkinter import filedialog
 import itertools # 재시도 순환을 위해 추가
 
 from .color_finder import ColorFinder, SearchDirection
-from .global_hotkey_listener import GlobalHotkeyListener
 
 # 순환 참조를 피하면서 타입 힌팅을 하기 위한 Forward-declaration
 if TYPE_CHECKING:
@@ -30,12 +29,13 @@ class AppController:
         # --- 백그라운드 작업 관련 ---
         self.is_searching = False
         self.search_thread: Optional[threading.Thread] = None
+        self.shift_press_count = 0
+        self.shift_press_timer: Optional[threading.Timer] = None
         self.tries_count = 0 # 현재 시도 횟수
 
         # --- 전역 단축키 설정 ---
-        hotkey_map = {'<shift>+s': self.start_search, '<esc>': self.stop_search}
-        self.global_hotkey_listener = GlobalHotkeyListener(hotkey_map)
-        self.global_hotkey_listener.start()
+        self.keyboard_listener = keyboard.Listener(on_press=self.on_key_press)
+        self.keyboard_listener.start()
 
         # --- 기본값 설정 ---
         # 이 값들은 UI의 초기값을 설정하는 데 사용됩니다.
@@ -137,7 +137,7 @@ class AppController:
     def on_closing(self):
         """창을 닫을 때 리소스를 안전하게 정리합니다."""
         self.is_searching = False
-        self.global_hotkey_listener.stop()
+        self.keyboard_listener.stop()
         self.ui.root.destroy()
 
     def apply_settings(self):
@@ -544,6 +544,7 @@ class AppController:
         # 찾기 시작 시 소리 2번 재생
         self.ui.queue_task(lambda: self.ui.play_sound(2))
         self.ui.queue_task(lambda: self.ui.update_window_bg('searching'))
+        self.ui.queue_task(lambda: self.ui.update_button_text("중지 (Shift x2)"))
         print("--- 색상 검색 시작 ---")
 
         # 별도 스레드에서 검색 작업 실행 (생성된 계획 전달)
@@ -561,6 +562,7 @@ class AppController:
 
         # 검색 종료와 관련된 모든 UI 업데이트를 하나의 작업으로 묶어 큐에 추가합니다.
         self.ui.queue_task(lambda msg=message: self.ui.set_final_status(msg))
+        self.ui.queue_task(lambda: self.ui.update_button_text("찾기 (Shift x2)"))
         print(f"--- {message} ---")
 
     def _handle_found_color(self, found_pos: tuple, success_message: str):
@@ -590,6 +592,30 @@ class AppController:
             status_message = f"{success_message}"
 
         self.stop_search(message=status_message)
+
+    def on_key_press(self, key):
+        """전역 키 입력을 감지하여 Shift 키를 두 번 눌렀는지 확인합니다."""
+        # Shift 키만 감지합니다 (왼쪽, 오른쪽 모두).
+        if key in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r):
+            if self.shift_press_timer:
+                self.shift_press_timer.cancel()
+
+            self.shift_press_count += 1
+
+            if self.shift_press_count >= 2:
+                # 두 번 눌림 감지, 실행/중지 토글
+                self.shift_press_count = 0
+                self.shift_press_timer = None
+                self.toggle_search()
+            else:
+                # 첫 번째 눌림, 0.4초 타이머 시작
+                self.shift_press_timer = threading.Timer(0.4, self._reset_shift_count)
+                self.shift_press_timer.start()
+
+    def _reset_shift_count(self):
+        """시간이 초과되면 Shift 키 누름 횟수를 초기화합니다."""
+        self.shift_press_count = 0
+        self.shift_press_timer = None
 
     def _search_worker(self, search_plan: list):
         """(스레드 워커) 전달받은 검색 계획(search_plan)을 순차적으로 실행합니다."""

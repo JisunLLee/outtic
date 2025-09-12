@@ -247,7 +247,7 @@ class AppUI:
         self.area_button = tk.Button(action_frame, text="영역확인", command=self.controller.show_area)
         self.area_button.grid(row=0, column=2, sticky=tk.EW, padx=(0, 5))
         
-        self.find_button = tk.Button(action_frame, text="찾기(Shift+s)", command=self.controller.toggle_search)
+        self.find_button = tk.Button(action_frame, text="찾기(Shift x2)", command=self.controller.toggle_search)
         self.find_button.grid(row=0, column=3, sticky=tk.EW)
 
         # UI가 모두 생성된 후, 오버레이의 초기 상태를 설정합니다.
@@ -492,7 +492,7 @@ class AppUI:
     def set_final_status(self, message: str):
         """검색 종료 시 최종 상태를 UI에 한 번에 업데이트합니다."""
         self.update_status(message)
-        self.update_button_text("찾기(Shift+s)")
+        self.update_button_text("찾기(Shift x2)")
         self.update_window_bg('default')
 
     def update_ui_from_controller(self):
