@@ -41,6 +41,8 @@ class AppUI:
         self.search_delay_var = tk.StringVar(value=str(int(c.search_delay * 100)))
         self.complete_coord_var = tk.StringVar(value=str(c.complete_coord))
         self.use_initial_search_var = tk.BooleanVar(value=c.use_initial_search)
+        self.use_screen_activation_var = tk.BooleanVar(value=c.use_screen_activation)
+        self.empty_coord_var = tk.StringVar(value=str(c.empty_coord))
 
         self.use_sequence_var = tk.BooleanVar(value=c.use_sequence)
         # 탐색 방향 Enum과 UI 표시 문자열을 매핑합니다.
@@ -153,7 +155,7 @@ class AppUI:
         # Part 1: 완료 좌표
         self._create_value_button_row(left_frame, self.complete_coord_var, "완료", command=lambda: self.controller.start_coordinate_picker('complete')).pack(side=tk.LEFT)
       
-        # Part 2: 완료 선택 딜레이
+        # Part 2: 완료 선택 딜레이, 탐색 방향
         self._create_labeled_entry(right_frame, "완료 딜레이:", self.complete_delay_var).pack(expand=True, fill=tk.X, side=tk.LEFT)
 
         # Part 3: 탐색 방향
@@ -184,6 +186,12 @@ class AppUI:
         self._create_labeled_entry(right_frame, "시도횟수:", self.total_tries_var).pack(side=tk.RIGHT, expand=True, padx=5,fill=tk.X)
 
 
+        # 색상 선택 전 화면 클릭
+        area_active_container, (left_frame, right_frame) = self._create_split_container(self.areas_container_group, weights=[1, 1])
+        tk.Checkbutton(left_frame, text="화면활성화", variable=self.use_screen_activation_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
+        # 빈공간 좌표
+        self._create_value_button_row(left_frame, self.empty_coord_var, "빈공간", command=lambda: self.controller.start_coordinate_picker('empty_coord')).pack(side=tk.LEFT)
+  
         # --- 탐색 화면 정상 여부 확인용 그룹 ---
         operation_check = tk.LabelFrame(self.areas_container_group, text=f"탐색 화면 정상 여부 확인", fg="white", padx=10, pady=5)
         operation_check.pack(fill=tk.X, pady=12, padx=5, ipady=5)
@@ -512,6 +520,8 @@ class AppUI:
         self.search_delay_var.set(str(int(c.search_delay * 100)))
         self.complete_coord_var.set(str(c.complete_coord))
         self.use_initial_search_var.set(c.use_initial_search)
+        self.use_screen_activation_var.set(c.use_screen_activation)
+        self.empty_coord_var.set(str(c.empty_coord))
         self.use_sequence_var.set(c.use_sequence)
         self.direction_var.set(self.SEARCH_DIRECTION_MAP[c.search_direction])
         self.total_tries_var.set(str(c.total_tries))

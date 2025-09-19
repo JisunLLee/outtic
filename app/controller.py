@@ -58,6 +58,8 @@ class AppController:
         self.use_initial_search = True # '기본 탐색 사용' 체크박스 기본값
         self.use_sequence = False # 구역 사용 여부 (UI 체크박스 기본값)
         self.area_delay = 0.75 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
+        self.use_screen_activation = False # 화면 활성화 사용 여부
+        self.empty_coord = (0, 0) # 빈 공간 좌표
         self.search_delay = 0.15 # 탐색 대기 (초)
         self.total_tries = 88 # 총 시도 횟수
 
@@ -171,6 +173,8 @@ class AppController:
             self.search_direction = direction_map.get(selected_direction_str, SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT)
             self.use_initial_search = self.ui.use_initial_search_var.get()
             self.use_sequence = self.ui.use_sequence_var.get()
+            self.use_screen_activation = self.ui.use_screen_activation_var.get()
+            self.empty_coord = ast.literal_eval(self.ui.empty_coord_var.get())
             self.total_tries = int(self.ui.total_tries_var.get())
             
             # --- 구역 설정 적용 ---
@@ -277,6 +281,8 @@ class AppController:
             'search_direction': self.search_direction.value, # Enum을 문자열로 저장
             'complete_click_delay': self.complete_click_delay,
             'use_sequence': self.use_sequence,
+            'use_screen_activation': self.use_screen_activation,
+            'empty_coord': self.empty_coord,
             'use_initial_search': self.use_initial_search,
             'area_delay': self.area_delay,
             'search_delay': self.search_delay,
@@ -345,6 +351,8 @@ class AppController:
             self.search_direction = SearchDirection(settings_data.get('search_direction', self.search_direction.value))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
             self.use_initial_search = bool(settings_data.get('use_initial_search', self.use_initial_search))
+            self.use_screen_activation = bool(settings_data.get('use_screen_activation', self.use_screen_activation))
+            self.empty_coord = tuple(settings_data.get('empty_coord', self.empty_coord))
             self.use_sequence = bool(settings_data.get('use_sequence', self.use_sequence))
             self.area_delay = float(settings_data.get('area_delay', self.area_delay))
             self.search_delay = float(settings_data.get('search_delay', self.search_delay))
@@ -390,6 +398,7 @@ class AppController:
         if coord_key == 'p1': display_name = '기본 ↖영역'
         elif coord_key == 'p2': display_name = '기본 ↘영역'
         elif coord_key == 'complete': display_name = '완료'
+        elif coord_key == 'empty_coord': display_name = '빈공간'
         elif coord_key.startswith('area_'):
             parts = coord_key.split('_')
             area_num = parts[1]
@@ -418,6 +427,9 @@ class AppController:
             self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
         elif coord_key == 'complete':
             self.ui.complete_coord_var.set(str(new_pos))
+            self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
+        elif coord_key == 'empty_coord':
+            self.ui.empty_coord_var.set(str(new_pos))
             self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
         elif coord_key.startswith('area_'): # 예: 'area_1_p1', 'area_1_click_coord'
             try:
@@ -501,12 +513,12 @@ class AppController:
         else:
             self.start_search()
 
-    def start_search(self, apply_ui_settings=True):
+    def start_search(self):
         """색상 검색 프로세스를 시작합니다."""
         if self.is_searching: return
         if not self.ui: return
         
-        if apply_ui_settings and not self.apply_settings():
+        if not self.apply_settings():
             return
 
         self.tries_count = 0 # 검색 시작 시 시도 횟수 초기화
@@ -574,6 +586,14 @@ class AppController:
         """색상을 찾았을 때의 공통 처리 로직입니다."""
         if not self.is_searching: return
 
+        # 화면 활성화 기능이 켜져 있으면, 색상 클릭 전에 빈 공간을 먼저 클릭합니다.
+        if self.use_screen_activation and self.empty_coord != (0, 0):
+            # 빈 공간을 두 번 클릭하여 창을 확실히 활성화합니다.
+            click_x, click_y = self.empty_coord
+            self.color_finder.click_action(click_x, click_y) # 첫 번째 클릭
+            self.color_finder.click_action(click_x, click_y) # 두 번째 클릭
+            self.color_finder.click_action(click_x, click_y) # 세 번째 클릭
+            time.sleep(0.1) # Chrome 등 브라우저가 클릭을 처리할 시간을 확보하기 위한 대기
         # 1. 찾은 위치(색상 영역의 중심)를 클릭합니다.
         self.color_finder.click_action(found_pos[0], found_pos[1])
 
@@ -618,8 +638,7 @@ class AppController:
             
             # 숫자키가 눌렸든 아니든, 방향 변경 상태를 해제하고 검색을 시작합니다.
             self.direction_change_pending = False
-            # apply_settings를 건너뛰고 검색을 시작하도록 플래그 전달
-            self.start_search(apply_ui_settings=False)
+            self.start_search()
             return # 추가적인 Shift 처리 방지
 
         # Shift 키 연속 누름 감지
