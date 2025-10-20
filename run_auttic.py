@@ -1,4 +1,8 @@
 import tkinter as tk
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from app.ui import AppUI
 from app.controller import AppController
 
