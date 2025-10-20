@@ -712,7 +712,7 @@ class AppController:
                 current_cycle_duration = min(actual_active_search_duration, remaining_total_time)
 
                 cycle_start_time = time.time()
-                self._perform_search_cycle(search_plan, cycle_start_time, current_cycle_duration, actual_active_search_duration, actual_total_duration)
+                self._perform_search_cycle(search_plan, cycle_start_time, main_start_time, current_cycle_duration, actual_active_search_duration, actual_total_duration)
                 
                 # 탐색 중 색상을 발견했거나 사용자가 중지하면 루프 탈출
                 if not self.is_searching: break
@@ -728,7 +728,8 @@ class AppController:
                     wait_end_time = time.time() + actual_wait_duration
                     while self.is_searching and time.time() < wait_end_time:
                         remaining_wait = int(wait_end_time - time.time())
-                        status_text = f"대기 중... ({remaining_wait}초 남음)"
+                        total_elapsed_time = int(time.time() - main_start_time)
+                        status_text = f"대기 중... ({remaining_wait}초 남음) | ({total_elapsed_time}s / {int(actual_total_duration)}s)"
                         self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
                         time.sleep(1)
                     
@@ -746,9 +747,9 @@ class AppController:
                 self.stop_search(f"총 탐색 시간({int(actual_total_duration)}s) 도달, 검색 종료.", play_sound=False)
         else:
             # [구역 사용 OFF]: 색상을 찾을 때까지 초기 탐색만 무한 반복
-            self._perform_search_cycle(search_plan, time.time(), float('inf'), float('inf'), float('inf'))
+            self._perform_search_cycle(search_plan, time.time(), time.time(), float('inf'), float('inf'), float('inf'))
 
-    def _perform_search_cycle(self, search_plan: list, start_time: float, duration: float, cycle_target_duration: float, total_target_duration: float):
+    def _perform_search_cycle(self, search_plan: list, start_time: float, main_start_time: float, duration: float, cycle_target_duration: float, total_target_duration: float):
         """주어진 시간(duration) 동안 탐색 로직을 수행합니다."""
         if self.use_sequence:
             # [구역 사용 ON]: 초기 탐색 후, 시도 횟수만큼 재시도 순환
@@ -805,7 +806,8 @@ class AppController:
                     if duration == float('inf'):
                         time_info = f"경과 시간 ({elapsed_time}s)"
                     else:
-                        time_info = f"시간 ({elapsed_time}s / {int(cycle_target_duration)}s / {int(total_target_duration)}s)"
+                        total_elapsed_time = int(time.time() - main_start_time)
+                        time_info = f"({elapsed_time}s / {int(cycle_target_duration)}s) ({total_elapsed_time}s / {int(total_target_duration)}s)"
                     search_status_text = f"재탐색: 구역{step['area_number']} ({i+1}/{step['num_retries']}) | ({step['search_direction'].value}) | {time_info}"
                     self.ui.queue_task(lambda text=search_status_text: self.ui.update_status(text))
                     found_pos = self.color_finder.find_color_in_area(step['search_area'], step['search_color'], self.color_tolerance, step['search_direction'])
