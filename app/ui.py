@@ -56,6 +56,7 @@ class AppUI:
         self.total_duration_var = tk.StringVar(value=str(c.total_duration_sec))
         self.active_search_duration_var = tk.StringVar(value=str(c.active_search_duration_sec))
         self.wait_duration_var = tk.StringVar(value=str(c.wait_duration_sec))
+        self.search_time_tolerance_var = tk.StringVar(value=str(c.search_time_tolerance_sec))
         self.status_var = tk.StringVar(value="대기 중...")
 
         # --- 창 색상 관리 ---
@@ -194,7 +195,12 @@ class AppUI:
         self.wait_duration_frame.pack(expand=True, fill=tk.X)
 
         # 구역 세팅: 딜레이
-        delay_set_container, (left_frame, right_frame) = self._create_split_container(self.areas_container_group, weights=[1, 1])
+        delay_set_container, (left_frame, right_frame) = self._create_split_container(self.areas_container_group, weights=[2, 1])
+        
+        # 시간 오차를 딜레이 설정 왼쪽에 추가
+        self.search_time_tolerance_frame = self._create_labeled_entry(left_frame, "시간 오차(초):", self.search_time_tolerance_var)
+        self.search_time_tolerance_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
         self.search_delay_frame = self._create_labeled_entry(left_frame, "탐색 딜레이:", self.search_delay_var)
         self.search_delay_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
         self.area_delay_frame = self._create_labeled_entry(left_frame, "구역선택 딜레이:", self.area_delay_var)
@@ -571,6 +577,7 @@ class AppUI:
         self.total_duration_var.set(str(c.total_duration_sec))
         self.active_search_duration_var.set(str(c.active_search_duration_sec))
         self.wait_duration_var.set(str(c.wait_duration_sec))
+        self.search_time_tolerance_var.set(str(c.search_time_tolerance_sec))
 
         for area_number, area_settings in c.areas.items():
             if area_number in self.area_vars:
@@ -779,6 +786,7 @@ class AppUI:
         set_state_recursive(self.total_duration_frame, state, group_fg, entry_bg)
         set_state_recursive(self.active_search_duration_frame, state, group_fg, entry_bg)
         set_state_recursive(self.wait_duration_frame, state, group_fg, entry_bg)
+        set_state_recursive(self.search_time_tolerance_frame, state, group_fg, entry_bg)
         set_state_recursive(self.search_delay_frame, state, group_fg, entry_bg)
         set_state_recursive(self.area_delay_frame, state, group_fg, entry_bg)
         set_state_recursive(self.empty_coord_frame, state, group_fg, entry_bg)
