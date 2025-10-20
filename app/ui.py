@@ -53,7 +53,9 @@ class AppUI:
             SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT: "←↑ (s)",
         }
         self.direction_var = tk.StringVar(value=self.SEARCH_DIRECTION_MAP[c.search_direction])
-        self.search_duration_var = tk.StringVar(value=str(c.search_duration_sec))
+        self.total_duration_var = tk.StringVar(value=str(c.total_duration_sec))
+        self.active_search_duration_var = tk.StringVar(value=str(c.active_search_duration_sec))
+        self.wait_duration_var = tk.StringVar(value=str(c.wait_duration_sec))
         self.status_var = tk.StringVar(value="대기 중...")
 
         # --- 창 색상 관리 ---
@@ -182,14 +184,21 @@ class AppUI:
         self.areas_container_group = self._create_labeled_frame(main_frame, "구역 설정", name="areas_container_group")
         self.areas_container_group.pack(fill=tk.BOTH, expand=True, pady=(10))
 
-        # 구역 세팅: 구역 사용, 탐색딜레이, 총 시도횟수, 구역 딜레이
-        area_set_container, (left_frame, right_frame) = self._create_split_container(self.areas_container_group, weights=[1, 1])
+        # 구역 세팅: 탐색/대기 시간
+        time_set_container, (frame1, frame2, frame3) = self._create_split_container(self.areas_container_group, weights=[1, 1, 1])
+        self.total_duration_frame = self._create_labeled_entry(frame1, "총 탐색(초):", self.total_duration_var)
+        self.total_duration_frame.pack(expand=True, fill=tk.X)
+        self.active_search_duration_frame = self._create_labeled_entry(frame2, "탐색(초):", self.active_search_duration_var)
+        self.active_search_duration_frame.pack(expand=True, fill=tk.X)
+        self.wait_duration_frame = self._create_labeled_entry(frame3, "대기(초):", self.wait_duration_var)
+        self.wait_duration_frame.pack(expand=True, fill=tk.X)
+
+        # 구역 세팅: 딜레이
+        delay_set_container, (left_frame, right_frame) = self._create_split_container(self.areas_container_group, weights=[1, 1])
         self.search_delay_frame = self._create_labeled_entry(left_frame, "탐색 딜레이:", self.search_delay_var)
         self.search_delay_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
         self.area_delay_frame = self._create_labeled_entry(left_frame, "구역선택 딜레이:", self.area_delay_var)
         self.area_delay_frame.pack(side=tk.RIGHT,expand=True, fill=tk.X)
-        self.search_duration_frame = self._create_labeled_entry(right_frame, "탐색 시간(초):", self.search_duration_var)
-        self.search_duration_frame.pack(side=tk.RIGHT, expand=True, padx=5,fill=tk.X)
 
 
         # 색상 선택 전 화면 클릭
@@ -559,7 +568,9 @@ class AppUI:
         self.empty_coord_var.set(str(c.empty_coord))
         self.use_sequence_var.set(c.use_sequence)
         self.direction_var.set(self.SEARCH_DIRECTION_MAP[c.search_direction])
-        self.search_duration_var.set(str(c.search_duration_sec))
+        self.total_duration_var.set(str(c.total_duration_sec))
+        self.active_search_duration_var.set(str(c.active_search_duration_sec))
+        self.wait_duration_var.set(str(c.wait_duration_sec))
 
         for area_number, area_settings in c.areas.items():
             if area_number in self.area_vars:
@@ -765,9 +776,11 @@ class AppUI:
         self.areas_container_group.config(fg=group_fg)
 
         # '구역 설정' 그룹 내의 공통 위젯들 상태 변경
+        set_state_recursive(self.total_duration_frame, state, group_fg, entry_bg)
+        set_state_recursive(self.active_search_duration_frame, state, group_fg, entry_bg)
+        set_state_recursive(self.wait_duration_frame, state, group_fg, entry_bg)
         set_state_recursive(self.search_delay_frame, state, group_fg, entry_bg)
         set_state_recursive(self.area_delay_frame, state, group_fg, entry_bg)
-        set_state_recursive(self.search_duration_frame, state, group_fg, entry_bg)
         set_state_recursive(self.empty_coord_frame, state, group_fg, entry_bg)
         self.screen_activation_check.config(state=state, fg=check_fg)
         
