@@ -10,6 +10,10 @@ class SearchDirection(Enum):
     TOP_RIGHT_TO_BOTTOM_LEFT = "←↓"
     BOTTOM_LEFT_TO_TOP_RIGHT = "→↑"
     BOTTOM_RIGHT_TO_TOP_LEFT = "←↑"
+    TOP_TO_BOTTOM_LEFT_TO_RIGHT = "↓→"
+    TOP_TO_BOTTOM_RIGHT_TO_LEFT = "↓←"
+    BOTTOM_TO_TOP_LEFT_TO_RIGHT = "↑→"
+    BOTTOM_TO_TOP_RIGHT_TO_LEFT = "↑←"
 
 class ColorFinder:
     """화면에서 특정 색상을 찾고 관련 동작을 수행하는 클래스"""
@@ -82,27 +86,38 @@ class ColorFinder:
         # 성능을 위해 제곱된 허용 오차를 사용합니다.
         tolerance_sq = tolerance**2
 
-        # 탐색 방향에 따른 범위 설정
-        if direction == SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT:
-            y_range, x_range = range(height), range(width)
-        elif direction == SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT:
-            y_range, x_range = range(height), range(width - 1, -1, -1)
-        elif direction == SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT:
-            y_range, x_range = range(height - 1, -1, -1), range(width)
-        elif direction == SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT:
-            y_range, x_range = range(height - 1, -1, -1), range(width - 1, -1, -1)
-        else: # 기본값
-            y_range, x_range = range(height), range(width)
-        
-        # 지정된 순서로 픽셀을 순회합니다.
-        for y in y_range:
+        # 가로 우선 탐색 (기존 방식)
+        if direction in [SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT, SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT, SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT, SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT]:
+            if direction == SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT:
+                y_range, x_range = range(height), range(width)
+            elif direction == SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT:
+                y_range, x_range = range(height), range(width - 1, -1, -1)
+            elif direction == SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT:
+                y_range, x_range = range(height - 1, -1, -1), range(width)
+            else: # BOTTOM_RIGHT_TO_TOP_LEFT
+                y_range, x_range = range(height - 1, -1, -1), range(width - 1, -1, -1)
+            
+            for y in y_range:
+                for x in x_range:
+                    if self._is_color_match(img_array[y, x][:3], color, tolerance_sq):
+                        center_x_rel, center_y_rel = self._find_blob_center(img_array, x, y, color, tolerance_sq)
+                        return x1 + center_x_rel, y1 + center_y_rel
+        # 세로 우선 탐색 (새로 추가)
+        else:
+            if direction == SearchDirection.TOP_TO_BOTTOM_LEFT_TO_RIGHT:
+                x_range, y_range = range(width), range(height)
+            elif direction == SearchDirection.TOP_TO_BOTTOM_RIGHT_TO_LEFT:
+                x_range, y_range = range(width - 1, -1, -1), range(height)
+            elif direction == SearchDirection.BOTTOM_TO_TOP_LEFT_TO_RIGHT:
+                x_range, y_range = range(width), range(height - 1, -1, -1)
+            else: # BOTTOM_TO_TOP_RIGHT_TO_LEFT
+                x_range, y_range = range(width - 1, -1, -1), range(height - 1, -1, -1)
+
             for x in x_range:
-                pixel_color = img_array[y, x][:3]
-                if self._is_color_match(pixel_color, color, tolerance_sq):
-                    # 색상 발견! 이제 해당 색상 영역의 중심을 찾습니다.
-                    center_x_rel, center_y_rel = self._find_blob_center(img_array, x, y, color, tolerance_sq)
-                    # 중심점의 절대 좌표를 반환합니다.
-                    return x1 + center_x_rel, y1 + center_y_rel
+                for y in y_range:
+                    if self._is_color_match(img_array[y, x][:3], color, tolerance_sq):
+                        center_x_rel, center_y_rel = self._find_blob_center(img_array, x, y, color, tolerance_sq)
+                        return x1 + center_x_rel, y1 + center_y_rel
 
         return None
 
