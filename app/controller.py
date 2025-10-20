@@ -61,7 +61,7 @@ class AppController:
         self.use_screen_activation = False # 화면 활성화 사용 여부
         self.empty_coord = (0, 0) # 빈 공간 좌표
         self.search_delay = 0.15 # 탐색 대기 (초)
-        self.total_tries = 88 # 총 시도 횟수
+        self.search_duration_sec = 300 # 총 탐색 시간 (초)
 
         # --- 구역별 설정 데이터 ---
         self.areas = {}
@@ -175,7 +175,7 @@ class AppController:
             self.use_sequence = self.ui.use_sequence_var.get()
             self.use_screen_activation = self.ui.use_screen_activation_var.get()
             self.empty_coord = ast.literal_eval(self.ui.empty_coord_var.get())
-            self.total_tries = int(self.ui.total_tries_var.get())
+            self.search_duration_sec = int(self.ui.search_duration_var.get())
             
             # --- 구역 설정 적용 ---
             for area_number, area_ui_vars in self.ui.area_vars.items():
@@ -286,7 +286,7 @@ class AppController:
             'use_initial_search': self.use_initial_search,
             'area_delay': self.area_delay,
             'search_delay': self.search_delay,
-            'total_tries': self.total_tries,
+            'search_duration_sec': self.search_duration_sec,
             'areas': {}
         }
 
@@ -356,7 +356,7 @@ class AppController:
             self.use_sequence = bool(settings_data.get('use_sequence', self.use_sequence))
             self.area_delay = float(settings_data.get('area_delay', self.area_delay))
             self.search_delay = float(settings_data.get('search_delay', self.search_delay))
-            self.total_tries = int(settings_data.get('total_tries', self.total_tries))
+            self.search_duration_sec = int(settings_data.get('search_duration_sec', self.search_duration_sec))
 
             loaded_areas = settings_data.get('areas', {})
             for area_number_str, loaded in loaded_areas.items():
@@ -574,7 +574,7 @@ class AppController:
         self.is_searching = False
 
         if message is None:
-            message = f"검색 종료. 시도 횟수: ({self.tries_count}/{self.total_tries})"
+            message = f"검색이 종료되었습니다."
 
         # 검색 종료와 관련된 모든 UI 업데이트를 하나의 작업으로 묶어 큐에 추가합니다.
         self.ui.queue_task(lambda msg=message: self.ui.set_final_status(msg))
@@ -709,7 +709,8 @@ class AppController:
                 return
 
             retry_cycle = itertools.cycle(retry_steps)
-            while self.is_searching and self.tries_count < self.total_tries:
+            start_time = time.time()
+            while self.is_searching and (time.time() - start_time) < self.search_duration_sec:
                 step = next(retry_cycle)
                 final_x, final_y = step['click_coord']
                 if step['offset'] > 0:
@@ -717,7 +718,7 @@ class AppController:
                     final_y += random.randint(-step['offset'], step['offset'])
 
                 for i in range(step['num_retries']):
-                    if not self.is_searching or self.tries_count >= self.total_tries: break
+                    if not self.is_searching or (time.time() - start_time) >= self.search_duration_sec: break
                     self.tries_count += 1
 
                     if self.area_delay > 0:
@@ -731,7 +732,8 @@ class AppController:
                     self.color_finder.click_action(final_x, final_y)
 
                     time.sleep(0.1)
-                    search_status_text = f"재탐색: 구역{step['area_number']} ({i+1}/{step['num_retries']}) | ({step['search_direction'].value}) | 총 ({self.tries_count}/{self.total_tries})"
+                    elapsed_time = int(time.time() - start_time)
+                    search_status_text = f"재탐색: 구역{step['area_number']} ({i+1}/{step['num_retries']}) | ({step['search_direction'].value}) | 경과 시간 ({elapsed_time}s / {self.search_duration_sec}s)"
                     self.ui.queue_task(lambda text=search_status_text: self.ui.update_status(text))
                     found_pos = self.color_finder.find_color_in_area(step['search_area'], step['search_color'], self.color_tolerance, step['search_direction'])
                     if found_pos:
@@ -739,9 +741,9 @@ class AppController:
                         return
             
             if self.is_searching:
-                # 최대 시도 횟수 도달 시 소리 3번 재생
+                # 최대 시간 도달 시 소리 3번 재생
                 self.ui.queue_task(lambda: self.ui.play_sound(3))
-                self.stop_search(f"최대 시도 횟수({self.total_tries}) 도달, 검색 중지.")
+                self.stop_search(f"최대 시간({self.search_duration_sec}s) 도달, 검색 중지.")
         else:
             # [구역 사용 OFF]: 색상을 찾을 때까지 초기 탐색만 무한 반복
             initial_step = search_plan[0]

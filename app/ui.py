@@ -53,7 +53,7 @@ class AppUI:
             SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT: "←↑ (s)",
         }
         self.direction_var = tk.StringVar(value=self.SEARCH_DIRECTION_MAP[c.search_direction])
-        self.total_tries_var = tk.StringVar(value=str(c.total_tries))
+        self.search_duration_var = tk.StringVar(value=str(c.search_duration_sec))
         self.status_var = tk.StringVar(value="대기 중...")
 
         # --- 창 색상 관리 ---
@@ -183,8 +183,8 @@ class AppUI:
         self.search_delay_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
         self.area_delay_frame = self._create_labeled_entry(left_frame, "구역선택 딜레이:", self.area_delay_var)
         self.area_delay_frame.pack(side=tk.RIGHT,expand=True, fill=tk.X)
-        self.total_tries_frame = self._create_labeled_entry(right_frame, "시도횟수:", self.total_tries_var)
-        self.total_tries_frame.pack(side=tk.RIGHT, expand=True, padx=5,fill=tk.X)
+        self.search_duration_frame = self._create_labeled_entry(right_frame, "탐색 시간(초):", self.search_duration_var)
+        self.search_duration_frame.pack(side=tk.RIGHT, expand=True, padx=5,fill=tk.X)
 
 
         # 색상 선택 전 화면 클릭
@@ -554,7 +554,7 @@ class AppUI:
         self.empty_coord_var.set(str(c.empty_coord))
         self.use_sequence_var.set(c.use_sequence)
         self.direction_var.set(self.SEARCH_DIRECTION_MAP[c.search_direction])
-        self.total_tries_var.set(str(c.total_tries))
+        self.search_duration_var.set(str(c.search_duration_sec))
 
         for area_number, area_settings in c.areas.items():
             if area_number in self.area_vars:
@@ -762,7 +762,7 @@ class AppUI:
         # '구역 설정' 그룹 내의 공통 위젯들 상태 변경
         set_state_recursive(self.search_delay_frame, state, group_fg, entry_bg)
         set_state_recursive(self.area_delay_frame, state, group_fg, entry_bg)
-        set_state_recursive(self.total_tries_frame, state, group_fg, entry_bg)
+        set_state_recursive(self.search_duration_frame, state, group_fg, entry_bg)
         set_state_recursive(self.empty_coord_frame, state, group_fg, entry_bg)
         self.screen_activation_check.config(state=state, fg=check_fg)
         
