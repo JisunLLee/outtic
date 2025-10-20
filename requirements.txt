@@ -1,0 +1,11 @@
+-e git+https://github.com/JisunLLee/outtic.git@b0b312c47c712c20cbe6112811a7c85b4438bd96#egg=app
+numpy==2.3.2
+pillow==11.3.0
+pynput==1.8.1
+pyobjc-core==11.1
+pyobjc-framework-ApplicationServices==11.1
+pyobjc-framework-Cocoa==11.1
+pyobjc-framework-CoreText==11.1
+pyobjc-framework-Quartz==11.1
+six==1.17.0
+watchdog==6.0.0

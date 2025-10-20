@@ -16,8 +16,8 @@ class AppUI:
         self.point_marker_windows = []
         self.scrollable_canvas = None
         self.scrollable_content_frame = None
-        self.area_overlay_window = None
         self.global_toggles = {}
+        self.area_widgets = {} # 구역별 위젯을 저장하기 위한 딕셔너리
         self.area_toggles = {}
         self.ui_queue = queue.Queue()
         self.area_vars = {}
@@ -109,8 +109,6 @@ class AppUI:
         self.root.geometry(f"{window_width}x{window_height}+{x_pos}+{y_pos}")
         self.update_window_bg('default')
         self.root.resizable(True, True)
-        # 창 크기 변경 이벤트를 바인딩하여 오버레이 위치를 동적으로 조절합니다.
-        self.root.bind('<Configure>', self._update_overlay_geometry)
 
         main_frame = tk.Frame(self.root, padx=10, pady=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
@@ -181,23 +179,28 @@ class AppUI:
 
         # 구역 세팅: 구역 사용, 탐색딜레이, 총 시도횟수, 구역 딜레이
         area_set_container, (left_frame, right_frame) = self._create_split_container(self.areas_container_group, weights=[1, 1])
-        self._create_labeled_entry(left_frame, "탐색 딜레이:", self.search_delay_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
-        self._create_labeled_entry(left_frame, "구역선택 딜레이:", self.area_delay_var).pack(side=tk.RIGHT,expand=True, fill=tk.X)
-        self._create_labeled_entry(right_frame, "시도횟수:", self.total_tries_var).pack(side=tk.RIGHT, expand=True, padx=5,fill=tk.X)
+        self.search_delay_frame = self._create_labeled_entry(left_frame, "탐색 딜레이:", self.search_delay_var)
+        self.search_delay_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
+        self.area_delay_frame = self._create_labeled_entry(left_frame, "구역선택 딜레이:", self.area_delay_var)
+        self.area_delay_frame.pack(side=tk.RIGHT,expand=True, fill=tk.X)
+        self.total_tries_frame = self._create_labeled_entry(right_frame, "시도횟수:", self.total_tries_var)
+        self.total_tries_frame.pack(side=tk.RIGHT, expand=True, padx=5,fill=tk.X)
 
 
         # 색상 선택 전 화면 클릭
         area_active_container, (left_frame, right_frame) = self._create_split_container(self.areas_container_group, weights=[1, 1])
-        tk.Checkbutton(left_frame, text="화면활성화", variable=self.use_screen_activation_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
         # 빈공간 좌표
-        self._create_value_button_row(left_frame, self.empty_coord_var, "빈공간", command=lambda: self.controller.start_coordinate_picker('empty_coord')).pack(side=tk.LEFT)
+        self.screen_activation_check = tk.Checkbutton(left_frame, text="화면활성화", variable=self.use_screen_activation_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0)
+        self.screen_activation_check.pack(side=tk.LEFT)
+        self.empty_coord_frame = self._create_value_button_row(left_frame, self.empty_coord_var, "빈공간", command=lambda: self.controller.start_coordinate_picker('empty_coord'))
+        self.empty_coord_frame.pack(side=tk.LEFT)
   
         # --- 탐색 화면 정상 여부 확인용 그룹 ---
-        operation_check = tk.LabelFrame(self.areas_container_group, text=f"탐색 화면 정상 여부 확인", fg="white", padx=10, pady=5)
-        operation_check.pack(fill=tk.X, pady=12, padx=5, ipady=5)
+        self.operation_check_group = tk.LabelFrame(self.areas_container_group, text=f"탐색 화면 정상 여부 확인", fg="white", padx=10, pady=5)
+        self.operation_check_group.pack(fill=tk.X, pady=12, padx=5, ipady=5)
 
         # Row 1: 화면 정상 여부 확인: 화면 확인 좌표, 화면 확인 색상
-        operation_check, (left_frame, right_frame) = self._create_split_container(operation_check, weights=[1, 1])
+        operation_check_container, (left_frame, right_frame) = self._create_split_container(self.operation_check_group, weights=[1, 1])
         self._create_value_button_row(left_frame, None, "좌표", command=lambda: None).pack(side=tk.LEFT)
         self._create_value_button_row(right_frame, None, "색상", command=lambda: None).pack(side=tk.RIGHT)
 
@@ -278,10 +281,11 @@ class AppUI:
         # 이 구역에 해당하는 변수들을 가져옵니다.
         vars = self.area_vars[area_number]
 
+        widgets = {} # 이 구역의 위젯들을 저장할 딕셔너리
+
         # UI를 좌우로 나누기 위한 컨테이너 생성
         row1_container, (left_frame, right_frame) = self._create_split_container(area_group, weights=[2, 1])
 
-        # --- Row 1 위젯 생성 (pack은 나중에) ---
         coord_label = tk.Label(left_frame, textvariable=vars['coord_var'], relief="sunken", bg="#555555", width=10, anchor='w')
         coord_button = tk.Button(left_frame, text=f"구역 {area_number}", width=3, command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_click_coord'))
         
@@ -307,7 +311,9 @@ class AppUI:
                         widget.config(state=state)
 
         # --- Row 1 왼쪽: 탐색 활성화, 클릭 좌표 설정 ---
-        tk.Checkbutton(left_frame, text="탐색", variable=vars['use_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_search_state).pack(side=tk.LEFT)
+        use_search_checkbutton = tk.Checkbutton(left_frame, text="탐색", variable=vars['use_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_search_state)
+        use_search_checkbutton.pack(side=tk.LEFT)
+
         coord_label.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
         coord_button.pack(side=tk.LEFT)
 
@@ -341,7 +347,9 @@ class AppUI:
                 vars['p1_var'].set(self.p1_var.get())
                 vars['p2_var'].set(self.p2_var.get())
 
-        tk.Checkbutton(left_frame2, text="기본", variable=vars['use_area_bounds_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_area_bounds_state).pack(side=tk.LEFT)
+        use_bounds_checkbutton = tk.Checkbutton(left_frame2, text="기본", variable=vars['use_area_bounds_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_area_bounds_state)
+        use_bounds_checkbutton.pack(side=tk.LEFT)
+
         p1_selector_frame.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
         p2_selector_frame.pack(expand=True, fill=tk.X)
 
@@ -375,7 +383,8 @@ class AppUI:
                 # '기본'이 체크되면, 전역 색상 값을 해당 구역의 변수에 설정합니다.
                 vars['color_var'].set(self.color_var.get())
 
-        tk.Checkbutton(left_frame3, text="기본", variable=vars['use_color_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_color_state).pack(side=tk.LEFT)
+        use_color_checkbutton = tk.Checkbutton(left_frame3, text="기본", variable=vars['use_color_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_color_state)
+        use_color_checkbutton.pack(side=tk.LEFT)
         color_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         color_button.pack(side=tk.LEFT)
 
@@ -396,9 +405,29 @@ class AppUI:
                 # '기본'이 체크되면, 전역 탐색 방향 값을 해당 구역의 변수에 설정합니다.
                 vars['direction_var'].set(self.direction_var.get())
 
-        tk.Checkbutton(right_frame3, text="기본", variable=vars['use_direction_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_direction_state).pack(side=tk.LEFT)
+        use_direction_checkbutton = tk.Checkbutton(right_frame3, text="기본", variable=vars['use_direction_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_direction_state)
+        use_direction_checkbutton.pack(side=tk.LEFT)
         direction_menu.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=(5,0))
         
+        # 나중에 전체 활성/비활성화를 위해 위젯들을 저장합니다.
+        widgets['group'] = area_group
+        widgets['use_search_check'] = use_search_checkbutton
+        widgets['coord_label'] = coord_label
+        widgets['coord_button'] = coord_button
+        widgets['clicks_frame'] = clicks_frame
+        widgets['offset_frame'] = offset_frame
+        widgets['use_bounds_check'] = use_bounds_checkbutton
+        widgets['p1_label'] = p1_label
+        widgets['p1_button'] = p1_button
+        widgets['p2_label'] = p2_label
+        widgets['p2_button'] = p2_button
+        widgets['use_color_check'] = use_color_checkbutton
+        widgets['color_label'] = color_label
+        widgets['color_button'] = color_button
+        widgets['use_direction_check'] = use_direction_checkbutton
+        widgets['direction_menu'] = direction_menu
+        self.area_widgets[area_number] = widgets
+
         # --- 전역 변수 변경 감지 및 동기화 ---
         # 전역(기본) 설정이 변경될 때, '기본'이 체크된 구역의 값도 함께 업데이트합니다.
         def update_area_p1_from_global(*args):
@@ -431,6 +460,7 @@ class AppUI:
         toggle_color_state() # 초기 상태 설정을 위해 호출
         toggle_area_bounds_state() # 초기 상태 설정
         toggle_direction_state() # 초기 상태 설정
+
 
         return area_group
 
@@ -702,44 +732,67 @@ class AppUI:
         return frame, toggle_state
 
     def _toggle_area_settings_active(self):
-        """'구역 탐색 사용' 체크박스 상태에 따라 오버레이를 토글합니다."""
+        """'구역 탐색 사용' 체크박스 상태에 따라 모든 구역 설정 UI의 활성화/비활성화 상태를 변경합니다."""
         is_enabled = self.use_sequence_var.get()
+        state = 'normal' if is_enabled else 'disabled'
+        group_fg = 'white' if is_enabled else '#666666'
+        check_fg = 'white' if is_enabled else '#444444'
+        entry_bg = '#444444' if is_enabled else '#2e2e2e'
+        label_bg = '#555555' if is_enabled else '#2e2e2e'
+        label_fg = 'white' if is_enabled else '#444444'
 
-        if not is_enabled:
-            # 비활성화 상태: 오버레이를 생성하거나 보여줍니다.
-            if not self.area_overlay_window or not self.area_overlay_window.winfo_exists():
-                self.area_overlay_window = tk.Toplevel(self.root)
-                self.area_overlay_window.overrideredirect(True)
-                self.area_overlay_window.attributes('-alpha', 0.8)
-                self.area_overlay_window.configure(bg='black')
-                self.area_overlay_window.attributes('-topmost', True)
-            
-            # 오버레이 위치와 크기를 업데이트합니다.
-            self._update_overlay_geometry()
-            self.area_overlay_window.deiconify() # 창을 보이게 합니다.
-        else:
-            # 활성화 상태: 오버레이를 숨깁니다.
-            if self.area_overlay_window and self.area_overlay_window.winfo_exists():
-                self.area_overlay_window.withdraw() # 창을 파괴하지 않고 숨깁니다.
+        # '구역 설정' 그룹 전체의 스타일 변경
+        # 이 그룹에 속한 모든 위젯을 재귀적으로 탐색하며 상태를 변경하는 함수
+        def set_state_recursive(widget, state, fg_color, entry_bg_color):
+            try:
+                if isinstance(widget, (tk.Button, tk.Entry, tk.OptionMenu)):
+                    widget.config(state=state)
+                if isinstance(widget, tk.Entry):
+                    widget.config(disabledbackground=entry_bg_color)
+                if isinstance(widget, (tk.Label, tk.Checkbutton, tk.LabelFrame)):
+                    widget.config(fg=fg_color)
+                
+                for child in widget.winfo_children():
+                    set_state_recursive(child, state, fg_color, entry_bg_color)
+            except tk.TclError:
+                pass # 위젯이 파괴된 경우 등 예외 처리
 
-    def _update_overlay_geometry(self, event=None):
-        """창 크기 변경이나 스크롤에 대응하여 오버레이의 위치와 크기를 업데이트합니다."""
-        # 오버레이 창이 존재하고, '구역 탐색 사용'이 비활성화된 경우에만 실행합니다.
-        if self.area_overlay_window and self.area_overlay_window.winfo_exists() and not self.use_sequence_var.get():
-            # 위젯의 지오메트리가 확정된 후 실행하기 위해 짧은 지연을 줍니다.
-            self.root.after(10, self._place_overlay_action)
+        self.areas_container_group.config(fg=group_fg)
 
-    def _place_overlay_action(self):
-        """오버레이를 '구역 설정' 그룹 위에 정확히 배치합니다."""
-        if not (self.area_overlay_window and self.area_overlay_window.winfo_exists()):
-            return
+        # '구역 설정' 그룹 내의 공통 위젯들 상태 변경
+        set_state_recursive(self.search_delay_frame, state, group_fg, entry_bg)
+        set_state_recursive(self.area_delay_frame, state, group_fg, entry_bg)
+        set_state_recursive(self.total_tries_frame, state, group_fg, entry_bg)
+        set_state_recursive(self.empty_coord_frame, state, group_fg, entry_bg)
+        self.screen_activation_check.config(state=state, fg=check_fg)
+        
+        # '탐색 화면 정상 여부 확인' 그룹 상태 변경
+        set_state_recursive(self.operation_check_group, state, group_fg, entry_bg)
 
-        try:
-            x = self.areas_container_group.winfo_rootx()
-            y = self.areas_container_group.winfo_rooty()
-            width = self.areas_container_group.winfo_width()
-            height = self.areas_container_group.winfo_height()
-            self.area_overlay_window.geometry(f"{width}x{height}+{x}+{y}")
-            self.area_overlay_window.lift()
-        except tk.TclError:
-            pass
+        # 각 구역의 모든 위젯 상태 변경
+        for area_number, widgets in self.area_widgets.items():
+            widgets['group'].config(fg=group_fg)
+            widgets['use_search_check'].config(state=state, fg=check_fg)
+            widgets['use_bounds_check'].config(state=state, fg=check_fg)
+            widgets['use_color_check'].config(state=state, fg=check_fg)
+            widgets['use_direction_check'].config(state=state, fg=check_fg)
+            widgets['direction_menu'].config(state=state)
+
+            # '탐색' 체크박스가 꺼져있으면 개별 위젯 상태는 그대로 두되,
+            # '구역 탐색 사용'이 꺼져있으면 강제로 비활성화
+            if not is_enabled:
+                for widget_key, widget in widgets.items():
+                    if 'frame' in widget_key:
+                        for sub_widget in widget.winfo_children():
+                            if isinstance(sub_widget, tk.Entry): sub_widget.config(state='disabled', disabledbackground=entry_bg)
+                            else: sub_widget.config(state='disabled')
+                    elif isinstance(widget, (tk.Button, tk.Entry)):
+                        widget.config(state='disabled')
+                    elif isinstance(widget, tk.Label) and 'var' in str(widget.cget('textvariable')):
+                        widget.config(state='disabled', bg=label_bg, fg=label_fg)
+            else:
+                # '구역 탐색 사용'이 켜지면, 각 구역의 개별 상태를 다시 적용
+                self.area_toggles[area_number]['search']()
+                self.area_toggles[area_number]['bounds']()
+                self.area_toggles[area_number]['color']()
+                self.area_toggles[area_number]['direction']()
