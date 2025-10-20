@@ -164,13 +164,18 @@ class AppUI:
 
         
 
-        area_container, (left_frame, right_frame) = self._create_split_container(main_frame, weights=[1, 10])
+        # --- 상태 메시지 및 구역/기본 탐색 토글 ---
+        status_and_toggle_container = tk.Frame(main_frame)
+        status_and_toggle_container.pack(fill=tk.X, pady=2)
+
         # --- 구역, 기본 탐색 사용 여부 ---
-        tk.Checkbutton(left_frame, text="구역 탐색 사용", variable=self.use_sequence_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=self._toggle_area_settings_active).pack(side=tk.LEFT)
-        tk.Checkbutton(left_frame, text="기본 탐색 사용", variable=self.use_initial_search_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT, padx=(10,0))
+        toggle_frame = tk.Frame(status_and_toggle_container)
+        toggle_frame.pack(fill=tk.X)
+        tk.Checkbutton(toggle_frame, text="구역 탐색 사용", variable=self.use_sequence_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=self._toggle_area_settings_active).pack(side=tk.LEFT)
+        tk.Checkbutton(toggle_frame, text="기본 탐색 사용", variable=self.use_initial_search_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT, padx=(10,0))
         # --- 상태 메시지 ---
-        status_label = tk.Label(right_frame, bg="#555555", textvariable=self.status_var, fg="lightblue", anchor='w')
-        status_label.pack(side=tk.RIGHT, expand=True, fill=tk.X)
+        status_label = tk.Label(status_and_toggle_container, bg="#555555", textvariable=self.status_var, fg="lightblue", anchor='w')
+        status_label.pack(fill=tk.X, pady=(5,0))
 
         # --- 구역 설정 그룹 ---
         # 이 프레임은 모든 구역(구역1, 구역2 등)을 감싸는 컨테이너 역할을 합니다.
