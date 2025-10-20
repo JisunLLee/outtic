@@ -575,17 +575,21 @@ class AppController:
         self.search_thread = threading.Thread(target=self._search_worker, args=(search_plan,), daemon=True)
         self.search_thread.start()
 
-    def stop_search(self, message=None):
+    def stop_search(self, message=None, play_sound=True):
         """색상 검색 프로세스를 중지합니다."""
         if not self.is_searching: return
         if not self.ui: return
         self.is_searching = False
 
         if message is None:
-            message = f"검색이 종료되었습니다."
+            message = "검색이 종료되었습니다."
 
         # 검색 종료와 관련된 모든 UI 업데이트를 하나의 작업으로 묶어 큐에 추가합니다.
         self.ui.queue_task(lambda msg=message: self.ui.set_final_status(msg))
+        
+        if play_sound:
+            self.ui.queue_task(lambda: self.ui.play_sound(1))
+
         self.ui.queue_task(lambda: self.ui.update_button_text("찾기 (Shift x2)"))
         self.ui.queue_task(lambda: self.ui.update_button_text("찾기 (Shift x2 / ESC)"))
         print(f"--- {message} ---")
@@ -709,11 +713,17 @@ class AppController:
                         status_text = f"대기 중... ({remaining_wait}초 남음)"
                         self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
                         time.sleep(1)
+                    
+                    # 대기 시간이 종료되었고, 아직 검색 중이라면 알람을 울립니다.
+                    if self.is_searching:
+                        self.ui.queue_task(lambda: self.ui.play_sound(1))
                 
                 if not self.is_searching: break
 
             if self.is_searching:
-                self.stop_search(f"총 탐색 시간({self.total_duration_sec}s) 도달, 검색 종료.")
+                # 총 탐색 시간이 종료되었을 때 알람 3회
+                self.ui.queue_task(lambda: self.ui.play_sound(3))
+                self.stop_search(f"총 탐색 시간({self.total_duration_sec}s) 도달, 검색 종료.", play_sound=False)
         else:
             # [구역 사용 OFF]: 색상을 찾을 때까지 초기 탐색만 무한 반복
             self._perform_search_cycle(search_plan, time.time(), float('inf'))
@@ -780,9 +790,8 @@ class AppController:
                         return
             
             if self.is_searching and duration != float('inf'):
-                # 최대 시간 도달 시 소리 3번 재생
-                self.ui.queue_task(lambda: self.ui.play_sound(3))
-                # self.stop_search(f"탐색 시간({self.active_search_duration_sec}s) 도달, 대기 시작.")
+                # 한 탐색 사이클의 최대 시간 도달 시 소리 1번 재생
+                self.ui.queue_task(lambda: self.ui.play_sound(1))
         else:
             # [구역 사용 OFF]: 색상을 찾을 때까지 초기 탐색만 무한 반복
             initial_step = search_plan[0]
