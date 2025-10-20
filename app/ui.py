@@ -63,6 +63,7 @@ class AppUI:
         self.WINDOW_COLORS = {
             'default': "#2e2e2e",
             'searching': "medium turquoise",
+            'waiting': "LemonChiffon",
             'global_setting_change': "#40E0D0", # 기본 설정 변경 시 플래시 색상 (터콰이즈)
             'area_setting_change': "LemonChiffon",   # 구역 설정 변경 시 플래시 색상 (노랑)
         }

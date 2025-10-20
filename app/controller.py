@@ -719,6 +719,9 @@ class AppController:
                 
                 # --- 대기 사이클 ---
                 if self.wait_duration_sec > 0:
+                    # 대기 상태 시작 시 창 색상을 'waiting'으로 변경
+                    self.ui.queue_task(lambda: self.ui.update_window_bg('waiting'))
+
                     wait_duration_offset = random.uniform(-self.search_time_tolerance_sec, self.search_time_tolerance_sec)
                     actual_wait_duration = max(0, self.wait_duration_sec + wait_duration_offset)
 
@@ -732,6 +735,8 @@ class AppController:
                     # 대기 시간이 종료되었고, 아직 검색 중이라면 알람을 울립니다.
                     if self.is_searching:
                         self.ui.queue_task(lambda: self.ui.play_sound(1))
+                        # 다음 탐색을 위해 창 색상을 다시 'searching'으로 변경
+                        self.ui.queue_task(lambda: self.ui.update_window_bg('searching'))
                 
                 if not self.is_searching: break
 
