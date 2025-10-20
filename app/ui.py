@@ -61,9 +61,9 @@ class AppUI:
 
         # --- 창 색상 관리 ---
         self.WINDOW_COLORS = {
-            'default': "#2e2e2e",
+            'default': "#252525",
             'searching': "medium turquoise",
-            'waiting': "LemonChiffon",
+            'waiting': "orange", # 가독성을 위해 LemonChiffon에서 orange로 변경
             'global_setting_change': "#40E0D0", # 기본 설정 변경 시 플래시 색상 (터콰이즈)
             'area_setting_change': "LemonChiffon",   # 구역 설정 변경 시 플래시 색상 (노랑)
         }
@@ -507,7 +507,13 @@ class AppUI:
             if isinstance(widget, target_widgets):
                 # 체크박스는 배경과 관련된 여러 속성을 함께 변경해야 자연스럽습니다.
                 if isinstance(widget, tk.Checkbutton):
-                    widget.configure(bg=color, activebackground=color, selectcolor=color)
+                    # Windows에서는 체크박스 배경색이 잘 적용되지 않는 문제가 있어 OS별로 다르게 처리합니다.
+                    if sys.platform.startswith("win"):
+                        # Windows: 시스템 기본 배경을 유지하고 글자색만 흰색으로 설정
+                        widget.configure(fg='white')
+                    else:
+                        # macOS/Linux: 배경색을 테마에 맞게 설정
+                        widget.configure(bg=color, activebackground=color, selectcolor=color)
                 elif isinstance(widget, tk.Canvas):
                     widget.configure(bg=color, highlightthickness=0)
                 else:

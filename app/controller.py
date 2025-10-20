@@ -99,7 +99,7 @@ class AppController:
             if area_number == 1:
                 default_use = False
                 default_click_coord = (723, 301)
-                default_clicks = 6
+                default_clicks = 1
                 default_direction = SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT
             if area_number == 2:
                 default_use = False
