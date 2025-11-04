@@ -14,6 +14,10 @@ class SearchDirection(Enum):
     TOP_TO_BOTTOM_RIGHT_TO_LEFT = "↓←"
     BOTTOM_TO_TOP_LEFT_TO_RIGHT = "↑→"
     BOTTOM_TO_TOP_RIGHT_TO_LEFT = "↑←"
+    CENTER_TOP_TO_BOTTOM = "↓↔"
+    CENTER_BOTTOM_TO_TOP = "↑↔"
+    CENTER_LEFT_TO_RIGHT = "→↕"
+    CENTER_RIGHT_TO_LEFT = "←↕"
 
 class ColorFinder:
     """화면에서 특정 색상을 찾고 관련 동작을 수행하는 클래스"""
@@ -102,22 +106,47 @@ class ColorFinder:
                     if self._is_color_match(img_array[y, x][:3], color, tolerance_sq):
                         center_x_rel, center_y_rel = self._find_blob_center(img_array, x, y, color, tolerance_sq)
                         return x1 + center_x_rel, y1 + center_y_rel
-        # 세로 우선 탐색 (새로 추가)
-        else:
-            if direction == SearchDirection.TOP_TO_BOTTOM_LEFT_TO_RIGHT:
-                x_range, y_range = range(width), range(height)
-            elif direction == SearchDirection.TOP_TO_BOTTOM_RIGHT_TO_LEFT:
-                x_range, y_range = range(width - 1, -1, -1), range(height)
-            elif direction == SearchDirection.BOTTOM_TO_TOP_LEFT_TO_RIGHT:
-                x_range, y_range = range(width), range(height - 1, -1, -1)
-            else: # BOTTOM_TO_TOP_RIGHT_TO_LEFT
-                x_range, y_range = range(width - 1, -1, -1), range(height - 1, -1, -1)
-
+        elif direction in [SearchDirection.TOP_TO_BOTTOM_LEFT_TO_RIGHT, SearchDirection.TOP_TO_BOTTOM_RIGHT_TO_LEFT, SearchDirection.BOTTOM_TO_TOP_LEFT_TO_RIGHT, SearchDirection.BOTTOM_TO_TOP_RIGHT_TO_LEFT]:
+            if direction == SearchDirection.TOP_TO_BOTTOM_LEFT_TO_RIGHT: x_range, y_range = range(width), range(height)
+            elif direction == SearchDirection.TOP_TO_BOTTOM_RIGHT_TO_LEFT: x_range, y_range = range(width - 1, -1, -1), range(height)
+            elif direction == SearchDirection.BOTTOM_TO_TOP_LEFT_TO_RIGHT: x_range, y_range = range(width), range(height - 1, -1, -1)
+            else: x_range, y_range = range(width - 1, -1, -1), range(height - 1, -1, -1)
             for x in x_range:
                 for y in y_range:
                     if self._is_color_match(img_array[y, x][:3], color, tolerance_sq):
                         center_x_rel, center_y_rel = self._find_blob_center(img_array, x, y, color, tolerance_sq)
                         return x1 + center_x_rel, y1 + center_y_rel
+        # 중앙 우선 탐색 (새로 추가)
+        elif direction in [SearchDirection.CENTER_TOP_TO_BOTTOM, SearchDirection.CENTER_BOTTOM_TO_TOP]:
+            y_range = range(height) if direction == SearchDirection.CENTER_TOP_TO_BOTTOM else range(height - 1, -1, -1)
+            center_x = width // 2
+            for y in y_range:
+                # 중앙에서 시작하여 좌우로 확장
+                for offset in range(max(center_x, width - center_x)):
+                    # 중앙 -> 좌
+                    x_left = center_x - offset
+                    if 0 <= x_left < width and self._is_color_match(img_array[y, x_left][:3], color, tolerance_sq):
+                        return x1 + self._find_blob_center(img_array, x_left, y, color, tolerance_sq)[0], y1 + y
+                    # 중앙 -> 우 (offset이 0일때 중복 방지)
+                    if offset > 0:
+                        x_right = center_x + offset
+                        if x_right < width and self._is_color_match(img_array[y, x_right][:3], color, tolerance_sq):
+                            return x1 + self._find_blob_center(img_array, x_right, y, color, tolerance_sq)[0], y1 + y
+        else: # CENTER_LEFT_TO_RIGHT, CENTER_RIGHT_TO_LEFT
+            x_range = range(width) if direction == SearchDirection.CENTER_LEFT_TO_RIGHT else range(width - 1, -1, -1)
+            center_y = height // 2
+            for x in x_range:
+                # 중앙에서 시작하여 상하로 확장
+                for offset in range(max(center_y, height - center_y)):
+                    # 중앙 -> 상
+                    y_up = center_y - offset
+                    if 0 <= y_up < height and self._is_color_match(img_array[y_up, x][:3], color, tolerance_sq):
+                        return x1 + x, y1 + self._find_blob_center(img_array, x, y_up, color, tolerance_sq)[1]
+                    # 중앙 -> 하 (offset이 0일때 중복 방지)
+                    if offset > 0:
+                        y_down = center_y + offset
+                        if y_down < height and self._is_color_match(img_array[y_down, x][:3], color, tolerance_sq):
+                            return x1 + x, y1 + self._find_blob_center(img_array, x, y_down, color, tolerance_sq)[1]
 
         return None
 

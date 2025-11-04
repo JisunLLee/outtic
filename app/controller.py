@@ -175,6 +175,10 @@ class AppController:
                 "↓← (r)": SearchDirection.TOP_TO_BOTTOM_RIGHT_TO_LEFT,
                 "↑→ (d)": SearchDirection.BOTTOM_TO_TOP_LEFT_TO_RIGHT,
                 "↑← (f)": SearchDirection.BOTTOM_TO_TOP_RIGHT_TO_LEFT,
+                "↓↔ (z)": SearchDirection.CENTER_TOP_TO_BOTTOM,
+                "↑↔ (x)": SearchDirection.CENTER_BOTTOM_TO_TOP,
+                "→↕ (c)": SearchDirection.CENTER_LEFT_TO_RIGHT,
+                "←↕ (v)": SearchDirection.CENTER_RIGHT_TO_LEFT,
             }
             selected_direction_str = self.ui.direction_var.get()
             self.search_direction = direction_map.get(selected_direction_str, SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT)
@@ -651,6 +655,10 @@ class AppController:
                 'r': SearchDirection.TOP_TO_BOTTOM_RIGHT_TO_LEFT, 'ㄱ': SearchDirection.TOP_TO_BOTTOM_RIGHT_TO_LEFT,
                 'd': SearchDirection.BOTTOM_TO_TOP_LEFT_TO_RIGHT, 'ㅇ': SearchDirection.BOTTOM_TO_TOP_LEFT_TO_RIGHT,
                 'f': SearchDirection.BOTTOM_TO_TOP_RIGHT_TO_LEFT, 'ㄹ': SearchDirection.BOTTOM_TO_TOP_RIGHT_TO_LEFT,
+                'z': SearchDirection.CENTER_TOP_TO_BOTTOM, 'ㅋ': SearchDirection.CENTER_TOP_TO_BOTTOM,
+                'x': SearchDirection.CENTER_BOTTOM_TO_TOP, 'ㅌ': SearchDirection.CENTER_BOTTOM_TO_TOP,
+                'c': SearchDirection.CENTER_LEFT_TO_RIGHT, 'ㅊ': SearchDirection.CENTER_LEFT_TO_RIGHT,
+                'v': SearchDirection.CENTER_RIGHT_TO_LEFT, 'ㅍ': SearchDirection.CENTER_RIGHT_TO_LEFT,
             }
             # key.char가 존재하는지 확인 (특수키가 아닐 경우)
             if hasattr(key, 'char') and key.char in direction_map:

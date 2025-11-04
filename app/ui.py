@@ -59,6 +59,10 @@ class AppUI:
             SearchDirection.TOP_TO_BOTTOM_RIGHT_TO_LEFT: "↓← (r)",
             SearchDirection.BOTTOM_TO_TOP_LEFT_TO_RIGHT: "↑→ (d)",
             SearchDirection.BOTTOM_TO_TOP_RIGHT_TO_LEFT: "↑← (f)",
+            SearchDirection.CENTER_TOP_TO_BOTTOM: "↓↔ (z)",
+            SearchDirection.CENTER_BOTTOM_TO_TOP: "↑↔ (x)",
+            SearchDirection.CENTER_LEFT_TO_RIGHT: "→↕ (c)",
+            SearchDirection.CENTER_RIGHT_TO_LEFT: "←↕ (v)",
         }
         self.direction_var = tk.StringVar(value=self.SEARCH_DIRECTION_MAP[c.search_direction])
         self.total_duration_var = tk.StringVar(value=str(c.total_duration_sec))
