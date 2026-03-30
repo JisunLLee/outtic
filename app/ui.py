@@ -111,7 +111,7 @@ class AppUI:
 
     def _setup_ui(self):
         """메인 UI를 생성하고 배치합니다."""
-        self.root.title("LuAuttic v.2.3.0")
+        self.root.title("LuAuttic v.2.3.0 ")
 
         window_width = 430
         # 4개의 구역이 모두 보이도록 창 높이 설정합니다.
