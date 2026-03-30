@@ -71,10 +71,17 @@ class AppController:
 
         # --- 구역별 설정 데이터 ---
         self.areas = {}
-        self._initialize_area_settings(1) # 구역1 초기화
-        self._initialize_area_settings(2) # 구역2 초기화
-        self._initialize_area_settings(3) # 구역3 초기화
-        self._initialize_area_settings(4) # 구역4 초기화
+        # 기본적으로 5개의 구역을 초기화합니다.
+        for i in range(1, 6):
+            self._initialize_area_settings(i)
+
+    def add_area(self):
+        """새로운 구역을 데이터 모델과 UI에 추가합니다."""
+        new_area_num = len(self.areas) + 1
+        self._initialize_area_settings(new_area_num)
+        if self.ui:
+            self.ui.add_area_to_ui(new_area_num)
+        return new_area_num
 
     def set_ui(self, ui: 'AppUI'):
         """
@@ -387,19 +394,22 @@ class AppController:
             loaded_areas = settings_data.get('areas', {})
             for area_number_str, loaded in loaded_areas.items():
                 area_number = int(area_number_str)
-                if area_number in self.areas:
-                    area = self.areas[area_number]
-                    area['use'] = bool(loaded.get('use', area['use']))
-                    area['click_coord'] = tuple(loaded.get('click_coord', area['click_coord']))
-                    area['clicks'] = int(loaded.get('clicks', area['clicks']))
-                    area['offset'] = int(loaded.get('offset', area['offset']))
-                    area['use_area_bounds'] = bool(loaded.get('use_area_bounds', area['use_area_bounds']))
-                    area['p1'] = tuple(loaded.get('p1', area['p1']))
-                    area['p2'] = tuple(loaded.get('p2', area['p2']))
-                    area['use_color'] = bool(loaded.get('use_color', area['use_color']))
-                    area['color'] = tuple(loaded.get('color', area['color']))
-                    area['direction'] = SearchDirection(loaded.get('direction', area['direction'].value))
-                    area['use_direction'] = bool(loaded.get('use_direction', area['use_direction']))
+                # 현재 생성된 구역보다 많은 구역이 설정 파일에 있다면 자동으로 추가합니다.
+                while area_number not in self.areas:
+                    self.add_area()
+                
+                area = self.areas[area_number]
+                area['use'] = bool(loaded.get('use', area['use']))
+                area['click_coord'] = tuple(loaded.get('click_coord', area['click_coord']))
+                area['clicks'] = int(loaded.get('clicks', area['clicks']))
+                area['offset'] = int(loaded.get('offset', area['offset']))
+                area['use_area_bounds'] = bool(loaded.get('use_area_bounds', area['use_area_bounds']))
+                area['p1'] = tuple(loaded.get('p1', area['p1']))
+                area['p2'] = tuple(loaded.get('p2', area['p2']))
+                area['use_color'] = bool(loaded.get('use_color', area['use_color']))
+                area['color'] = tuple(loaded.get('color', area['color']))
+                area['direction'] = SearchDirection(loaded.get('direction', area['direction'].value))
+                area['use_direction'] = bool(loaded.get('use_direction', area['use_direction']))
 
             # UI에 변경된 설정값 반영
             self.ui.update_ui_from_controller()

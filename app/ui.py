@@ -84,10 +84,8 @@ class AppUI:
         }
         
         # --- 구역별 변수 초기화 ---
-        self._initialize_area_vars(1)
-        self._initialize_area_vars(2)
-        self._initialize_area_vars(3)
-        self._initialize_area_vars(4)
+        for i in range(1, 6):
+            self._initialize_area_vars(i)
 
     def _initialize_area_vars(self, area_number: int):
         """지정된 번호의 구역에 대한 Tkinter 변수들을 초기화하고 저장합니다."""
@@ -275,11 +273,13 @@ class AppUI:
         self.root.bind_all("<Button-4>", on_mouse_wheel)
         self.root.bind_all("<Button-5>", on_mouse_wheel)
 
-        # 재사용 가능한 헬퍼 메서드를 사용하여 구역 그룹 생성
-        self._create_area_group(self.scrollable_content_frame, 1)
-        self._create_area_group(self.scrollable_content_frame, 2)
-        self._create_area_group(self.scrollable_content_frame, 3)
-        self._create_area_group(self.scrollable_content_frame, 4)
+        # 기본 5개 구역 UI 생성 (컨트롤러 설정과 동기화)
+        for i in range(1, 6):
+            self._create_area_group(self.scrollable_content_frame, i)
+
+        # 구역 추가 버튼 생성 (상태 변경 메서드 호출 전에 생성되어야 함)
+        self.add_area_btn = tk.Button(self.scrollable_content_frame, text="+ 구역 추가", command=self.controller.add_area)
+        self.add_area_btn.pack(fill=tk.X, pady=10, padx=50)
 
         # --- 액션 버튼 ---
         action_frame = tk.Frame(main_frame)
@@ -500,7 +500,18 @@ class AppUI:
         toggle_direction_state() # 초기 상태 설정
 
 
-        return area_group
+        return area_group   
+    def add_area_to_ui(self, area_number: int):
+        """새로운 구역 위젯을 UI 리스트 끝에 추가합니다."""
+        if area_number not in self.area_vars:
+            self._initialize_area_vars(area_number)
+        
+        self.add_area_btn.pack_forget() # 버튼을 잠시 가리고 아래에 다시 추가
+        self._create_area_group(self.scrollable_content_frame, area_number)
+        self.add_area_btn.pack(fill=tk.X, pady=10, padx=50)
+        
+        # 새로 추가된 구역의 활성화 상태 동기화
+        self._toggle_area_settings_active()
 
     def flash_setting_change(self, state: str, duration_ms=150):
         """설정 변경 시 창 배경색을 잠시 변경하여 시각적 피드백을 줍니다."""
@@ -826,6 +837,7 @@ class AppUI:
         
         # '탐색 화면 정상 여부 확인' 그룹 상태 변경
         set_state_recursive(self.operation_check_group, state, group_fg, entry_bg)
+        self.add_area_btn.config(state=state)
 
         # 각 구역의 모든 위젯 상태 변경
         for area_number, widgets in self.area_widgets.items():
