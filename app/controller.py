@@ -31,6 +31,8 @@ class AppController:
         self.search_thread: Optional[threading.Thread] = None
         self.shift_press_count = 0
         self.shift_press_timer: Optional[threading.Timer] = None
+        self.space_press_count = 0
+        self.space_press_timer: Optional[threading.Timer] = None
         self.tries_count = 0 # 현재 시도 횟수
         self.direction_change_pending = False
 
@@ -57,6 +59,7 @@ class AppController:
         # --- 구역값 설정 ---
         self.use_initial_search = True # '기본 탐색 사용' 체크박스 기본값
         self.use_sequence = False # 구역 사용 여부 (UI 체크박스 기본값)
+        self.use_space_complete = False # 스페이스 완료 사용 여부
         self.area_delay = 0.75 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
         self.use_screen_activation = False # 화면 활성화 사용 여부
         self.empty_coord = (0, 0) # 빈 공간 좌표
@@ -183,6 +186,7 @@ class AppController:
             selected_direction_str = self.ui.direction_var.get()
             self.search_direction = direction_map.get(selected_direction_str, SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT)
             self.use_initial_search = self.ui.use_initial_search_var.get()
+            self.use_space_complete = self.ui.use_space_complete_var.get()
             self.use_sequence = self.ui.use_sequence_var.get()
             self.use_screen_activation = self.ui.use_screen_activation_var.get()
             self.empty_coord = ast.literal_eval(self.ui.empty_coord_var.get())
@@ -295,6 +299,7 @@ class AppController:
             'search_direction': self.search_direction.value, # Enum을 문자열로 저장
             'complete_click_delay': self.complete_click_delay,
             'use_sequence': self.use_sequence,
+            'use_space_complete': self.use_space_complete,
             'use_screen_activation': self.use_screen_activation,
             'empty_coord': self.empty_coord,
             'use_initial_search': self.use_initial_search,
@@ -368,6 +373,7 @@ class AppController:
             self.search_direction = SearchDirection(settings_data.get('search_direction', self.search_direction.value))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
             self.use_initial_search = bool(settings_data.get('use_initial_search', self.use_initial_search))
+            self.use_space_complete = bool(settings_data.get('use_space_complete', self.use_space_complete))
             self.use_screen_activation = bool(settings_data.get('use_screen_activation', self.use_screen_activation))
             self.empty_coord = tuple(settings_data.get('empty_coord', self.empty_coord))
             self.use_sequence = bool(settings_data.get('use_sequence', self.use_sequence))
@@ -540,6 +546,15 @@ class AppController:
         
         if not self.apply_settings():
             return
+            
+        # --- 스페이스 완료 모드 처리 ---
+        if self.use_space_complete:
+            self.is_searching = True
+            self.ui.queue_task(lambda: self.ui.update_status("스페이스바 대기 중... (Space: 완료 / ESC: 중지)"))
+            self.ui.queue_task(lambda: self.ui.update_button_text("중지 (ESC)"))
+            self.ui.queue_task(lambda: self.ui.update_window_bg('searching'))
+            print("--- 스페이스 완료 모드 시작 ---")
+            return
 
         self.tries_count = 0 # 검색 시작 시 시도 횟수 초기화
 
@@ -642,8 +657,54 @@ class AppController:
 
         self.stop_search(message=status_message)
 
+    def _perform_space_complete_action(self):
+        """스페이스 완료 모드에서 스페이스바 입력 시 수행할 동작"""
+        if not self.is_searching: return
+        
+        # 별도 스레드에서 클릭 동작 수행 (키보드 리스너 블로킹 방지)
+        threading.Thread(target=self._space_complete_worker, daemon=True).start()
+
+    def _space_complete_worker(self):
+        if self.complete_coord == (0, 0):
+            self.ui.queue_task(lambda: self.ui.update_status("오류: 완료 좌표가 설정되지 않았습니다."))
+            return
+
+        x, y = self.complete_coord
+        # 오차 적용
+        if self.color_area_tolerance > 0:
+            x += random.randint(-self.color_area_tolerance, self.color_area_tolerance)
+            y += random.randint(-self.color_area_tolerance, self.color_area_tolerance)
+        
+        self.color_finder.click_action(x, y)
+        
+        if self.ui:
+            self.ui.queue_task(lambda: self.ui.play_sound(3))
+            self.ui.queue_task(lambda: self.ui.update_status(f"스페이스 완료 클릭 실행 ({x}, {y})"))
+
     def on_key_press(self, key):
         """전역 키 입력을 감지하여 단축키 조합을 처리합니다."""
+        # 스페이스 완료 모드 동작 (실행 중일 때)
+        if self.is_searching and self.use_space_complete and key == keyboard.Key.space:
+            self._perform_space_complete_action()
+            return
+
+        # Space + Space + Space 활성화 (대기 중일 때)
+        if not self.is_searching and self.use_space_complete and key == keyboard.Key.space:
+            if self.space_press_timer:
+                self.space_press_timer.cancel()
+            self.space_press_count += 1
+            
+            if self.space_press_count >= 3:
+                self._reset_space_count()
+                self.use_space_complete = True
+                if self.ui:
+                    self.ui.use_space_complete_var.set(True)
+                self.start_search()
+            else:
+                self.space_press_timer = threading.Timer(0.3, self._reset_space_count)
+                self.space_press_timer.start()
+            return
+
         # Shift + Shift + Number 조합 처리
         if self.direction_change_pending:
             direction_map = {
@@ -660,6 +721,7 @@ class AppController:
                 'c': SearchDirection.CENTER_LEFT_TO_RIGHT, 'ㅊ': SearchDirection.CENTER_LEFT_TO_RIGHT,
                 'v': SearchDirection.CENTER_RIGHT_TO_LEFT, 'ㅍ': SearchDirection.CENTER_RIGHT_TO_LEFT,
             }
+
             # key.char가 존재하는지 확인 (특수키가 아닐 경우)
             if hasattr(key, 'char') and key.char in direction_map:
                 self.search_direction = direction_map[key.char]
@@ -707,6 +769,10 @@ class AppController:
         """시간이 초과되면 Shift 키 누름 횟수를 초기화합니다."""
         self.shift_press_count = 0
         self.shift_press_timer = None
+
+    def _reset_space_count(self):
+        self.space_press_count = 0
+        self.space_press_timer = None
 
     def _search_worker(self, search_plan: list):
         """(스레드 워커) 전달받은 검색 계획(search_plan)을 순차적으로 실행합니다."""

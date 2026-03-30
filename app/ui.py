@@ -41,6 +41,7 @@ class AppUI:
         self.search_delay_var = tk.StringVar(value=str(int(c.search_delay * 100)))
         self.complete_coord_var = tk.StringVar(value=str(c.complete_coord))
         self.use_initial_search_var = tk.BooleanVar(value=c.use_initial_search)
+        self.use_space_complete_var = tk.BooleanVar(value=c.use_space_complete)
         self.use_screen_activation_var = tk.BooleanVar(value=c.use_screen_activation)
         self.empty_coord_var = tk.StringVar(value=str(c.empty_coord))
 
@@ -189,6 +190,7 @@ class AppUI:
         toggle_frame.pack(fill=tk.X)
         tk.Checkbutton(toggle_frame, text="구역 탐색 사용", variable=self.use_sequence_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=self._toggle_area_settings_active).pack(side=tk.LEFT)
         tk.Checkbutton(toggle_frame, text="기본 탐색 사용", variable=self.use_initial_search_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT, padx=(10,0))
+        tk.Checkbutton(toggle_frame, text="스페이스완료", variable=self.use_space_complete_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT, padx=(10,0))
         # --- 상태 메시지 ---
         status_label = tk.Label(status_and_toggle_container, bg="#555555", textvariable=self.status_var, fg="lightblue", anchor='w')
         status_label.pack(fill=tk.X, pady=(5,0))
@@ -319,7 +321,7 @@ class AppUI:
         # UI를 좌우로 나누기 위한 컨테이너 생성
         row1_container, (left_frame, right_frame) = self._create_split_container(area_group, weights=[2, 1])
 
-        coord_label = tk.Label(left_frame, textvariable=vars['coord_var'], relief="sunken", bg="#555555", width=10, anchor='w')
+        coord_label = tk.Entry(left_frame, textvariable=vars['coord_var'], bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, width=10)
         coord_button = tk.Button(left_frame, text=f"구역 {area_number}", width=3, command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_click_coord'))
         
         right_inner_frame = tk.Frame(right_frame)
@@ -333,7 +335,7 @@ class AppUI:
             label_fg = 'white' if is_enabled else '#2e2e2e'
             entry_bg = '#444444' if is_enabled else '#555555'
 
-            coord_label.config(state=state, fg=label_fg)
+            coord_label.config(state=state, fg=label_fg, disabledbackground=entry_bg)
             coord_button.config(state=state)
 
             for frame in [clicks_frame, offset_frame]:
@@ -390,7 +392,7 @@ class AppUI:
         row3_container, (left_frame3, right_frame3) = self._create_split_container(area_group, weights=[1, 1])
 
         # --- Row 3 왼쪽: 색상 사용, 색상 값, 색상 선택 버튼 ---
-        color_label = tk.Label(left_frame3, textvariable=vars['color_var'], relief="sunken", bg="white", anchor='w')
+        color_label = tk.Entry(left_frame3, textvariable=vars['color_var'], bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0)
         color_button = tk.Button(left_frame3, text="색상", width=3, command=lambda: self.controller.start_color_picker(f'area_{area_number}_color'))
 
         def toggle_color_state():
@@ -409,7 +411,8 @@ class AppUI:
             state = 'normal' if is_enabled else 'disabled'
             bg_color = '#555555'
             label_fg = 'white' if is_enabled else '#2e2e2e'
-            color_label.config(state=state, bg=bg_color, fg=label_fg)
+            entry_bg = '#444444' if is_enabled else '#555555'
+            color_label.config(state=state, bg=bg_color, fg=label_fg, disabledbackground=entry_bg)
             color_button.config(state=state)
 
             if use_default_color:
@@ -513,7 +516,7 @@ class AppUI:
     def _set_bg_recursively(self, widget, color):
         """지정된 위젯과 그 자식들의 배경색을 재귀적으로 설정합니다."""
         # 배경색을 변경할 위젯 타입들
-        target_widgets = (tk.Frame, tk.LabelFrame, tk.Label, tk.Checkbutton, tk.Canvas)
+        target_widgets = (tk.Frame, tk.LabelFrame, tk.Label, tk.Checkbutton, tk.Canvas, tk.Entry)
 
         try:
             if isinstance(widget, target_widgets):
@@ -526,6 +529,8 @@ class AppUI:
                     else:
                         # macOS/Linux: 배경색을 테마에 맞게 설정
                         widget.configure(bg=color, activebackground=color, selectcolor=color)
+                elif isinstance(widget, tk.Entry):
+                    widget.configure(bg=color, disabledbackground=color)
                 elif isinstance(widget, tk.Canvas):
                     widget.configure(bg=color, highlightthickness=0)
                 else:
@@ -589,6 +594,7 @@ class AppUI:
         self.search_delay_var.set(str(int(c.search_delay * 100)))
         self.complete_coord_var.set(str(c.complete_coord))
         self.use_initial_search_var.set(c.use_initial_search)
+        self.use_space_complete_var.set(c.use_space_complete)
         self.use_screen_activation_var.set(c.use_screen_activation)
         self.empty_coord_var.set(str(c.empty_coord))
         self.use_sequence_var.set(c.use_sequence)
@@ -733,7 +739,7 @@ class AppUI:
     def _create_coordinate_selector(self, parent, var, button_text, command=None):
         """좌표값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성하고, 위젯들을 반환합니다."""
         frame = tk.Frame(parent)
-        label = tk.Label(frame, bg="#555555", textvariable=var, relief="sunken", width=8, anchor='w')
+        label = tk.Entry(frame, bg="#444444", fg="white", insertbackground='white', textvariable=var, borderwidth=0, highlightthickness=0, width=8)
         label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         button = tk.Button(frame, text=button_text, width=3, command=command)
         button.pack(side=tk.LEFT)
@@ -742,7 +748,7 @@ class AppUI:
     def _create_value_button_row(self, parent, var, button_text, command=None):
         """값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent)
-        tk.Label(frame, textvariable=var, relief="sunken", bg="#555555", width=12, anchor='w').pack(
+        tk.Entry(frame, textvariable=var, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, width=12).pack(
             side=tk.LEFT, expand=True, fill=tk.X)
         tk.Button(frame, text=button_text, width=3,  bg="white", command=command).pack(side=tk.LEFT)
         return frame
@@ -751,7 +757,7 @@ class AppUI:
         """체크박스로 활성화/비활성화되는 색상 선택 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent)
         
-        color_label = tk.Label(frame, textvariable=color_var, relief="sunken", bg="#555555", width=12, anchor='w')
+        color_label = tk.Entry(frame, textvariable=color_var, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, width=12)
         color_button = tk.Button(frame, text=button_text, width=3, command=command)
         
         def toggle_state():
@@ -759,8 +765,9 @@ class AppUI:
             state = 'normal' if is_enabled else 'disabled'
             label_bg = '#555555'
             label_fg = 'white' if is_enabled else '#2e2e2e'
-            
-            color_label.config(state=state, bg=label_bg, fg=label_fg)
+            entry_bg = '#444444' if is_enabled else '#555555'
+
+            color_label.config(state=state, bg=label_bg, fg=label_fg, disabledbackground=entry_bg)
             color_button.config(state=state)
         
         checkbox = tk.Checkbutton(frame, text=check_text, variable=use_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_state)
@@ -831,10 +838,10 @@ class AppUI:
                         for sub_widget in widget.winfo_children():
                             if isinstance(sub_widget, tk.Entry): sub_widget.config(state='disabled', disabledbackground=entry_bg)
                             else: sub_widget.config(state='disabled')
-                    elif isinstance(widget, (tk.Button, tk.Entry)):
+                    elif isinstance(widget, (tk.Button, tk.Entry, tk.OptionMenu)):
                         widget.config(state='disabled')
-                    elif isinstance(widget, tk.Label) and 'var' in str(widget.cget('textvariable')):
-                        widget.config(state='disabled', bg=label_bg, fg=label_fg)
+                    elif isinstance(widget, tk.Entry) and 'var' in str(widget.cget('textvariable')):
+                        widget.config(state='disabled', bg=label_bg, fg=label_fg, disabledbackground=entry_bg)
             else:
                 # '구역 탐색 사용'이 켜지면, 각 구역의 개별 상태를 다시 적용
                 self.area_toggles[area_number]['search']()
