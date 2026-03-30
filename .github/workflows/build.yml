@@ -2,11 +2,15 @@ name: Build Windows EXE
 
 on:
   push:
-    branches: [ "v.2.3.0" ]  # main 브랜치에 푸시될 때 실행
+    branches: [ "v.2.3.0" ]
 
 jobs:
   build:
-    runs-on: windows-latest  # 윈도우 환경에서 실행 (중요!)
+    runs-on: windows-latest
+
+    # Node.js 관련 경고 해결을 위한 환경 변수 추가
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
     - name: Checkout code
@@ -15,7 +19,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11' # 사용 중인 파이썬 버전 (3.14는 아직 불안정할 수 있음)
+        python-version: '3.11' # 안정적인 3.11 권장
 
     - name: Install Poetry
       run: |
@@ -23,17 +27,17 @@ jobs:
 
     - name: Install dependencies
       run: |
-        poetry install
+        # 윈도우 빌드 환경에서 의존성 설치 문제를 피하기 위해 추가
+        poetry config virtualenvs.create false
+        poetry install --no-interaction --no-ansi
 
     - name: Build EXE with PyInstaller
       run: |
-        # pynput 등 필요한 모든 모듈이 포함된 상태에서 빌드
-        # --noconsole: GUI 프로그램일 경우 검은 창 안 뜨게 함
-        # --onefile: 파일 하나로 합침
-        poetry run pyinstaller --onefile --noconsole run_a.py
+        # pynput 모듈 인식을 확실히 하기 위해 --collect-all 옵션 추가 가능
+        poetry run pyinstaller --onefile --noconsole --clean run_auttic.py
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: Windows-Executable
-        path: dist/run_auttic.exe  # 빌드된 결과물 경로
+        path: dist/run_auttic.exe

@@ -3,6 +3,7 @@ from pynput import mouse
 from PIL import ImageGrab
 import time
 import numpy as np
+import platform
 
 class SearchDirection(Enum):
     """탐색 방향을 정의합니다."""
@@ -23,6 +24,7 @@ class ColorFinder:
     """화면에서 특정 색상을 찾고 관련 동작을 수행하는 클래스"""
     def __init__(self):
         self.mouse_controller = mouse.Controller()
+        self.is_mac = platform.system() == "Darwin"
 
     def _is_color_match(self, c1_rgb: tuple, c2_rgb: tuple, tolerance_sq: int) -> bool:
         """두 색상이 허용 오차 내에 있는지 확인합니다."""
@@ -86,6 +88,10 @@ class ColorFinder:
         screenshot = ImageGrab.grab(bbox=(x1, y1, x2, y2))
         img_array = np.array(screenshot)
         height, width, _ = img_array.shape
+
+        # macOS Retina 디스플레이 대응: 물리적 픽셀과 논리적 좌표의 비율 계산
+        scale_x = width / (x2 - x1) if (x2 - x1) != 0 else 1
+        scale_y = height / (y2 - y1) if (y2 - y1) != 0 else 1
         
         # 성능을 위해 제곱된 허용 오차를 사용합니다.
         tolerance_sq = tolerance**2
@@ -105,7 +111,7 @@ class ColorFinder:
                 for x in x_range:
                     if self._is_color_match(img_array[y, x][:3], color, tolerance_sq):
                         center_x_rel, center_y_rel = self._find_blob_center(img_array, x, y, color, tolerance_sq)
-                        return x1 + center_x_rel, y1 + center_y_rel
+                        return x1 + (center_x_rel / scale_x), y1 + (center_y_rel / scale_y)
         elif direction in [SearchDirection.TOP_TO_BOTTOM_LEFT_TO_RIGHT, SearchDirection.TOP_TO_BOTTOM_RIGHT_TO_LEFT, SearchDirection.BOTTOM_TO_TOP_LEFT_TO_RIGHT, SearchDirection.BOTTOM_TO_TOP_RIGHT_TO_LEFT]:
             if direction == SearchDirection.TOP_TO_BOTTOM_LEFT_TO_RIGHT: x_range, y_range = range(width), range(height)
             elif direction == SearchDirection.TOP_TO_BOTTOM_RIGHT_TO_LEFT: x_range, y_range = range(width - 1, -1, -1), range(height)
@@ -115,7 +121,7 @@ class ColorFinder:
                 for y in y_range:
                     if self._is_color_match(img_array[y, x][:3], color, tolerance_sq):
                         center_x_rel, center_y_rel = self._find_blob_center(img_array, x, y, color, tolerance_sq)
-                        return x1 + center_x_rel, y1 + center_y_rel
+                        return x1 + (center_x_rel / scale_x), y1 + (center_y_rel / scale_y)
         # 중앙 우선 탐색 (새로 추가)
         elif direction in [SearchDirection.CENTER_TOP_TO_BOTTOM, SearchDirection.CENTER_BOTTOM_TO_TOP]:
             y_range = range(height) if direction == SearchDirection.CENTER_TOP_TO_BOTTOM else range(height - 1, -1, -1)
@@ -126,12 +132,14 @@ class ColorFinder:
                     # 중앙 -> 좌
                     x_left = center_x - offset
                     if 0 <= x_left < width and self._is_color_match(img_array[y, x_left][:3], color, tolerance_sq):
-                        return x1 + self._find_blob_center(img_array, x_left, y, color, tolerance_sq)[0], y1 + y
+                        found_x_rel, _ = self._find_blob_center(img_array, x_left, y, color, tolerance_sq)
+                        return x1 + (found_x_rel / scale_x), y1 + (y / scale_y)
                     # 중앙 -> 우 (offset이 0일때 중복 방지)
                     if offset > 0:
                         x_right = center_x + offset
                         if x_right < width and self._is_color_match(img_array[y, x_right][:3], color, tolerance_sq):
-                            return x1 + self._find_blob_center(img_array, x_right, y, color, tolerance_sq)[0], y1 + y
+                            found_x_rel, _ = self._find_blob_center(img_array, x_right, y, color, tolerance_sq)
+                            return x1 + (found_x_rel / scale_x), y1 + (y / scale_y)
         else: # CENTER_LEFT_TO_RIGHT, CENTER_RIGHT_TO_LEFT
             x_range = range(width) if direction == SearchDirection.CENTER_LEFT_TO_RIGHT else range(width - 1, -1, -1)
             center_y = height // 2
@@ -141,17 +149,27 @@ class ColorFinder:
                     # 중앙 -> 상
                     y_up = center_y - offset
                     if 0 <= y_up < height and self._is_color_match(img_array[y_up, x][:3], color, tolerance_sq):
-                        return x1 + x, y1 + self._find_blob_center(img_array, x, y_up, color, tolerance_sq)[1]
+                        _, found_y_rel = self._find_blob_center(img_array, x, y_up, color, tolerance_sq)
+                        return x1 + (x / scale_x), y1 + (found_y_rel / scale_y)
                     # 중앙 -> 하 (offset이 0일때 중복 방지)
                     if offset > 0:
                         y_down = center_y + offset
                         if y_down < height and self._is_color_match(img_array[y_down, x][:3], color, tolerance_sq):
-                            return x1 + x, y1 + self._find_blob_center(img_array, x, y_down, color, tolerance_sq)[1]
+                            _, found_y_rel = self._find_blob_center(img_array, x, y_down, color, tolerance_sq)
+                            return x1 + (x / scale_x), y1 + (found_y_rel / scale_y)
 
         return None
 
     def click_action(self, x: int, y: int):
         """지정된 좌표로 마우스를 이동하고 클릭합니다."""
         self.mouse_controller.position = (x, y)
-        time.sleep(0.05) # 마우스 이동 후 안정화를 위한 짧은 대기
-        self.mouse_controller.click(mouse.Button.left, 1)
+        
+        if self.is_mac:
+            # macOS에서는 이동 후 즉시 클릭하면 무시되는 경우가 많아 지연 시간을 늘리고 press/release를 분리합니다.
+            time.sleep(0.1)
+            self.mouse_controller.press(mouse.Button.left)
+            time.sleep(0.05)
+            self.mouse_controller.release(mouse.Button.left)
+        else:
+            time.sleep(0.05)
+            self.mouse_controller.click(mouse.Button.left, 1)
