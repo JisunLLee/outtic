@@ -1,0 +1,39 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [ "main" ]  # main 브랜치에 푸시될 때 실행
+
+jobs:
+  build:
+    runs-on: windows-latest  # 윈도우 환경에서 실행 (중요!)
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11' # 사용 중인 파이썬 버전 (3.14는 아직 불안정할 수 있음)
+
+    - name: Install Poetry
+      run: |
+        pip install poetry
+
+    - name: Install dependencies
+      run: |
+        poetry install
+
+    - name: Build EXE with PyInstaller
+      run: |
+        # pynput 등 필요한 모든 모듈이 포함된 상태에서 빌드
+        # --noconsole: GUI 프로그램일 경우 검은 창 안 뜨게 함
+        # --onefile: 파일 하나로 합침
+        poetry run pyinstaller --onefile --noconsole run_a.py
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Windows-Executable
+        path: dist/run_auttic.exe  # 빌드된 결과물 경로
