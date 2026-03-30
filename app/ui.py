@@ -21,6 +21,8 @@ class AppUI:
         self.area_toggles = {}
         self.ui_queue = queue.Queue()
         self.area_vars = {}
+        # 튜플 형식(숫자, 괄호, 콤마, 공백) 입력을 검증하기 위한 커맨드 등록
+        self.tuple_vcmd = (self.root.register(self._validate_tuple_input), '%P')
         self._initialize_vars()
         self._setup_ui()
         self._process_ui_queue()
@@ -321,7 +323,7 @@ class AppUI:
         # UI를 좌우로 나누기 위한 컨테이너 생성
         row1_container, (left_frame, right_frame) = self._create_split_container(area_group, weights=[2, 1])
 
-        coord_label = tk.Entry(left_frame, textvariable=vars['coord_var'], bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, width=10)
+        coord_label = tk.Entry(left_frame, textvariable=vars['coord_var'], bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, width=10, validate="key", validatecommand=self.tuple_vcmd)
         coord_button = tk.Button(left_frame, text=f"구역 {area_number}", width=3, command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_click_coord'))
         
         right_inner_frame = tk.Frame(right_frame)
@@ -392,7 +394,7 @@ class AppUI:
         row3_container, (left_frame3, right_frame3) = self._create_split_container(area_group, weights=[1, 1])
 
         # --- Row 3 왼쪽: 색상 사용, 색상 값, 색상 선택 버튼 ---
-        color_label = tk.Entry(left_frame3, textvariable=vars['color_var'], bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0)
+        color_label = tk.Entry(left_frame3, textvariable=vars['color_var'], bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, validate="key", validatecommand=self.tuple_vcmd)
         color_button = tk.Button(left_frame3, text="색상", width=3, command=lambda: self.controller.start_color_picker(f'area_{area_number}_color'))
 
         def toggle_color_state():
@@ -543,6 +545,10 @@ class AppUI:
         for child in widget.winfo_children():
             self._set_bg_recursively(child, color)
 
+    def _validate_tuple_input(self, P):
+        """숫자, 괄호, 콤마, 공백만 허용하는 검증 함수"""
+        return all(c in "0123456789(), " for c in P)
+
     def play_sound(self, count=1, interval_ms=150):
         """지정된 횟수만큼 시스템 비프음을 재생합니다."""
         for i in range(count):
@@ -618,7 +624,7 @@ class AppUI:
                 # UI 체크박스(True)는 컨트롤러 값(False)과 반대입니다.
                 vars['use_area_bounds_var'].set(not area_settings['use_area_bounds'])
                 vars['use_color_var'].set(not area_settings['use_color'])
-                vars['use_direction_var'].set(not area_settings['use_direction'])
+                vars['use_direction_var'].   set(not area_settings['use_direction'])
         
         # '기본' 체크박스 상태에 따라 비활성화된 위젯들의 상태를 올바르게 갱신합니다.
         for toggle_func in self.global_toggles.values():
@@ -739,7 +745,7 @@ class AppUI:
     def _create_coordinate_selector(self, parent, var, button_text, command=None):
         """좌표값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성하고, 위젯들을 반환합니다."""
         frame = tk.Frame(parent)
-        label = tk.Entry(frame, bg="#444444", fg="white", insertbackground='white', textvariable=var, borderwidth=0, highlightthickness=0, width=8)
+        label = tk.Entry(frame, bg="#444444", fg="white", insertbackground='white', textvariable=var, borderwidth=0, highlightthickness=0, width=8, validate="key", validatecommand=self.tuple_vcmd)
         label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         button = tk.Button(frame, text=button_text, width=3, command=command)
         button.pack(side=tk.LEFT)
@@ -748,7 +754,7 @@ class AppUI:
     def _create_value_button_row(self, parent, var, button_text, command=None):
         """값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent)
-        tk.Entry(frame, textvariable=var, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, width=12).pack(
+        tk.Entry(frame, textvariable=var, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, width=12, validate="key", validatecommand=self.tuple_vcmd).pack(
             side=tk.LEFT, expand=True, fill=tk.X)
         tk.Button(frame, text=button_text, width=3,  bg="white", command=command).pack(side=tk.LEFT)
         return frame
@@ -757,7 +763,7 @@ class AppUI:
         """체크박스로 활성화/비활성화되는 색상 선택 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent)
         
-        color_label = tk.Entry(frame, textvariable=color_var, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, width=12)
+        color_label = tk.Entry(frame, textvariable=color_var, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, width=12, validate="key", validatecommand=self.tuple_vcmd)
         color_button = tk.Button(frame, text=button_text, width=3, command=command)
         
         def toggle_state():

@@ -697,24 +697,22 @@ class AppController:
     def on_key_press(self, key):
         """전역 키 입력을 감지하여 단축키 조합을 처리합니다."""
         # 스페이스 완료 모드 동작 (실행 중일 때)
-        if self.is_searching and self.use_space_complete and key == keyboard.Key.space:
-            self._perform_space_complete_action()
-            return
+        if key == keyboard.Key.space:
+            if self.is_searching and self.use_space_complete:
+                self._perform_space_complete_action()
+                return
 
-        # Space + Space + Space 활성화 (대기 중일 때)
-        if not self.is_searching and self.use_space_complete and key == keyboard.Key.space:
+            # Space + Space 활성화 (검색 시작/중지 토글)
             if self.space_press_timer:
                 self.space_press_timer.cancel()
             self.space_press_count += 1
             
-            if self.space_press_count >= 3:
+            if self.space_press_count >= 2:
                 self._reset_space_count()
-                self.use_space_complete = True
-                if self.ui:
-                    self.ui.use_space_complete_var.set(True)
-                self.start_search()
+                # UI 버튼이나 Shift 연타와 동일하게 검색 상태를 토글합니다.
+                self.toggle_search()
             else:
-                self.space_press_timer = threading.Timer(0.3, self._reset_space_count)
+                self.space_press_timer = threading.Timer(0.4, self._reset_space_count)
                 self.space_press_timer.start()
             return
 
