@@ -2,7 +2,7 @@ name: Build Windows EXE
 
 on:
   push:
-    branches: [ "v.2.3.0" ]
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -15,30 +15,29 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11' # 3.14는 아직 정식 버전이 아니므로 3.11 권장
+        python-version: '3.12' # 3.14는 너무 최신이라 라이브러리 호환성 문제가 생길 수 있어 3.12 권장
 
-    - name: Install Poetry
+    - name: Install Poetry & PyInstaller
       run: |
-        pip install poetry
+        python -m pip install --upgrade pip
+        pip install poetry pyinstaller  # 여기서 pyinstaller를 직접 설치
 
     - name: Install dependencies
       run: |
-        # 가상환경 생성 없이 서버 환경에 직접 설치 (오류 방지)
         poetry config virtualenvs.create false
         poetry install --no-interaction --no-ansi
 
     - name: Build EXE with PyInstaller
       run: |
-        # run_auttic.py 파일이 프로젝트 루트(최상단)에 있는지 확인 필수
-        # --hidden-import: pynput 같은 라이브러리를 강제로 포함
-        poetry run pyinstaller --onefile --noconsole --hidden-import=pynput.keyboard --hidden-import=pynput.mouse --clean run_auttic.py
+        # poetry run 대신 직접 pyinstaller 실행
+        pyinstaller --onefile --noconsole --hidden-import=pynput.keyboard --hidden-import=pynput.mouse --clean run_auttic.py
 
     - name: Check Build Output
       run: |
-        ls dist/  # 파일이 제대로 만들어졌는지 목록 확인
+        ls dist/
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: Windows-Executable
-        path: dist/*.exe  # 확장자가 .exe인 모든 파일 업로드
+        path: dist/*.exe
