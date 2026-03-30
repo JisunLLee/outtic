@@ -547,14 +547,21 @@ class AppController:
         if not self.apply_settings():
             return
             
-        # --- 스페이스 완료 모드 처리 ---
-        if self.use_space_complete:
-            self.is_searching = True
-            self.ui.queue_task(lambda: self.ui.update_status("스페이스바 대기 중... (Space: 완료 / ESC: 중지)"))
-            self.ui.queue_task(lambda: self.ui.update_button_text("중지 (ESC)"))
-            self.ui.queue_task(lambda: self.ui.update_window_bg('searching'))
-            print("--- 스페이스 완료 모드 시작 ---")
-            return
+        # --- 탐색 모드 분기 처리 ---
+        # '기본 탐색 사용'이 해제되어 있는 경우
+        if not self.use_initial_search:
+            if self.use_space_complete:
+                # 자동 탐색 없이 스페이스바 입력만 대기하는 '수동 모드'
+                self.is_searching = True
+                self.ui.queue_task(lambda: self.ui.update_status("스페이스바 대기 중... (Space: 완료 / ESC: 중지)"))
+                self.ui.queue_task(lambda: self.ui.update_button_text("중지 (ESC)"))
+                self.ui.queue_task(lambda: self.ui.update_window_bg('searching'))
+                print("--- 스페이스 완료 모드 시작 (수동) ---")
+                return
+            else:
+                # 자동 탐색도 꺼져 있고 스페이스 모드도 아니면 동작하지 않습니다.
+                self.ui.update_status("'기본 탐색 사용'을 체크해야 자동 탐색이 시작됩니다.")
+                return
 
         self.tries_count = 0 # 검색 시작 시 시도 횟수 초기화
 
@@ -592,7 +599,11 @@ class AppController:
                     })
 
         self.is_searching = True
-        self.ui.queue_task(lambda: self.ui.update_status("색상 검색 중... (ESC로 중지)"))
+        status_text = "색상 검색 중... (ESC로 중지)"
+        if self.use_space_complete:
+            status_text = "자동 탐색 및 스페이스 대기 중... (ESC로 중지)"
+        self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
+        
         self.ui.queue_task(lambda: self.ui.update_button_text("중지 (ESC)"))
         self.ui.queue_task(lambda: self.ui.update_window_bg('searching'))
         self.ui.queue_task(lambda: self.ui.update_button_text("중지 (Shift x2 / ESC)"))
@@ -679,7 +690,9 @@ class AppController:
         
         if self.ui:
             self.ui.queue_task(lambda: self.ui.play_sound(3))
-            self.ui.queue_task(lambda: self.ui.update_status(f"스페이스 완료 클릭 실행 ({x}, {y})"))
+
+        # 즉시 탐색 중단 및 상태 업데이트 (is_searching 플래그가 False가 되어 탐색 루프가 종료됨)
+        self.stop_search(message=f"스페이스바 입력으로 완료 ({x}, {y})")
 
     def on_key_press(self, key):
         """전역 키 입력을 감지하여 단축키 조합을 처리합니다."""
