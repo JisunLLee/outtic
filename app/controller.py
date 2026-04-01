@@ -46,7 +46,7 @@ class AppController:
         self.p1 = (497, 366)
         self.p2 = (1154, 817)
         self.color = (13, 192, 192)
-        self.complete_coord = (1314,905)
+        self.complete_coord = (871, 174)
         self.color_tolerance = 15
         self.color_area_tolerance = 5
         self.search_direction = SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT
@@ -62,12 +62,13 @@ class AppController:
         self.use_space_complete = True # 스페이스 완료 사용 여부
         self.area_delay = 0.70 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
         self.use_screen_activation = False # 화면 활성화 사용 여부
-        self.use_operation_check = False # 탐색 화면 정상 여부 확인 사용 여부
-        self.op_check_coord = (0, 0)
-        self.op_check_color = (0, 0, 0)
+        self.use_operation_check = True # 탐색 화면 정상 여부 확인 사용 여부
+        self.op_check_coord = (486, 1885)
+        self.op_check_color = (200, 200, 200)
         self.op_check_max_retries = 3
         self.op_check_retry_interval = 0.5
         self.empty_coord = (0, 0) # 빈 공간 좌표
+        self.use_search_delay = False # 탐색 딜레이 사용 여부
         self.search_delay = 0.20 # 탐색 대기 (초)
         self.total_duration_sec = 1800 # 총 탐색 시간 (초)
         self.active_search_duration_sec = 600 # 한 사이클의 탐색 시간 (초)
@@ -336,6 +337,7 @@ class AppController:
             'op_check_max_retries': self.op_check_max_retries,
             'op_check_retry_interval': self.op_check_retry_interval,
             'empty_coord': self.empty_coord,
+            'use_search_delay': self.use_search_delay,
             'use_initial_search': self.use_initial_search,
             'area_delay': self.area_delay,
             'search_delay': self.search_delay,
@@ -416,6 +418,7 @@ class AppController:
             self.op_check_max_retries = int(settings_data.get('op_check_max_retries', self.op_check_max_retries))
             self.op_check_retry_interval = float(settings_data.get('op_check_retry_interval', self.op_check_retry_interval))
             self.empty_coord = tuple(settings_data.get('empty_coord', self.empty_coord))
+            self.use_search_delay = bool(settings_data.get('use_search_delay', self.use_search_delay))
             self.use_sequence = bool(settings_data.get('use_sequence', self.use_sequence))
             self.area_delay = float(settings_data.get('area_delay', self.area_delay))
             self.search_delay = float(settings_data.get('search_delay', self.search_delay))
@@ -628,8 +631,8 @@ class AppController:
             return
             
         # --- 탐색 모드 분기 처리 ---
-        # '기본 탐색 사용'이 해제되어 있는 경우
-        if not self.use_initial_search:
+        # '기본 탐색'과 '구역 탐색'이 모두 해제되어 있는 경우
+        if not self.use_initial_search and not self.use_sequence:
             if self.use_space_complete:
                 # 자동 탐색 없이 스페이스바 입력만 대기하는 '수동 모드'
                 self.is_searching = True
@@ -640,7 +643,7 @@ class AppController:
                 return
             else:
                 # 자동 탐색도 꺼져 있고 스페이스 모드도 아니면 동작하지 않습니다.
-                self.ui.update_status("'기본 탐색 사용'을 체크해야 자동 탐색이 시작됩니다.")
+                self.ui.update_status("'기본 탐색' 또는 '구역 탐색'을 체크해야 시작됩니다.")
                 return
 
         self.tries_count = 0 # 검색 시작 시 시도 횟수 초기화
@@ -973,11 +976,10 @@ class AppController:
 
             # '기본 탐색 사용'이 체크된 경우에만 초기 탐색을 수행합니다.
             if self.use_initial_search:
-                if not self._check_operation_status(): return
-
                 # 1. 1순위 색상 탐색
                 status_text = f"초기 탐색 (1순위): 기본 영역에서 탐색 중 ({initial_step['search_direction'].value})..."
                 self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
+                if not self._check_operation_status(): return
                 found_pos = self.color_finder.find_color_in_area(initial_step['search_area'], initial_step['search_color'], self.color_tolerance, initial_step['search_direction'])
                 if found_pos:
                     self._handle_found_color(found_pos, "초기 탐색 중 1순위 색상 발견")
@@ -987,6 +989,7 @@ class AppController:
                 if self.is_searching and self.use_secondary_color:
                     status_text = f"초기 탐색 (2순위): 기본 영역에서 탐색 중 ({initial_step['search_direction'].value})..."
                     self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
+                    if not self._check_operation_status(): return
                     found_pos_secondary = self.color_finder.find_color_in_area(initial_step['search_area'], self.secondary_color, self.color_tolerance, initial_step['search_direction'])
                     if found_pos_secondary:
                         self._handle_found_color(found_pos_secondary, "초기 탐색 중 2순위 색상 발견")
@@ -999,8 +1002,6 @@ class AppController:
 
             retry_cycle = itertools.cycle(retry_steps)
             while self.is_searching and (time.time() - start_time) < duration:
-                if not self._check_operation_status(): return
-                
                 step = next(retry_cycle)
                 final_x, final_y = step['click_coord']
                 if step['offset'] > 0:
@@ -1009,7 +1010,6 @@ class AppController:
 
                 for i in range(step['num_retries']):
                     if not self.is_searching or (time.time() - start_time) >= duration: break
-                    if not self._check_operation_status(): return
                     
                     self.tries_count += 1
 
@@ -1038,6 +1038,9 @@ class AppController:
                         time_info = f"({elapsed_time}s / {int(cycle_target_duration)}s) ({total_elapsed_time}s / {int(total_target_duration)}s)"
                     search_status_text = f"재탐색: 구역{step['area_number']} ({i+1}/{step['num_retries']}) | ({step['search_direction'].value}) | {time_info}"
                     self.ui.queue_task(lambda text=search_status_text: self.ui.update_status(text))
+
+                    if not self._check_operation_status(): return
+
                     found_pos = self.color_finder.find_color_in_area(step['search_area'], step['search_color'], self.color_tolerance, step['search_direction'])
                     if found_pos:
                         self._handle_found_color(found_pos, f"재시도 중 구역{step['area_number']}에서 색상 발견")
@@ -1050,11 +1053,10 @@ class AppController:
             # [구역 사용 OFF]: 색상을 찾을 때까지 초기 탐색만 무한 반복
             initial_step = search_plan[0]
             while self.is_searching:
-                if not self._check_operation_status(): return
-                
                 # 1. 1순위 색상 탐색
                 status_text = f"기본 영역 반복 탐색 (1순위) ({initial_step['search_direction'].value})..."
                 self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
+                if not self._check_operation_status(): return
                 found_pos = self.color_finder.find_color_in_area(initial_step['search_area'], initial_step['search_color'], self.color_tolerance, initial_step['search_direction'])
                 if found_pos:
                     self._handle_found_color(found_pos, "기본 영역에서 1순위 색상 발견")
@@ -1064,10 +1066,11 @@ class AppController:
                 if self.is_searching and self.use_secondary_color:
                     status_text = f"기본 영역 반복 탐색 (2순위) ({initial_step['search_direction'].value})..."
                     self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
+                    if not self._check_operation_status(): return
                     found_pos_secondary = self.color_finder.find_color_in_area(initial_step['search_area'], self.secondary_color, self.color_tolerance, initial_step['search_direction'])
                     if found_pos_secondary:
                         self._handle_found_color(found_pos_secondary, "기본 영역에서 2순위 색상 발견")
                         return
 
-                if self.search_delay > 0:
+                if self.use_search_delay and self.search_delay > 0:
                     time.sleep(self.search_delay)

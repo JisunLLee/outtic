@@ -39,6 +39,7 @@ class AppUI:
         self.color_var = tk.StringVar(value=str(c.color))
         self.use_secondary_color_var = tk.BooleanVar(value=c.use_secondary_color)
         self.secondary_color_var = tk.StringVar(value=str(c.secondary_color))
+        self.use_search_delay_var = tk.BooleanVar(value=c.use_search_delay)
         self.area_delay_var = tk.StringVar(value=str(int(c.area_delay * 100)))
         self.search_delay_var = tk.StringVar(value=str(int(c.search_delay * 100)))
         self.complete_coord_var = tk.StringVar(value=str(c.complete_coord))
@@ -158,7 +159,7 @@ class AppUI:
             right_frame,
             use_var=self.use_secondary_color_var,
             color_var=self.secondary_color_var,
-            check_text="사용",
+            check_text="",
             button_text="색상 2",
             command=lambda: self.controller.start_color_picker('secondary_color')
         )
@@ -230,6 +231,11 @@ class AppUI:
         self.search_time_tolerance_frame = self._create_labeled_entry(left_frame, "시간 오차(초):", self.search_time_tolerance_var)
         self.search_time_tolerance_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
 
+        # 탐색 딜레이 사용 여부 체크박스
+        self.search_delay_check = tk.Checkbutton(left_frame, variable=self.use_search_delay_var, 
+                                                 fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", 
+                                                 highlightthickness=0, command=self._toggle_search_delay_state)
+        self.search_delay_check.pack(side=tk.LEFT)
         self.search_delay_frame = self._create_labeled_entry(left_frame, "탐색 딜레이:", self.search_delay_var)
         self.search_delay_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
         self.area_delay_frame = self._create_labeled_entry(left_frame, "구역선택 딜레이:", self.area_delay_var)
@@ -723,6 +729,7 @@ class AppUI:
         self.op_check_max_retries_var.set(str(c.op_check_max_retries))
         self.op_check_retry_interval_var.set(str(int(c.op_check_retry_interval * 100)))
         self.empty_coord_var.set(str(c.empty_coord))
+        self.use_search_delay_var.set(c.use_search_delay)
         self.use_sequence_var.set(c.use_sequence)
         self.direction_var.set(self.SEARCH_DIRECTION_MAP[c.search_direction])
         self.total_duration_var.set(str(c.total_duration_sec))
@@ -780,6 +787,22 @@ class AppUI:
 
         for parent in self.op_check_inner_widgets:
             set_state_inner(parent)
+
+    def _toggle_search_delay_state(self):
+        """탐색 딜레이 체크박스 상태에 따라 입력창의 활성화 여부를 토글합니다."""
+        is_active = self.use_search_delay_var.get() and self.use_sequence_var.get()
+        state = 'normal' if is_active else 'disabled'
+        entry_bg = '#444444' if is_active else '#555555'
+        fg_color = 'white' if is_active else '#666666'
+
+        try:
+            for child in self.search_delay_frame.winfo_children():
+                if isinstance(child, tk.Entry):
+                    child.config(state=state, disabledbackground=entry_bg)
+                elif isinstance(child, tk.Label):
+                    child.config(fg=fg_color)
+        except tk.TclError:
+            pass
 
     def display_visual_aids(self, areas=None, points=None):
         """화면에 영역과 좌표 마커들을 표시합니다."""
@@ -1015,6 +1038,8 @@ class AppUI:
         set_state_recursive(self.wait_duration_frame, state, group_fg, entry_bg)
         set_state_recursive(self.search_time_tolerance_frame, state, group_fg, entry_bg)
         set_state_recursive(self.search_delay_frame, state, group_fg, entry_bg)
+        self.search_delay_check.config(state=state)
+        self._toggle_search_delay_state()
         set_state_recursive(self.area_delay_frame, state, group_fg, entry_bg)
         set_state_recursive(self.empty_coord_frame, state, group_fg, entry_bg)
         self.screen_activation_check.config(state=state, fg=check_fg)
