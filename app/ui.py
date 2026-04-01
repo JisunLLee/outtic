@@ -372,7 +372,6 @@ class AppUI:
 
             coord_label.config(state=state, fg=label_fg, disabledbackground=entry_bg)
             coord_button.config(state=state)
-            delete_button.config(state=state)
 
             for frame in [clicks_frame, offset_frame]:
                 for widget in frame.winfo_children():
@@ -980,7 +979,8 @@ class AppUI:
                     elif isinstance(widget, tk.Entry) and 'var' in str(widget.cget('textvariable')):
                         widget.config(state='disabled', bg=label_bg, fg=label_fg, disabledbackground=entry_bg)
             else:
-                # '구역 탐색 사용'이 켜지면, 각 구역의 개별 상태를 다시 적용
+                # '구역 탐색 사용'이 켜지면, 삭제 버튼은 항상 활성화하고 나머지 개별 상태를 다시 적용
+                widgets['delete_button'].config(state='normal')
                 self.area_toggles[area_number]['search']()
                 self.area_toggles[area_number]['bounds']()
                 self.area_toggles[area_number]['color']()
