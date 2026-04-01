@@ -110,7 +110,7 @@ class AppUI:
 
     def _setup_ui(self):
         """메인 UI를 생성하고 배치합니다."""
-        self.root.title("LuAuttic v.2.3.0 ")
+        self.root.title("LuAuttic For히기 v.2.3.1")
 
         window_width = 430
         # 4개의 구역이 모두 보이도록 창 높이 설정합니다.
@@ -198,7 +198,9 @@ class AppUI:
 
         # --- 구역 설정 그룹 ---
         # 이 프레임은 모든 구역(구역1, 구역2 등)을 감싸는 컨테이너 역할을 합니다.
-        self.areas_container_group = self._create_labeled_frame(main_frame, "구역 설정", name="areas_container_group")
+        self.areas_container_group = self._create_labeled_frame(main_frame, 
+                                                                "구역 설정",
+                                                                name="areas_container_group")
         self.areas_container_group.pack(fill=tk.BOTH, expand=True, pady=(10))
 
         # 구역 세팅: 탐색/대기 시간
@@ -232,7 +234,11 @@ class AppUI:
         self.empty_coord_frame.pack(side=tk.LEFT)
   
         # --- 탐색 화면 정상 여부 확인용 그룹 ---
-        self.operation_check_group = tk.LabelFrame(self.areas_container_group, text=f"탐색 화면 정상 여부 확인", fg="white", padx=10, pady=5)
+        self.operation_check_group = tk.LabelFrame(self.areas_container_group, 
+                                                   text=f"탐색 화면 정상 여부 확인", 
+                                                   fg="white", 
+                                                   padx=10, 
+                                                   pady=5)
         self.operation_check_group.pack(fill=tk.X, pady=12, padx=5, ipady=5)
 
         # Row 1: 화면 정상 여부 확인: 화면 확인 좌표, 화면 확인 색상
@@ -308,13 +314,14 @@ class AppUI:
         """
         지정된 번호의 구역 설정 UI 그룹을 생성하고 배치합니다.
         재사용성을 위해 헬퍼 메서드로 분리했습니다.
-        나중에 구역 2, 3, 4를 추가할 때 이 메서드를 호출하기만 하면 됩니다.
 
         :param parent: 이 그룹이 속할 부모 위젯
         :param area_number: 생성할 구역의 번호 (예: 1)
         """
-        area_group = tk.LabelFrame(parent, text=f"구역{area_number}", fg="white", padx=10, pady=5)
-        area_group.pack(fill=tk.X, pady=2, padx=5, ipady=5)
+        area_group = tk.LabelFrame(parent, 
+                                   text=f"구역{area_number}", 
+                                   fg="white")
+        area_group.pack(fill=tk.BOTH, expand=True, pady=(10))
 
         # 이 구역에 해당하는 변수들을 가져옵니다.
         vars = self.area_vars[area_number]
@@ -322,12 +329,31 @@ class AppUI:
         widgets = {} # 이 구역의 위젯들을 저장할 딕셔너리
 
         # UI를 좌우로 나누기 위한 컨테이너 생성
-        row1_container, (left_frame, right_frame) = self._create_split_container(area_group, weights=[2, 1])
+        row1_container, (left_frame, right_frame) = self._create_split_container(area_group, weights=[1, 1])
 
-        coord_label = tk.Entry(left_frame, textvariable=vars['coord_var'], bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, width=10, validate="key", validatecommand=self.tuple_vcmd)
-        coord_button = tk.Button(left_frame, text=f"구역 {area_number}", width=3, command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_click_coord'))
+        # N 구역 탐색
+        coord_label = tk.Entry(left_frame, 
+                               textvariable=vars['coord_var'], 
+                               bg="#444444", 
+                               fg="white", 
+                               insertbackground='white', 
+                               borderwidth=0, 
+                               highlightthickness=0, 
+                               width=3, 
+                               validate="key", 
+                               validatecommand=self.tuple_vcmd)
+        coord_button = tk.Button(left_frame, 
+                                 text=f"구역 {area_number}", 
+                                 width=3, 
+                                 command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_click_coord'))
         # 구역 삭제 버튼 (빨간색 텍스트)
-        delete_button = tk.Button(left_frame, text="삭제", fg="#ff4d4d", activeforeground="red", width=3, command=lambda: self.controller.remove_area(area_number))
+        delete_button = tk.Button(left_frame, 
+                                  text="삭제", 
+                                  fg="#f58585", 
+                                  activeforeground="red", 
+                                  width=1, 
+                                  command=lambda: self.controller.remove_area(area_number))
+        
 
         right_inner_frame = tk.Frame(right_frame)
         clicks_frame = self._create_labeled_entry(right_inner_frame, "횟수:", vars['clicks_var'])
@@ -352,12 +378,18 @@ class AppUI:
                         widget.config(state=state)
 
         # --- Row 1 왼쪽: 탐색 활성화, 클릭 좌표 설정 ---
-        use_search_checkbutton = tk.Checkbutton(left_frame, text="탐색", variable=vars['use_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_search_state)
+        use_search_checkbutton = tk.Checkbutton(left_frame, 
+                                                text="탐색", 
+                                                variable=vars['use_var'], 
+                                                selectcolor="#2e2e2e", 
+                                                activebackground="#2e2e2e", 
+                                                highlightthickness=0, 
+                                                command=toggle_search_state)
         use_search_checkbutton.pack(side=tk.LEFT)
 
-        coord_label.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
+        coord_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         coord_button.pack(side=tk.LEFT)
-        delete_button.pack(side=tk.LEFT, padx=(5,0))
+        delete_button.pack(side=tk.LEFT)
 
         # --- Row 1 오른쪽: 선택 횟수, 오차 설정 ---
         right_inner_frame.pack(fill=tk.X)
@@ -378,10 +410,11 @@ class AppUI:
             state = 'normal' if is_enabled else 'disabled'
             label_bg = '#555555'
             label_fg = 'white' if is_enabled else '#2e2e2e'
+            entry_bg = '#444444' if is_enabled else '#555555'
             
-            p1_label.config(state=state, bg=label_bg, fg=label_fg)
+            p1_label.config(state=state, bg=label_bg, disabledbackground=entry_bg, fg=label_fg)
             p1_button.config(state=state)
-            p2_label.config(state=state, bg=label_bg, fg=label_fg)
+            p2_label.config(state=state, bg=label_bg, disabledbackground=entry_bg, fg=label_fg)
             p2_button.config(state=state)
 
             if use_default_bounds:
@@ -392,15 +425,21 @@ class AppUI:
         use_bounds_checkbutton = tk.Checkbutton(left_frame2, text="기본", variable=vars['use_area_bounds_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_area_bounds_state)
         use_bounds_checkbutton.pack(side=tk.LEFT)
 
-        p1_selector_frame.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
+        p1_selector_frame.pack(expand=True, fill=tk.X)
         p2_selector_frame.pack(expand=True, fill=tk.X)
 
         # --- Row 3: 구역별 색상 및 탐색 방향 설정 ---
         row3_container, (left_frame3, right_frame3) = self._create_split_container(area_group, weights=[1, 1])
 
         # --- Row 3 왼쪽: 색상 사용, 색상 값, 색상 선택 버튼 ---
-        color_label = tk.Entry(left_frame3, textvariable=vars['color_var'], bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, validate="key", validatecommand=self.tuple_vcmd)
-        color_button = tk.Button(left_frame3, text="색상", width=3, command=lambda: self.controller.start_color_picker(f'area_{area_number}_color'))
+        color_label = tk.Entry(left_frame3, 
+                               textvariable=vars['color_var'], 
+                               insertbackground='white', 
+                               borderwidth=0, 
+                               highlightthickness=0, 
+                               validate="key",
+                               validatecommand=self.tuple_vcmd)
+        color_button = tk.Button(left_frame3, text="색상", command=lambda: self.controller.start_color_picker(f'area_{area_number}_color'))
 
         def toggle_color_state():
             """'기본' 체크박스 상태에 따라 색상 위젯들을 활성화/비활성화하고 값을 동기화합니다."""
@@ -419,17 +458,24 @@ class AppUI:
             bg_color = '#555555'
             label_fg = 'white' if is_enabled else '#2e2e2e'
             entry_bg = '#444444' if is_enabled else '#555555'
-            color_label.config(state=state, bg=bg_color, fg=label_fg, disabledbackground=entry_bg)
+            color_label.config(state=state, bg=bg_color, fg=label_fg, disabledbackground=entry_bg, width=12)
             color_button.config(state=state)
 
             if use_default_color:
                 # '기본'이 체크되면, 전역 색상 값을 해당 구역의 변수에 설정합니다.
                 vars['color_var'].set(self.color_var.get())
 
-        use_color_checkbutton = tk.Checkbutton(left_frame3, text="기본", variable=vars['use_color_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_color_state)
-        use_color_checkbutton.pack(side=tk.LEFT)
+        use_color_checkbutton = tk.Checkbutton(left_frame3, 
+                                               text="기본", 
+                                               variable=vars['use_color_var'], 
+                                               fg="white", 
+                                               selectcolor="#2e2e2e", 
+                                               activebackground="#2e2e2e", 
+                                               highlightthickness=0, 
+                                               command=toggle_color_state)
+        use_color_checkbutton.pack(expand=True, side=tk.LEFT)
         color_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
-        color_button.pack(side=tk.LEFT)
+        color_button.pack(side=tk.RIGHT)
 
         # --- Row 3 오른쪽: 탐색 방향 ---
         direction_menu = tk.OptionMenu(right_frame3, vars['direction_var'], *self.SEARCH_DIRECTION_MAP.values())
@@ -450,7 +496,7 @@ class AppUI:
 
         use_direction_checkbutton = tk.Checkbutton(right_frame3, text="기본", variable=vars['use_direction_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_direction_state)
         use_direction_checkbutton.pack(side=tk.LEFT)
-        direction_menu.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=(5,0))
+        direction_menu.pack(fill=tk.X, expand=True, side=tk.LEFT)
         
         # 나중에 전체 활성/비활성화를 위해 위젯들을 저장합니다.
         widgets['group'] = area_group
@@ -513,7 +559,7 @@ class AppUI:
         
         self.add_area_btn.pack_forget() # 버튼을 잠시 가리고 아래에 다시 추가
         self._create_area_group(self.scrollable_content_frame, area_number)
-        self.add_area_btn.pack(fill=tk.X, pady=10, padx=50)
+        self.add_area_btn.pack(fill=tk.X)
         
         # 새로 추가된 구역의 활성화 상태 동기화
         self._toggle_area_settings_active()
@@ -755,7 +801,6 @@ class AppUI:
         container.pack(**default_options)
 
         frames = []
-        num_columns = len(weights)
         for i, weight in enumerate(weights):
             # 각 열에 지정된 가중치(weight)를 설정합니다.
             container.grid_columnconfigure(i, weight=weight)
@@ -766,36 +811,75 @@ class AppUI:
         return container, frames
 
     def _create_labeled_entry(self, parent, label_text, var):
-        """레이블과 입력창으로 구성된 위젯 그룹을 생성합니다."""
+        """레이블과 입력창으로 구성된 위젯 그룹을 생성합니다. (횟수, 오차 등)"""
         frame = tk.Frame(parent)
-        tk.Label(frame, text=label_text, fg="white").pack(
-            side=tk.LEFT)
-        tk.Entry(frame, textvariable=var, width=2, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0).pack(
-            side=tk.LEFT, expand=True, fill=tk.X)
+        tk.Label(frame, 
+                 text=label_text, 
+                 fg="white"
+                 ).pack(side=tk.LEFT)
+        tk.Entry(frame, 
+                 textvariable=var, 
+                 width=2, 
+                 bg="#444444", 
+                 fg="white", 
+                 insertbackground='white', 
+                 borderwidth=0, 
+                 highlightthickness=0
+                 ).pack(side=tk.LEFT, expand=True, fill=tk.X)
         return frame
 
     def _create_coordinate_selector(self, parent, var, button_text, command=None):
         """좌표값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성하고, 위젯들을 반환합니다."""
         frame = tk.Frame(parent)
-        label = tk.Entry(frame, bg="#444444", fg="white", insertbackground='white', textvariable=var, borderwidth=0, highlightthickness=0, width=8, validate="key", validatecommand=self.tuple_vcmd)
+        label = tk.Entry(frame, 
+                         bg="#444444", 
+                         fg="white", 
+                         insertbackground='white', 
+                         textvariable=var, 
+                         borderwidth=0, 
+                         highlightthickness=0, 
+                         width=2, 
+                         validate="key", 
+                         validatecommand=self.tuple_vcmd)
         label.pack(side=tk.LEFT, expand=True, fill=tk.X)
-        button = tk.Button(frame, text=button_text, width=3, command=command)
+        button = tk.Button(frame, 
+                           text=button_text, 
+                           width=3, 
+                           command=command)
         button.pack(side=tk.LEFT)
         return frame, label, button
 
     def _create_value_button_row(self, parent, var, button_text, command=None):
         """값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent)
-        tk.Entry(frame, textvariable=var, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, width=12, validate="key", validatecommand=self.tuple_vcmd).pack(
-            side=tk.LEFT, expand=True, fill=tk.X)
+        tk.Entry(frame, 
+                 textvariable=var, 
+                 bg="#555555", 
+                 fg="white", 
+                 insertbackground='white', 
+                 borderwidth=0, 
+                 highlightthickness=0, 
+                 width=12, 
+                 validate="key", 
+                 validatecommand=self.tuple_vcmd
+                 ).pack(side=tk.LEFT, expand=True, fill=tk.X)
         tk.Button(frame, text=button_text, width=3,  bg="white", command=command).pack(side=tk.LEFT)
         return frame
 
     def _create_toggleable_color_selector(self, parent, use_var, color_var, check_text, button_text, command):
-        """체크박스로 활성화/비활성화되는 색상 선택 위젯 그룹을 생성합니다."""
+        """체크박스로 활성화/비활성화되는 2순위 색상 선택 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent)
         
-        color_label = tk.Entry(frame, textvariable=color_var, bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, width=12, validate="key", validatecommand=self.tuple_vcmd)
+        color_label = tk.Entry(frame, 
+                               textvariable=color_var, 
+                               bg="#444444", 
+                               fg="white", 
+                               insertbackground='white', 
+                               borderwidth=0, 
+                               highlightthickness=0,
+                               width=12, 
+                               validate="key", 
+                               validatecommand=self.tuple_vcmd)
         color_button = tk.Button(frame, text=button_text, width=3, command=command)
         
         def toggle_state():
@@ -803,12 +887,20 @@ class AppUI:
             state = 'normal' if is_enabled else 'disabled'
             label_bg = '#555555'
             label_fg = 'white' if is_enabled else '#2e2e2e'
+
             entry_bg = '#444444' if is_enabled else '#555555'
 
             color_label.config(state=state, bg=label_bg, fg=label_fg, disabledbackground=entry_bg)
             color_button.config(state=state)
         
-        checkbox = tk.Checkbutton(frame, text=check_text, variable=use_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_state)
+        checkbox = tk.Checkbutton(frame, 
+                                  text=check_text, 
+                                  variable=use_var, 
+                                  fg="white", 
+                                  selectcolor="#2e2e2e", 
+                                  activebackground="#2e2e2e", 
+                                  highlightthickness=0, 
+                                  command=toggle_state)
         checkbox.pack(side=tk.LEFT)
         
         color_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
@@ -827,6 +919,7 @@ class AppUI:
         entry_bg = '#444444' if is_enabled else '#2e2e2e'
         label_bg = '#555555' if is_enabled else '#2e2e2e'
         label_fg = 'white' if is_enabled else '#444444'
+
 
         # '구역 설정' 그룹 전체의 스타일 변경
         # 이 그룹에 속한 모든 위젯을 재귀적으로 탐색하며 상태를 변경하는 함수

@@ -2,7 +2,7 @@ name: Build Windows EXE
 
 on:
   push:
-    branches: [ "v.2.3.0" ]
+    branches: [ "v.2.3.1" ]
 
 jobs:
   build:

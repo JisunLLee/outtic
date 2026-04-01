@@ -58,8 +58,8 @@ class AppController:
 
         # --- 구역값 설정 ---
         self.use_initial_search = True # '기본 탐색 사용' 체크박스 기본값
-        self.use_sequence = False # 구역 사용 여부 (UI 체크박스 기본값)
-        self.use_space_complete = False # 스페이스 완료 사용 여부
+        self.use_sequence = True # 구역 사용 여부 (UI 체크박스 기본값)
+        self.use_space_complete = True # 스페이스 완료 사용 여부
         self.area_delay = 0.75 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
         self.use_screen_activation = False # 화면 활성화 사용 여부
         self.empty_coord = (0, 0) # 빈 공간 좌표
@@ -107,7 +107,7 @@ class AppController:
         """컨트롤러 내부에 지정된 구역의 기본 설정값을 생성합니다."""
         if area_number not in self.areas:
             # 구역별 기본값 설정
-            default_use = False
+            default_use = True
             default_click_coord = (0, 0)
             default_clicks = 6
             default_offset = 2
@@ -119,7 +119,7 @@ class AppController:
 
 
             if area_number == 1:
-                default_use = False
+                default_use = True
                 default_click_coord = (723, 301)
                 default_clicks = 1
                 default_direction = SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT
