@@ -249,7 +249,8 @@ class AppUI:
                                           activebackground="#2e2e2e", highlightthickness=0,
                                           command=self._toggle_operation_check_state)
         self.op_check_cb.pack(side=tk.LEFT)
-        tk.Label(op_check_header, text="탐색 화면 정상 여부 확인", fg="white").pack(side=tk.LEFT)
+        self.op_check_label = tk.Label(op_check_header, text="탐색 화면 정상 여부 확인", fg="white")
+        self.op_check_label.pack(side=tk.LEFT)
 
         self.operation_check_group = tk.LabelFrame(self.areas_container_group, labelwidget=op_check_header, padx=10, pady=5)
         self.operation_check_group.pack(fill=tk.X, pady=12, padx=5, ipady=5)
@@ -980,7 +981,7 @@ class AppUI:
             except tk.TclError:
                 pass # 위젯이 파괴된 경우 등 예외 처리
 
-        self.areas_header_label.config(fg=group_fg)
+        self.areas_header_label.config(fg='white')
 
         # '구역 설정' 그룹 내의 공통 위젯들 상태 변경
         set_state_recursive(self.total_duration_frame, state, group_fg, entry_bg)
@@ -995,6 +996,7 @@ class AppUI:
         # '탐색 화면 정상 여부 확인' 그룹 상태 변경
         set_state_recursive(self.operation_check_group, state, group_fg, entry_bg)
         self.op_check_cb.config(state=state)
+        self.op_check_label.config(fg=group_fg)
         self.add_area_btn.config(state=state)
 
         # 각 구역의 모든 위젯 상태 변경
