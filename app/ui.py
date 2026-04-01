@@ -244,9 +244,7 @@ class AppUI:
         self.screen_activation_check = tk.Checkbutton(left_frame, 
                                                       text="화면활성화", 
                                                       variable=self.use_screen_activation_var, 
-                                                      fg="white", 
-                                                      selectcolor="#2e2e2e", 
-                                                      activebackground="#2e2e2e", 
+                                                      fg="white",  
                                                       highlightthickness=0)
         self.screen_activation_check.pack(side=tk.LEFT)
         self.empty_coord_frame = self._create_value_button_row(left_frame, 
