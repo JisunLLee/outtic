@@ -173,7 +173,10 @@ class AppUI:
         row4_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
         
         # Part 1: 완료 좌표
-        self._create_value_button_row(left_frame, self.complete_coord_var, "완료", command=lambda: self.controller.start_coordinate_picker('complete')).pack(side=tk.LEFT)
+        self._create_value_button_row(left_frame, 
+                                      self.complete_coord_var, 
+                                      "완료", 
+                                      command=lambda: self.controller.start_coordinate_picker('complete')).pack(side=tk.LEFT)
       
         # Part 2: 완료 선택 딜레이, 탐색 방향
         self._create_labeled_entry(right_frame, "완료 딜레이:", self.complete_delay_var).pack(expand=True, fill=tk.X, side=tk.LEFT)
@@ -257,7 +260,7 @@ class AppUI:
         op_check_header = tk.Frame(self.areas_container_group)
         self.op_check_cb = tk.Checkbutton(op_check_header, variable=self.use_operation_check_var, 
                                           selectcolor="#2e2e2e", 
-                                          activebackground="#2e2e2e", highlightthickness=0,
+                                          highlightthickness=0,
                                           command=self._toggle_operation_check_state)
         self.op_check_cb.pack(side=tk.LEFT)
         tk.Label(op_check_header, text="탐색 화면 정상 여부 확인", fg="white").pack(side=tk.LEFT)
@@ -344,15 +347,23 @@ class AppUI:
         :param area_number: 생성할 구역의 번호 (예: 1)
         """
         # LabelFrame의 헤더(제목) 영역에 들어갈 프레임 생성
-        header_frame = tk.Frame(parent, bg=self.WINDOW_COLORS['default'])
+        header_frame = tk.Frame(parent)
         name_entry = tk.Entry(header_frame, textvariable=self.area_vars[area_number]['name_var'],
-                              fg="white", bg=self.WINDOW_COLORS['default'], font=(None, 9, "bold"),
-                              borderwidth=0, highlightthickness=0, width=12)
-        name_entry.pack(side=tk.LEFT)
+                              fg="white", 
+                              font=(None, 9, "bold"),
+                              borderwidth=0, 
+                              highlightthickness=0, 
+                              width=12)
+        name_entry.pack(side=tk.LEFT, padx=5, ipady=2)
         
-        # 헤더에 들어갈 삭제 버튼 (텍스트 형태로 복구)
-        delete_button = tk.Button(header_frame, text="삭제", fg="#f58585", activeforeground="red", 
-                                  font=(None, 8), padx=2, pady=0,
+        # 구역 삭제 버튼
+        delete_button = tk.Button(header_frame, 
+                                  text="삭제", 
+                                  fg="#f58585",
+                                  activeforeground="red", 
+                                  font=(None, 8), 
+                                  padx=2, 
+                                  pady=0,
                                   command=lambda: self.controller.remove_area(area_number))
         delete_button.pack(side=tk.LEFT, padx=(5, 0))
 
@@ -374,7 +385,7 @@ class AppUI:
                                insertbackground='white', 
                                borderwidth=0, 
                                highlightthickness=0, 
-                               width=3, 
+                               width=12, 
                                validate="key", 
                                validatecommand=self.tuple_vcmd)
         coord_button = tk.Button(left_frame, 
@@ -733,7 +744,7 @@ class AppUI:
                 # UI 체크박스(True)는 컨트롤러 값(False)과 반대입니다.
                 vars['use_area_bounds_var'].set(not area_settings['use_area_bounds'])
                 vars['use_color_var'].set(not area_settings['use_color'])
-                vars['use_direction_var'].   set(not area_settings['use_direction'])
+                vars['use_direction_var'].set(not area_settings['use_direction'])
         
         # '기본' 체크박스 상태에 따라 비활성화된 위젯들의 상태를 올바르게 갱신합니다.
         for toggle_func in self.global_toggles.values():
@@ -741,8 +752,8 @@ class AppUI:
         for area_number, toggles in self.area_toggles.items():
             for toggle_func in toggles.values():
                 toggle_func()
-        self.op_check_cb.config(state=state)
-        self._toggle_operation_check_state()
+        # 전체 위젯 활성/비활성 상태 동기화
+        self._toggle_area_settings_active()
 
     def _toggle_operation_check_state(self):
         """탐색 화면 정상 여부 확인 그룹 내의 위젯 상태를 체크박스에 따라 토글합니다."""
@@ -874,7 +885,7 @@ class AppUI:
                  ).pack(side=tk.LEFT)
         tk.Entry(frame, 
                  textvariable=var, 
-                 width=2, 
+                 width=5, 
                  bg="#444444", 
                  fg="white", 
                  insertbackground='white', 
@@ -893,7 +904,7 @@ class AppUI:
                          textvariable=var, 
                          borderwidth=0, 
                          highlightthickness=0, 
-                         width=2, 
+                         width=12, 
                          validate="key", 
                          validatecommand=self.tuple_vcmd)
         label.pack(side=tk.LEFT, expand=True, fill=tk.X)

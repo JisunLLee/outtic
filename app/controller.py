@@ -58,15 +58,15 @@ class AppController:
 
         # --- 구역값 설정 ---
         self.use_initial_search = True # '기본 탐색 사용' 체크박스 기본값
-        self.use_sequence = True # 구역 사용 여부 (UI 체크박스 기본값)
+        self.use_sequence = False # 구역 사용 여부 (UI 체크박스 기본값)
         self.use_space_complete = True # 스페이스 완료 사용 여부
-        self.area_delay = 0.75 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
+        self.area_delay = 0.70 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
         self.use_screen_activation = False # 화면 활성화 사용 여부
         self.use_operation_check = False # 탐색 화면 정상 여부 확인 사용 여부
         self.op_check_coord = (0, 0)
         self.op_check_color = (0, 0, 0)
         self.empty_coord = (0, 0) # 빈 공간 좌표
-        self.search_delay = 0.15 # 탐색 대기 (초)
+        self.search_delay = 0.20 # 탐색 대기 (초)
         self.total_duration_sec = 1800 # 총 탐색 시간 (초)
         self.active_search_duration_sec = 600 # 한 사이클의 탐색 시간 (초)
         self.wait_duration_sec = 180 # 사이클 간 대기 시간 (초)
@@ -110,7 +110,7 @@ class AppController:
         """컨트롤러 내부에 지정된 구역의 기본 설정값을 생성합니다."""
         if area_number not in self.areas:
             # 구역별 기본값 설정
-            default_use = True
+            default_use = (area_number == 1) # 구역 1만 기본 활성화, 나머지는 비활성화
             default_click_coord = (0, 0)
             default_clicks = 6
             default_offset = 2
@@ -123,21 +123,17 @@ class AppController:
 
 
             if area_number == 1:
-                default_use = True
                 default_click_coord = (723, 301)
                 default_clicks = 1
                 default_direction = SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT
             if area_number == 2:
-                default_use = False
                 default_click_coord = (734, 320)
                 default_clicks = 1
             if area_number == 3:
-                default_use = False
                 default_click_coord = (716, 304)
                 default_clicks = 2
                 default_direction = SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT
             if area_number == 4:
-                default_use = False
                 default_click_coord = (737, 321)
                 default_clicks = 1
                 default_p1 = (98, 229)
@@ -628,7 +624,8 @@ class AppController:
         # 2. 재시도 탐색 계획
         if self.use_sequence:
             for area_number, settings in sorted(self.areas.items()):
-                if settings['use']:
+                # '사용' 체크가 되어 있고, 클릭 좌표가 (0,0)이 아닌 경우에만 계획에 포함
+                if settings['use'] and settings['click_coord'] != (0, 0):
                     # 이 재시도 단계에서 사용할 탐색 영역과 방향을 결정합니다.
                     retry_search_area = settings['search_area'] if settings['use_area_bounds'] else self._get_global_search_area()
                     retry_search_direction = settings['direction'] if settings['use_direction'] else self.search_direction
@@ -693,7 +690,8 @@ class AppController:
             self.color_finder.click_action(click_x, click_y) # 세 번째 클릭
             time.sleep(0.1) # Chrome 등 브라우저가 클릭을 처리할 시간을 확보하기 위한 대기
         # 1. 찾은 위치(색상 영역의 중심)를 클릭합니다.
-        self.color_finder.click_action(found_pos[0], found_pos[1])
+        if found_pos and found_pos != (0, 0):
+            self.color_finder.click_action(found_pos[0], found_pos[1])
 
         # 2. 완료 좌표 클릭 (설정된 경우)
         if self.complete_coord != (0, 0):
@@ -724,7 +722,7 @@ class AppController:
         threading.Thread(target=self._space_complete_worker, daemon=True).start()
 
     def _space_complete_worker(self):
-        if self.complete_coord == (0, 0):
+        if not self.complete_coord or self.complete_coord == (0, 0):
             self.ui.queue_task(lambda: self.ui.update_status("오류: 완료 좌표가 설정되지 않았습니다."))
             return
 
@@ -967,8 +965,14 @@ class AppController:
                         # 최종 딜레이가 음수가 되지 않도록 max(0, ...) 처리합니다.
                         time.sleep(max(0, final_delay))
                     
-                    if not self.is_searching: break # 딜레이 후 다시 확인
-                    self.color_finder.click_action(final_x, final_y)
+                    if not self.is_searching: break
+                    
+                    if (final_x, final_y) != (0, 0):
+                        self.color_finder.click_action(final_x, final_y)
+                    else:
+                        # 클릭 좌표가 (0,0)인 경우 경고 메시지 출력
+                        self.ui.queue_task(lambda: self.ui.update_status(f"경고: 구역 {step.get('area_number', 'N/A')} 클릭 좌표가 (0,0)이므로 건너뜁니다."))
+                        print(f"경고: 구역 {step.get('area_number', 'N/A')} 클릭 좌표가 (0,0)이므로 건너뜁니다.")
 
                     time.sleep(0.1)
                     elapsed_time = int(time.time() - start_time)
