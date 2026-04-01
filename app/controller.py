@@ -116,6 +116,7 @@ class AppController:
             default_p2 = self.p2
             default_use_direction = False   # '기본' 방향 사용 (UI 체크박스 True)
             default_direction = self.search_direction # 기본 탐색 방향으로 초기화
+            default_name = f"구역{area_number}"
 
 
             if area_number == 1:
@@ -142,6 +143,7 @@ class AppController:
 
 
             self.areas[area_number] = {
+                'name': default_name,
                 'use': default_use, # UI의 '탐색' 체크박스는 기본적으로 꺼져있습니다.
                 'click_coord': default_click_coord,
                 'clicks': default_clicks, # 구역 클릭 횟수
@@ -221,6 +223,7 @@ class AppController:
                     self._initialize_area_settings(area_number)
                 
                 area_settings = self.areas[area_number]
+                area_settings['name'] = area_ui_vars['name_var'].get()
                 area_settings['use'] = area_ui_vars['use_var'].get()
                 area_settings['click_coord'] = ast.literal_eval(area_ui_vars['coord_var'].get())
                 area_settings['clicks'] = int(area_ui_vars['clicks_var'].get())
@@ -281,7 +284,7 @@ class AppController:
                     'rect': (x1, y1, x2 - x1, y2 - y1),
                     'color': overlay_color,
                     'alpha': 0.4,
-                    'text': f'{area_number}구역' # 영역에 텍스트 추가
+                    'text': settings.get('name', f'구역{area_number}') # 설정된 이름 표시
                 })
 
         # 마커로 표시할 좌표들
@@ -334,6 +337,7 @@ class AppController:
 
         for area_number, area_settings in self.areas.items():
             settings_data['areas'][area_number] = {
+                'name': area_settings.get('name', f"구역{area_number}"),
                 'use': area_settings['use'],
                 'click_coord': area_settings['click_coord'],
                 'clicks': area_settings['clicks'],
@@ -412,6 +416,7 @@ class AppController:
                     self.add_area()
                 
                 area = self.areas[area_number]
+                area['name'] = loaded.get('name', f"구역{area_number}")
                 area['use'] = bool(loaded.get('use', area['use']))
                 area['click_coord'] = tuple(loaded.get('click_coord', area['click_coord']))
                 area['clicks'] = int(loaded.get('clicks', area['clicks']))

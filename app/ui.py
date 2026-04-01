@@ -94,6 +94,7 @@ class AppUI:
         area_defaults = self.controller.areas[area_number]
 
         self.area_vars[area_number] = {
+            'name_var': tk.StringVar(value=area_defaults.get('name', f"구역{area_number}")),
             'use_var': tk.BooleanVar(value=area_defaults['use']),
             'coord_var': tk.StringVar(value=str(area_defaults['click_coord'])),
             'clicks_var': tk.StringVar(value=str(area_defaults['clicks'])),
@@ -313,16 +314,26 @@ class AppUI:
     def _create_area_group(self, parent, area_number: int):
         """
         지정된 번호의 구역 설정 UI 그룹을 생성하고 배치합니다.
-        재사용성을 위해 헬퍼 메서드로 분리했습니다.
+        재사용성을 위해 ₩헬퍼 메서드로 분리했습니다.
 
         :param parent: 이 그룹이 속할 부모 위젯
         :param area_number: 생성할 구역의 번호 (예: 1)
         """
-        area_group = tk.LabelFrame(parent, 
-                                   text=f"구역{area_number}", 
-                                   fg="white")
-        area_group.pack(fill=tk.BOTH, expand=True, pady=(10))
+        # LabelFrame의 헤더(제목) 영역에 들어갈 프레임 생성
+        header_frame = tk.Frame(parent, bg=self.WINDOW_COLORS['default'])
+        name_entry = tk.Entry(header_frame, textvariable=self.area_vars[area_number]['name_var'],
+                              fg="white", bg=self.WINDOW_COLORS['default'], font=(None, 9, "bold"),
+                              borderwidth=0, highlightthickness=0, width=12)
+        name_entry.pack(side=tk.LEFT)
+        
+        # 헤더에 들어갈 삭제 버튼 (텍스트 형태로 복구)
+        delete_button = tk.Button(header_frame, text="삭제", fg="#f58585", activeforeground="red", 
+                                  font=(None, 8), padx=2, pady=0,
+                                  command=lambda: self.controller.remove_area(area_number))
+        delete_button.pack(side=tk.LEFT, padx=(5, 0))
 
+        area_group = tk.LabelFrame(parent, labelwidget=header_frame)
+        area_group.pack(fill=tk.BOTH, expand=True, pady=(10))
         # 이 구역에 해당하는 변수들을 가져옵니다.
         vars = self.area_vars[area_number]
 
@@ -346,13 +357,6 @@ class AppUI:
                                  text=f"구역 {area_number}", 
                                  width=3, 
                                  command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_click_coord'))
-        # 구역 삭제 버튼 (빨간색 텍스트)
-        delete_button = tk.Button(left_frame, 
-                                  text="삭제", 
-                                  fg="#f58585", 
-                                  activeforeground="red", 
-                                  width=1, 
-                                  command=lambda: self.controller.remove_area(area_number))
         
 
         right_inner_frame = tk.Frame(right_frame)
@@ -389,7 +393,6 @@ class AppUI:
 
         coord_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         coord_button.pack(side=tk.LEFT)
-        delete_button.pack(side=tk.LEFT)
 
         # --- Row 1 오른쪽: 선택 횟수, 오차 설정 ---
         right_inner_frame.pack(fill=tk.X)
@@ -501,6 +504,7 @@ class AppUI:
         # 나중에 전체 활성/비활성화를 위해 위젯들을 저장합니다.
         widgets['group'] = area_group
         widgets['use_search_check'] = use_search_checkbutton
+        widgets['delete_button'] = delete_button
         widgets['coord_label'] = coord_label
         widgets['coord_button'] = coord_button
         widgets['clicks_frame'] = clicks_frame
@@ -691,6 +695,7 @@ class AppUI:
         for area_number, area_settings in c.areas.items():
             if area_number in self.area_vars:
                 vars = self.area_vars[area_number]
+                vars['name_var'].set(area_settings.get('name', f"구역{area_number}"))
                 vars['use_var'].set(area_settings['use'])
                 vars['coord_var'].set(str(area_settings['click_coord']))
                 vars['clicks_var'].set(str(area_settings['clicks']))
