@@ -48,6 +48,8 @@ class AppUI:
         self.use_operation_check_var = tk.BooleanVar(value=c.use_operation_check)
         self.op_check_coord_var = tk.StringVar(value=str(c.op_check_coord))
         self.op_check_color_var = tk.StringVar(value=str(c.op_check_color))
+        self.op_check_max_retries_var = tk.StringVar(value=str(c.op_check_max_retries))
+        self.op_check_retry_interval_var = tk.StringVar(value=str(int(c.op_check_retry_interval * 100)))
         self.empty_coord_var = tk.StringVar(value=str(c.empty_coord))
 
         self.use_sequence_var = tk.BooleanVar(value=c.use_sequence)
@@ -257,11 +259,26 @@ class AppUI:
 
         # Row 1: 화면 정상 여부 확인: 화면 확인 좌표, 화면 확인 색상
         operation_check_container, (left_frame, right_frame) = self._create_split_container(self.operation_check_group, weights=[1, 1])
-        self._create_value_button_row(left_frame, self.op_check_coord_var, "좌표", command=lambda: self.controller.start_coordinate_picker('area_op_check_coord')).pack(side=tk.LEFT)
-        self._create_value_button_row(right_frame, self.op_check_color_var, "색상", command=lambda: self.controller.start_color_picker('area_op_check_color')).pack(side=tk.RIGHT)
+        
+        # 좌표 입력창 (통합 버튼 사용을 위해 버튼 없는 Entry 배치)
+        tk.Entry(left_frame, textvariable=self.op_check_coord_var, bg="#555555", fg="white", 
+                 insertbackground='white', borderwidth=0, highlightthickness=0, width=12,
+                 validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        
+        # 색상 입력창 + 통합 버튼
+        tk.Entry(right_frame, textvariable=self.op_check_color_var, bg="#555555", fg="white", 
+                 insertbackground='white', borderwidth=0, highlightthickness=0, width=12,
+                 validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        self.op_check_combined_btn = tk.Button(right_frame, text="좌표&색상", width=7, command=lambda: self.controller.start_combined_picker('op_check'))
+        self.op_check_combined_btn.pack(side=tk.LEFT, padx=(5,0))
+
+        # Row 2: 재시도 설정 (횟수, 간격)
+        op_retry_container, (left_frame_r, right_frame_r) = self._create_split_container(self.operation_check_group, weights=[1, 1])
+        self._create_labeled_entry(left_frame_r, "재시도 횟수:", self.op_check_max_retries_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        self._create_labeled_entry(right_frame_r, "간격(10ms):", self.op_check_retry_interval_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
 
         # 위젯 상태 관리를 위해 내부 프레임 저장
-        self.op_check_inner_widgets = [left_frame, right_frame]
+        self.op_check_inner_widgets = [left_frame, right_frame, left_frame_r, right_frame_r]
         scroll_container = tk.Frame(self.areas_container_group)
         scroll_container.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
 
@@ -463,9 +480,12 @@ class AppUI:
             use_default_color = vars['use_color_var'].get()
             is_enabled = not use_default_color
             state = 'normal' if is_enabled else 'disabled'
-            # ... (UI 상태 변경 코드) ...
+            bg_color = '#444444' if is_enabled else '#555555'
+            label_fg = 'white' if is_enabled else '#2e2e2e'
+            
+            color_label.config(state=state, bg=bg_color, fg=label_fg, disabledbackground=bg_color, width=12)
             color_button.config(state=state)
-
+            
             if use_default_color:
                 # '기본'이 체크되면, 전역 색상 값을 해당 구역의 변수에 설정합니다.
                 vars['color_var'].set(self.color_var.get())
@@ -700,6 +720,8 @@ class AppUI:
         self.use_operation_check_var.set(c.use_operation_check)
         self.op_check_coord_var.set(str(c.op_check_coord))
         self.op_check_color_var.set(str(c.op_check_color))
+        self.op_check_max_retries_var.set(str(c.op_check_max_retries))
+        self.op_check_retry_interval_var.set(str(int(c.op_check_retry_interval * 100)))
         self.empty_coord_var.set(str(c.empty_coord))
         self.use_sequence_var.set(c.use_sequence)
         self.direction_var.set(self.SEARCH_DIRECTION_MAP[c.search_direction])
@@ -735,25 +757,29 @@ class AppUI:
 
     def _toggle_operation_check_state(self):
         """탐색 화면 정상 여부 확인 그룹 내의 위젯 상태를 체크박스에 따라 토글합니다."""
-        # 글로벌 '구역 탐색 사용'이 꺼져있으면 아예 조작 불가
-        if not self.use_sequence_var.get():
-            return
-
-        is_enabled = self.use_operation_check_var.get()
+        # 글로벌 '구역 탐색'과 로컬 '정상 여부 확인'이 모두 활성화되어야 내부 위젯 활성화
+        is_enabled = self.use_sequence_var.get() and self.use_operation_check_var.get()
+        
         state = 'normal' if is_enabled else 'disabled'
         entry_bg = '#444444' if is_enabled else '#555555'
         fg_color = 'white' if is_enabled else '#666666'
 
+        def set_state_inner(w):
+            """내부 위젯의 상태를 재귀적으로 변경하는 헬퍼 함수"""
+            try:
+                if isinstance(w, (tk.Entry, tk.Button, tk.Checkbutton, tk.OptionMenu)):
+                    w.config(state=state)
+                if isinstance(w, tk.Entry):
+                    w.config(disabledbackground=entry_bg)
+                if isinstance(w, (tk.Label, tk.Checkbutton)):
+                    w.config(fg=fg_color)
+                for child in w.winfo_children():
+                    set_state_inner(child)
+            except tk.TclError:
+                pass
+
         for parent in self.op_check_inner_widgets:
-            for widget in parent.winfo_children():
-                # _create_value_button_row가 생성한 프레임 내부 위젯들 처리
-                for inner in widget.winfo_children():
-                    if isinstance(inner, tk.Entry):
-                        inner.config(state=state, disabledbackground=entry_bg)
-                    elif isinstance(inner, tk.Button):
-                        inner.config(state=state)
-                    elif isinstance(inner, tk.Label):
-                        inner.config(state=state, fg=fg_color)
+            set_state_inner(parent)
 
     def display_visual_aids(self, areas=None, points=None):
         """화면에 영역과 좌표 마커들을 표시합니다."""

@@ -65,6 +65,8 @@ class AppController:
         self.use_operation_check = False # 탐색 화면 정상 여부 확인 사용 여부
         self.op_check_coord = (0, 0)
         self.op_check_color = (0, 0, 0)
+        self.op_check_max_retries = 3
+        self.op_check_retry_interval = 0.5
         self.empty_coord = (0, 0) # 빈 공간 좌표
         self.search_delay = 0.20 # 탐색 대기 (초)
         self.total_duration_sec = 1800 # 총 탐색 시간 (초)
@@ -213,6 +215,8 @@ class AppController:
             self.use_operation_check = self.ui.use_operation_check_var.get()
             self.op_check_coord = ast.literal_eval(self.ui.op_check_coord_var.get())
             self.op_check_color = ast.literal_eval(self.ui.op_check_color_var.get())
+            self.op_check_max_retries = int(self.ui.op_check_max_retries_var.get())
+            self.op_check_retry_interval = int(self.ui.op_check_retry_interval_var.get()) / 100.0
             self.empty_coord = ast.literal_eval(self.ui.empty_coord_var.get())
             self.total_duration_sec = int(self.ui.total_duration_var.get())
             self.active_search_duration_sec = int(self.ui.active_search_duration_var.get())
@@ -329,6 +333,8 @@ class AppController:
             'use_operation_check': self.use_operation_check,
             'op_check_coord': self.op_check_coord,
             'op_check_color': self.op_check_color,
+            'op_check_max_retries': self.op_check_max_retries,
+            'op_check_retry_interval': self.op_check_retry_interval,
             'empty_coord': self.empty_coord,
             'use_initial_search': self.use_initial_search,
             'area_delay': self.area_delay,
@@ -407,6 +413,8 @@ class AppController:
             self.use_operation_check = bool(settings_data.get('use_operation_check', self.use_operation_check))
             self.op_check_coord = tuple(settings_data.get('op_check_coord', self.op_check_coord))
             self.op_check_color = tuple(settings_data.get('op_check_color', self.op_check_color))
+            self.op_check_max_retries = int(settings_data.get('op_check_max_retries', self.op_check_max_retries))
+            self.op_check_retry_interval = float(settings_data.get('op_check_retry_interval', self.op_check_retry_interval))
             self.empty_coord = tuple(settings_data.get('empty_coord', self.empty_coord))
             self.use_sequence = bool(settings_data.get('use_sequence', self.use_sequence))
             self.area_delay = float(settings_data.get('area_delay', self.area_delay))
@@ -571,10 +579,38 @@ class AppController:
                 print(f"잘못된 구역 색상 키입니다: {color_key}, 오류: {e}")
 
         
-        self.ui.update_status(f"'{display_name}' 저장 완료: {new_color}")
-        # 색상 저장 성공 시 소리 1번 재생
         self.ui.queue_task(lambda: self.ui.play_sound(1))
         print(f"색상 저장 완료 ({color_key}): {new_color}")
+
+    def start_combined_picker(self, prefix: str):
+        """좌표와 색상을 한 번에 캡처하는 프로세스를 시작합니다. (화면확인용)"""
+        if not self.ui: return
+        display_name = "화면확인(좌표&색상)"
+        self.ui.update_status(f"'{display_name}' 지정: 2초 후 마우스 위치의 좌표와 색상을 저장합니다...")
+        self.ui.root.after(2000, lambda: self._grab_combined_after_delay(prefix, display_name))
+
+    def _grab_combined_after_delay(self, prefix: str, display_name: str):
+        """마우스 위치에서 좌표와 색상을 동시에 가져와 저장합니다."""
+        if not self.ui: return
+        x, y = self.mouse_controller.position
+        pos = (int(x), int(y))
+        
+        # 화면 전체 캡처 후 마우스 위치의 색상 추출 (Retina 스케일링 대응)
+        screenshot = ImageGrab.grab()
+        img_w, _ = screenshot.size
+        screen_w = self.ui.root.winfo_screenwidth()
+        scale = img_w / screen_w
+        color = screenshot.getpixel((int(x * scale), int(y * scale)))[:3]
+
+        if prefix == 'op_check':
+            self.ui.op_check_coord_var.set(str(pos))
+            self.ui.op_check_color_var.set(str(color))
+            self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
+
+        self.ui.update_status(f"'{display_name}' 저장 완료: 좌표{pos}, 색상{color}")
+        self.ui.queue_task(lambda: self.ui.play_sound(1))
+        print(f"통합 저장 완료 ({prefix}): {pos}, {color}")
+
 
     def toggle_search(self):
         """UI 버튼 클릭 시 검색 상태를 토글합니다."""
@@ -840,20 +876,37 @@ class AppController:
             return True
             
         x, y = self.op_check_coord
-        # 1x1 영역을 탐색하여 색상이 일치하는지 확인 (Retina 스케일링이 적용된 ColorFinder 로직 재사용)
-        found = self.color_finder.find_color_in_area(
-            (x, y, x + 1, y + 1), 
-            self.op_check_color, 
-            self.color_tolerance, 
-            SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
-        )
+        max_retries = self.op_check_max_retries
+        retry_delay = self.op_check_retry_interval
+
+        for i in range(max_retries):
+            # 1x1 영역을 탐색하여 색상이 일치하는지 확인 (Retina 스케일링이 적용된 ColorFinder 로직 재사용)
+            found = self.color_finder.find_color_in_area(
+                (x, y, x + 1, y + 1), 
+                self.op_check_color, 
+                self.color_tolerance, 
+                SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
+            )
+            
+            if found is not None:
+                return True
+            
+            # 콘솔 로그 출력
+            print(f"--- [화면 확인 실패] ({i+1}/{max_retries}) {retry_delay}초 후 재시도... ---")
+
+            # 마지막 시도가 아니라면 잠깐 대기 후 재시도
+            if i < max_retries - 1:
+                if self.ui:
+                    retry_msg = f"화면 확인 실패... 재시도 ({i+1}/{max_retries})"
+                    self.ui.queue_task(lambda msg=retry_msg: self.ui.update_status(msg))
+                time.sleep(retry_delay)
+                if not self.is_searching: return False
         
-        if found is None:
-            self.stop_search(f"화면 확인 실패: 좌표 ({x}, {y}) 색상 불일치", play_sound=False)
-            if self.ui:
-                self.ui.queue_task(lambda: self.ui.play_sound(5))
-            return False
-        return True
+        # 모든 재시도 실패 시 중지
+        self.stop_search(f"화면 확인 최종 실패: 좌표 ({x}, {y}) 색상 불일치 ({max_retries}회 시도)", play_sound=False)
+        if self.ui:
+            self.ui.queue_task(lambda: self.ui.play_sound(5))
+        return False
 
     def _search_worker(self, search_plan: list):
         """(스레드 워커) 전달받은 검색 계획(search_plan)을 순차적으로 실행합니다."""
