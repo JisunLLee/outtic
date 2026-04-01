@@ -62,6 +62,9 @@ class AppController:
         self.use_space_complete = True # 스페이스 완료 사용 여부
         self.area_delay = 0.75 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
         self.use_screen_activation = False # 화면 활성화 사용 여부
+        self.use_operation_check = False # 탐색 화면 정상 여부 확인 사용 여부
+        self.op_check_coord = (0, 0)
+        self.op_check_color = (0, 0, 0)
         self.empty_coord = (0, 0) # 빈 공간 좌표
         self.search_delay = 0.15 # 탐색 대기 (초)
         self.total_duration_sec = 1800 # 총 탐색 시간 (초)
@@ -211,6 +214,9 @@ class AppController:
             self.use_space_complete = self.ui.use_space_complete_var.get()
             self.use_sequence = self.ui.use_sequence_var.get()
             self.use_screen_activation = self.ui.use_screen_activation_var.get()
+            self.use_operation_check = self.ui.use_operation_check_var.get()
+            self.op_check_coord = ast.literal_eval(self.ui.op_check_coord_var.get())
+            self.op_check_color = ast.literal_eval(self.ui.op_check_color_var.get())
             self.empty_coord = ast.literal_eval(self.ui.empty_coord_var.get())
             self.total_duration_sec = int(self.ui.total_duration_var.get())
             self.active_search_duration_sec = int(self.ui.active_search_duration_var.get())
@@ -324,6 +330,9 @@ class AppController:
             'use_sequence': self.use_sequence,
             'use_space_complete': self.use_space_complete,
             'use_screen_activation': self.use_screen_activation,
+            'use_operation_check': self.use_operation_check,
+            'op_check_coord': self.op_check_coord,
+            'op_check_color': self.op_check_color,
             'empty_coord': self.empty_coord,
             'use_initial_search': self.use_initial_search,
             'area_delay': self.area_delay,
@@ -399,6 +408,9 @@ class AppController:
             self.use_initial_search = bool(settings_data.get('use_initial_search', self.use_initial_search))
             self.use_space_complete = bool(settings_data.get('use_space_complete', self.use_space_complete))
             self.use_screen_activation = bool(settings_data.get('use_screen_activation', self.use_screen_activation))
+            self.use_operation_check = bool(settings_data.get('use_operation_check', self.use_operation_check))
+            self.op_check_coord = tuple(settings_data.get('op_check_coord', self.op_check_coord))
+            self.op_check_color = tuple(settings_data.get('op_check_color', self.op_check_color))
             self.empty_coord = tuple(settings_data.get('empty_coord', self.empty_coord))
             self.use_sequence = bool(settings_data.get('use_sequence', self.use_sequence))
             self.area_delay = float(settings_data.get('area_delay', self.area_delay))
@@ -453,6 +465,7 @@ class AppController:
         elif coord_key == 'p2': display_name = '기본 ↘영역'
         elif coord_key == 'complete': display_name = '완료'
         elif coord_key == 'empty_coord': display_name = '빈공간'
+        elif coord_key == 'area_op_check_coord': display_name = '화면확인 좌표'
         elif coord_key.startswith('area_'):
             parts = coord_key.split('_')
             area_num = parts[1]
@@ -485,6 +498,9 @@ class AppController:
         elif coord_key == 'empty_coord':
             self.ui.empty_coord_var.set(str(new_pos))
             self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
+        elif coord_key == 'area_op_check_coord':
+            self.ui.op_check_coord_var.set(str(new_pos))
+            self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
         elif coord_key.startswith('area_'): # 예: 'area_1_p1', 'area_1_click_coord'
             try:
                 parts = coord_key.split('_')
@@ -518,6 +534,7 @@ class AppController:
         display_name = color_key
         if color_key == 'main_color': display_name = '기본 색상'
         elif color_key == 'secondary_color': display_name = '2순위 색상'
+        elif color_key == 'area_op_check_color': display_name = '화면확인 색상'
         elif color_key.startswith('area_'): # 예: 'area_1_color'
             area_num = color_key.split('_')[1] # '1'
             display_name = f'구역{area_num} 색상'
@@ -545,6 +562,9 @@ class AppController:
         elif color_key == 'secondary_color':
             self.ui.secondary_color_var.set(str(new_color))
             self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
+        elif color_key == 'area_op_check_color':
+            self.ui.op_check_color_var.set(str(new_color))
+            self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
         elif color_key.startswith('area_'): # 예: 'area_1_color'
             try:
                 area_number = int(color_key.split('_')[1]) # '1'

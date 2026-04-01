@@ -45,6 +45,9 @@ class AppUI:
         self.use_initial_search_var = tk.BooleanVar(value=c.use_initial_search)
         self.use_space_complete_var = tk.BooleanVar(value=c.use_space_complete)
         self.use_screen_activation_var = tk.BooleanVar(value=c.use_screen_activation)
+        self.use_operation_check_var = tk.BooleanVar(value=c.use_operation_check)
+        self.op_check_coord_var = tk.StringVar(value=str(c.op_check_coord))
+        self.op_check_color_var = tk.StringVar(value=str(c.op_check_color))
         self.empty_coord_var = tk.StringVar(value=str(c.empty_coord))
 
         self.use_sequence_var = tk.BooleanVar(value=c.use_sequence)
@@ -190,18 +193,27 @@ class AppUI:
         # --- 구역, 기본 탐색 사용 여부 ---
         toggle_frame = tk.Frame(status_and_toggle_container)
         toggle_frame.pack(fill=tk.X)
-        tk.Checkbutton(toggle_frame, text="구역 탐색 사용", variable=self.use_sequence_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=self._toggle_area_settings_active).pack(side=tk.LEFT)
-        tk.Checkbutton(toggle_frame, text="기본 탐색 사용", variable=self.use_initial_search_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT, padx=(10,0))
+        tk.Checkbutton(toggle_frame, text="기본 탐색 사용", variable=self.use_initial_search_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
         tk.Checkbutton(toggle_frame, text="스페이스완료", variable=self.use_space_complete_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT, padx=(10,0))
         # --- 상태 메시지 ---
         status_label = tk.Label(status_and_toggle_container, bg="#555555", textvariable=self.status_var, fg="lightblue", anchor='w')
         status_label.pack(fill=tk.X, pady=(5,0))
 
         # --- 구역 설정 그룹 ---
-        # 이 프레임은 모든 구역(구역1, 구역2 등)을 감싸는 컨테이너 역할을 합니다.
-        self.areas_container_group = self._create_labeled_frame(main_frame, 
-                                                                "구역 설정",
-                                                                name="areas_container_group")
+        # LabelFrame의 헤더에 체크박스와 제목 배치 (기존 '구역 탐색 사용' 체크박스 이동)
+        areas_header = tk.Frame(main_frame, bg=self.WINDOW_COLORS['default'])
+        self.use_sequence_cb = tk.Checkbutton(areas_header, variable=self.use_sequence_var, 
+                                              selectcolor="#2e2e2e", 
+                                              activebackground="#2e2e2e", highlightthickness=0,
+                                              command=self._toggle_area_settings_active)
+        self.use_sequence_cb.pack(side=tk.LEFT)
+        self.areas_header_label = tk.Label(areas_header, 
+                                           text="구역 탐색", 
+                                           fg="white", 
+                                           font=(None, 9, "bold"))
+        self.areas_header_label.pack(side=tk.LEFT)
+
+        self.areas_container_group = tk.LabelFrame(main_frame, labelwidget=areas_header, padx=10, pady=5, relief=tk.SOLID, borderwidth=1, name="areas_container_group")
         self.areas_container_group.pack(fill=tk.BOTH, expand=True, pady=(10))
 
         # 구역 세팅: 탐색/대기 시간
@@ -229,25 +241,39 @@ class AppUI:
         # 색상 선택 전 화면 클릭
         area_active_container, (left_frame, right_frame) = self._create_split_container(self.areas_container_group, weights=[1, 1])
         # 빈공간 좌표
-        self.screen_activation_check = tk.Checkbutton(left_frame, text="화면활성화", variable=self.use_screen_activation_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0)
+        self.screen_activation_check = tk.Checkbutton(left_frame, 
+                                                      text="화면활성화", 
+                                                      variable=self.use_screen_activation_var, 
+                                                      fg="white", 
+                                                      selectcolor="#2e2e2e", 
+                                                      activebackground="#2e2e2e", 
+                                                      highlightthickness=0)
         self.screen_activation_check.pack(side=tk.LEFT)
-        self.empty_coord_frame = self._create_value_button_row(left_frame, self.empty_coord_var, "빈공간", command=lambda: self.controller.start_coordinate_picker('empty_coord'))
+        self.empty_coord_frame = self._create_value_button_row(left_frame, 
+                                                               self.empty_coord_var, 
+                                                               "빈공간", 
+                                                               command=lambda: self.controller.start_coordinate_picker('empty_coord'))
         self.empty_coord_frame.pack(side=tk.LEFT)
   
         # --- 탐색 화면 정상 여부 확인용 그룹 ---
-        self.operation_check_group = tk.LabelFrame(self.areas_container_group, 
-                                                   text=f"탐색 화면 정상 여부 확인", 
-                                                   fg="white", 
-                                                   padx=10, 
-                                                   pady=5)
+        op_check_header = tk.Frame(self.areas_container_group)
+        self.op_check_cb = tk.Checkbutton(op_check_header, variable=self.use_operation_check_var, 
+                                          selectcolor="#2e2e2e", 
+                                          activebackground="#2e2e2e", highlightthickness=0,
+                                          command=self._toggle_operation_check_state)
+        self.op_check_cb.pack(side=tk.LEFT)
+        tk.Label(op_check_header, text="탐색 화면 정상 여부 확인", fg="white").pack(side=tk.LEFT)
+
+        self.operation_check_group = tk.LabelFrame(self.areas_container_group, labelwidget=op_check_header, padx=10, pady=5)
         self.operation_check_group.pack(fill=tk.X, pady=12, padx=5, ipady=5)
 
         # Row 1: 화면 정상 여부 확인: 화면 확인 좌표, 화면 확인 색상
         operation_check_container, (left_frame, right_frame) = self._create_split_container(self.operation_check_group, weights=[1, 1])
-        self._create_value_button_row(left_frame, None, "좌표", command=lambda: None).pack(side=tk.LEFT)
-        self._create_value_button_row(right_frame, None, "색상", command=lambda: None).pack(side=tk.RIGHT)
+        self._create_value_button_row(left_frame, self.op_check_coord_var, "좌표", command=lambda: self.controller.start_coordinate_picker('area_op_check_coord')).pack(side=tk.LEFT)
+        self._create_value_button_row(right_frame, self.op_check_color_var, "색상", command=lambda: self.controller.start_color_picker('area_op_check_color')).pack(side=tk.RIGHT)
 
-        # --- 스크롤 가능한 구역 영역 생성 ---
+        # 위젯 상태 관리를 위해 내부 프레임 저장
+        self.op_check_inner_widgets = [left_frame, right_frame]
         scroll_container = tk.Frame(self.areas_container_group)
         scroll_container.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
 
@@ -683,6 +709,9 @@ class AppUI:
         self.use_initial_search_var.set(c.use_initial_search)
         self.use_space_complete_var.set(c.use_space_complete)
         self.use_screen_activation_var.set(c.use_screen_activation)
+        self.use_operation_check_var.set(c.use_operation_check)
+        self.op_check_coord_var.set(str(c.op_check_coord))
+        self.op_check_color_var.set(str(c.op_check_color))
         self.empty_coord_var.set(str(c.empty_coord))
         self.use_sequence_var.set(c.use_sequence)
         self.direction_var.set(self.SEARCH_DIRECTION_MAP[c.search_direction])
@@ -714,6 +743,30 @@ class AppUI:
         for area_number, toggles in self.area_toggles.items():
             for toggle_func in toggles.values():
                 toggle_func()
+        self.op_check_cb.config(state=state)
+        self._toggle_operation_check_state()
+
+    def _toggle_operation_check_state(self):
+        """탐색 화면 정상 여부 확인 그룹 내의 위젯 상태를 체크박스에 따라 토글합니다."""
+        # 글로벌 '구역 탐색 사용'이 꺼져있으면 아예 조작 불가
+        if not self.use_sequence_var.get():
+            return
+
+        is_enabled = self.use_operation_check_var.get()
+        state = 'normal' if is_enabled else 'disabled'
+        entry_bg = '#444444' if is_enabled else '#555555'
+        fg_color = 'white' if is_enabled else '#666666'
+
+        for parent in self.op_check_inner_widgets:
+            for widget in parent.winfo_children():
+                # _create_value_button_row가 생성한 프레임 내부 위젯들 처리
+                for inner in widget.winfo_children():
+                    if isinstance(inner, tk.Entry):
+                        inner.config(state=state, disabledbackground=entry_bg)
+                    elif isinstance(inner, tk.Button):
+                        inner.config(state=state)
+                    elif isinstance(inner, tk.Label):
+                        inner.config(state=state, fg=fg_color)
 
     def display_visual_aids(self, areas=None, points=None):
         """화면에 영역과 좌표 마커들을 표시합니다."""
@@ -941,7 +994,7 @@ class AppUI:
             except tk.TclError:
                 pass # 위젯이 파괴된 경우 등 예외 처리
 
-        self.areas_container_group.config(fg=group_fg)
+        self.areas_header_label.config(fg=group_fg)
 
         # '구역 설정' 그룹 내의 공통 위젯들 상태 변경
         set_state_recursive(self.total_duration_frame, state, group_fg, entry_bg)
