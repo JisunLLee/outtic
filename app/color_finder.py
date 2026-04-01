@@ -19,6 +19,7 @@ class SearchDirection(Enum):
     CENTER_BOTTOM_TO_TOP = "↑↔"
     CENTER_LEFT_TO_RIGHT = "→↕"
     CENTER_RIGHT_TO_LEFT = "←↕"
+    CENTER_TO_CENTER = "☉"
 
 class ColorFinder:
     """화면에서 특정 색상을 찾고 관련 동작을 수행하는 클래스"""
@@ -140,7 +141,7 @@ class ColorFinder:
                         if x_right < width and self._is_color_match(img_array[y, x_right][:3], color, tolerance_sq):
                             found_x_rel, _ = self._find_blob_center(img_array, x_right, y, color, tolerance_sq)
                             return x1 + (found_x_rel / scale_x), y1 + (y / scale_y)
-        else: # CENTER_LEFT_TO_RIGHT, CENTER_RIGHT_TO_LEFT
+        elif direction in [SearchDirection.CENTER_LEFT_TO_RIGHT, SearchDirection.CENTER_RIGHT_TO_LEFT]:
             x_range = range(width) if direction == SearchDirection.CENTER_LEFT_TO_RIGHT else range(width - 1, -1, -1)
             center_y = height // 2
             for x in x_range:
@@ -157,6 +158,26 @@ class ColorFinder:
                         if y_down < height and self._is_color_match(img_array[y_down, x][:3], color, tolerance_sq):
                             _, found_y_rel = self._find_blob_center(img_array, x, y_down, color, tolerance_sq)
                             return x1 + (x / scale_x), y1 + (found_y_rel / scale_y)
+        # 중앙에서 외곽으로 확장 탐색
+        elif direction == SearchDirection.CENTER_TO_CENTER:
+            center_x, center_y = width // 2, height // 2
+            max_r = max(center_x, width - center_x, center_y, height - center_y)
+            for r in range(max_r + 1):
+                # 반지름 r인 정사각형의 둘레를 시계방향으로 탐색
+                for dx in range(-r, r + 1):
+                    for dy in [-r, r]: # 상단과 하단 변
+                        curr_x, curr_y = center_x + dx, center_y + dy
+                        if 0 <= curr_x < width and 0 <= curr_y < height:
+                            if self._is_color_match(img_array[curr_y, curr_x][:3], color, tolerance_sq):
+                                found_x_rel, found_y_rel = self._find_blob_center(img_array, curr_x, curr_y, color, tolerance_sq)
+                                return x1 + (found_x_rel / scale_x), y1 + (found_y_rel / scale_y)
+                for dy in range(-r + 1, r):
+                    for dx in [-r, r]: # 좌측과 우측 변 (모서리 중복 제외)
+                        curr_x, curr_y = center_x + dx, center_y + dy
+                        if 0 <= curr_x < width and 0 <= curr_y < height:
+                            if self._is_color_match(img_array[curr_y, curr_x][:3], color, tolerance_sq):
+                                found_x_rel, found_y_rel = self._find_blob_center(img_array, curr_x, curr_y, color, tolerance_sq)
+                                return x1 + (found_x_rel / scale_x), y1 + (found_y_rel / scale_y)
 
         return None
 

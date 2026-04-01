@@ -66,6 +66,7 @@ class AppUI:
             SearchDirection.CENTER_BOTTOM_TO_TOP: "↑↔ (x)",
             SearchDirection.CENTER_LEFT_TO_RIGHT: "→↕ (c)",
             SearchDirection.CENTER_RIGHT_TO_LEFT: "←↕ (v)",
+            SearchDirection.CENTER_TO_CENTER: "중앙 ☉ (g)",
         }
         self.direction_var = tk.StringVar(value=self.SEARCH_DIRECTION_MAP[c.search_direction])
         self.total_duration_var = tk.StringVar(value=str(c.total_duration_sec))
@@ -325,7 +326,9 @@ class AppUI:
 
         coord_label = tk.Entry(left_frame, textvariable=vars['coord_var'], bg="#444444", fg="white", insertbackground='white', borderwidth=0, highlightthickness=0, width=10, validate="key", validatecommand=self.tuple_vcmd)
         coord_button = tk.Button(left_frame, text=f"구역 {area_number}", width=3, command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_click_coord'))
-        
+        # 구역 삭제 버튼 (빨간색 텍스트)
+        delete_button = tk.Button(left_frame, text="삭제", fg="#ff4d4d", activeforeground="red", width=3, command=lambda: self.controller.remove_area(area_number))
+
         right_inner_frame = tk.Frame(right_frame)
         clicks_frame = self._create_labeled_entry(right_inner_frame, "횟수:", vars['clicks_var'])
         offset_frame = self._create_labeled_entry(right_inner_frame, "오차:", vars['offset_var'])
@@ -339,6 +342,7 @@ class AppUI:
 
             coord_label.config(state=state, fg=label_fg, disabledbackground=entry_bg)
             coord_button.config(state=state)
+            delete_button.config(state=state)
 
             for frame in [clicks_frame, offset_frame]:
                 for widget in frame.winfo_children():
@@ -353,6 +357,7 @@ class AppUI:
 
         coord_label.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0))
         coord_button.pack(side=tk.LEFT)
+        delete_button.pack(side=tk.LEFT, padx=(5,0))
 
         # --- Row 1 오른쪽: 선택 횟수, 오차 설정 ---
         right_inner_frame.pack(fill=tk.X)
@@ -512,6 +517,22 @@ class AppUI:
         
         # 새로 추가된 구역의 활성화 상태 동기화
         self._toggle_area_settings_active()
+
+    def remove_area_from_ui(self, area_number: int):
+        """UI에서 특정 구역 위젯을 제거합니다."""
+        if area_number in self.area_widgets:
+            widgets = self.area_widgets[area_number]
+            # 위젯 파괴
+            widgets['group'].destroy()
+            
+            # 관리용 데이터 정리
+            del self.area_widgets[area_number]
+            del self.area_vars[area_number]
+            if area_number in self.area_toggles:
+                del self.area_toggles[area_number]
+            
+            # 스크롤 영역 갱신 (지연 실행하여 파괴된 위젯이 반영되도록 함)
+            self.root.after(10, lambda: self.scrollable_canvas.configure(scrollregion=self.scrollable_canvas.bbox("all")))
 
     def flash_setting_change(self, state: str, duration_ms=150):
         """설정 변경 시 창 배경색을 잠시 변경하여 시각적 피드백을 줍니다."""

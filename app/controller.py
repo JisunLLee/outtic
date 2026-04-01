@@ -77,11 +77,23 @@ class AppController:
 
     def add_area(self):
         """새로운 구역을 데이터 모델과 UI에 추가합니다."""
-        new_area_num = len(self.areas) + 1
+        # 삭제된 구역이 있을 수 있으므로 현재 존재하는 구역 번호 중 최댓값 + 1을 새 번호로 사용합니다.
+        if self.areas:
+            new_area_num = max(self.areas.keys()) + 1
+        else:
+            new_area_num = 1
+            
         self._initialize_area_settings(new_area_num)
         if self.ui:
             self.ui.add_area_to_ui(new_area_num)
         return new_area_num
+
+    def remove_area(self, area_number):
+        """지정된 구역을 데이터 모델과 UI에서 제거합니다."""
+        if area_number in self.areas:
+            del self.areas[area_number]
+            if self.ui:
+                self.ui.remove_area_from_ui(area_number)
 
     def set_ui(self, ui: 'AppUI'):
         """
@@ -189,6 +201,7 @@ class AppController:
                 "↑↔ (x)": SearchDirection.CENTER_BOTTOM_TO_TOP,
                 "→↕ (c)": SearchDirection.CENTER_LEFT_TO_RIGHT,
                 "←↕ (v)": SearchDirection.CENTER_RIGHT_TO_LEFT,
+                "중앙 ☉ (g)": SearchDirection.CENTER_TO_CENTER,
             }
             selected_direction_str = self.ui.direction_var.get()
             self.search_direction = direction_map.get(selected_direction_str, SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT)
@@ -741,6 +754,7 @@ class AppController:
                 'x': SearchDirection.CENTER_BOTTOM_TO_TOP, 'ㅌ': SearchDirection.CENTER_BOTTOM_TO_TOP,
                 'c': SearchDirection.CENTER_LEFT_TO_RIGHT, 'ㅊ': SearchDirection.CENTER_LEFT_TO_RIGHT,
                 'v': SearchDirection.CENTER_RIGHT_TO_LEFT, 'ㅍ': SearchDirection.CENTER_RIGHT_TO_LEFT,
+                'g': SearchDirection.CENTER_TO_CENTER, 'ㅎ': SearchDirection.CENTER_TO_CENTER,
             }
 
             # key.char가 존재하는지 확인 (특수키가 아닐 경우)
