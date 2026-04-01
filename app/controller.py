@@ -43,10 +43,10 @@ class AppController:
 
         # --- 기본값 설정 ---
         # 이 값들은 UI의 초기값을 설정하는 데 사용됩니다.
-        self.p1 = (497, 366)
-        self.p2 = (1154, 817)
-        self.color = (13, 192, 192)
-        self.complete_coord = (871, 174)
+        self.p1 = (76, 233)
+        self.p2 = (616, 707)
+        self.color = (190, 168, 134)
+        self.complete_coord = (1314,905)
         self.color_tolerance = 15
         self.color_area_tolerance = 5
         self.search_direction = SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT
@@ -54,7 +54,7 @@ class AppController:
         
         # 2순위 색상 추가
         self.use_secondary_color = False
-        self.secondary_color = (85, 41, 221)
+        self.secondary_color = (255, 138, 180)
 
         # --- 구역값 설정 ---
         self.use_initial_search = True # '기본 탐색 사용' 체크박스 기본값
@@ -62,9 +62,9 @@ class AppController:
         self.use_space_complete = True # 스페이스 완료 사용 여부
         self.area_delay = 0.70 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
         self.use_screen_activation = False # 화면 활성화 사용 여부
-        self.use_operation_check = True # 탐색 화면 정상 여부 확인 사용 여부
+        self.use_operation_check = False # 탐색 화면 정상 여부 확인 사용 여부
         self.op_check_coord = (486, 1885)
-        self.op_check_color = (200, 200, 200)
+        self.op_check_color = (0, 0, 0)
         self.op_check_max_retries = 3
         self.op_check_retry_interval = 0.5
         self.empty_coord = (0, 0) # 빈 공간 좌표
