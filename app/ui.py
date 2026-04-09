@@ -371,13 +371,28 @@ class AppUI:
         :param area_number: 생성할 구역의 번호 (예: 1)
         """
         # LabelFrame의 헤더(제목) 영역에 들어갈 프레임 생성
-        header_frame = tk.Frame(parent, bg=self.WINDOW_COLORS['default'])
-        name_entry = tk.Entry(header_frame, textvariable=self.area_vars[area_number]['name_var'],
-                              fg="white", bg=self.WINDOW_COLORS['default'], font=(None, 9, "bold"),
-                              borderwidth=0, highlightthickness=0, width=12)
-        name_entry.pack(side=tk.LEFT)
+        header_frame = tk.Frame(parent)
+
+        # 탐색 순서 표시 레이블 (예: 1., 2. ...)
+        try:
+            order_idx = self.controller.area_order.index(area_number) + 1
+        except (ValueError, AttributeError):
+            order_idx = area_number
+
+        order_label = tk.Label(header_frame, text=f"{order_idx}.", fg="white",  font=(None, 9, "bold"))
+        order_label.pack(side=tk.LEFT, padx=(2, 0))
+
+        name_entry = tk.Entry(header_frame, 
+                              textvariable=self.area_vars[area_number]['name_var'],
+                              fg="white", 
+                              bg="#444444", 
+                              font=(None, 9, "bold"),
+                              borderwidth=0, 
+                              highlightthickness=0, 
+                              width=12)
+        name_entry.pack(side=tk.LEFT, expand=True, fill=tk.X)
         
-        # 헤더에 들어갈 삭제 버튼 (텍스트 형태로 복구)
+        # 헤더에 들어갈 삭제 버튼 
         delete_button = tk.Button(header_frame, text="삭제", fg="#f58585", activeforeground="red", 
                                   activebackground="#444444",
                                   font=(None, 8), padx=5, pady=0,
@@ -578,6 +593,7 @@ class AppUI:
         widgets['group'] = area_group
         widgets['use_search_check'] = use_search_checkbutton
         widgets['delete_button'] = delete_button
+        widgets['order_label'] = order_label
         widgets['up_button'] = up_button
         widgets['down_button'] = down_button
         widgets['coord_label'] = coord_label
@@ -646,9 +662,13 @@ class AppUI:
     def refresh_area_order(self):
         """컨트롤러의 area_order에 맞춰 UI 구역 위젯들의 배치를 갱신합니다."""
         self.add_area_btn.pack_forget()
-        for area_num in self.controller.area_order:
+        for i, area_num in enumerate(self.controller.area_order):
             if area_num in self.area_widgets:
-                group = self.area_widgets[area_num]['group']
+                widgets = self.area_widgets[area_num]
+                # 순서 번호 레이블 텍스트 갱신
+                widgets['order_label'].config(text=f"{i+1}.")
+                
+                group = widgets['group']
                 group.pack_forget()
                 group.pack(fill=tk.BOTH, expand=True, pady=10)
         self.add_area_btn.pack(fill=tk.X, pady=10, padx=50)
@@ -668,6 +688,9 @@ class AppUI:
             
             # 스크롤 영역 갱신 (지연 실행하여 파괴된 위젯이 반영되도록 함)
             self.root.after(10, lambda: self.scrollable_canvas.configure(scrollregion=self.scrollable_canvas.bbox("all")))
+            
+            # 구역 삭제 후 나머지 구역들의 순서 번호 재정렬
+            self.refresh_area_order()
 
     def flash_setting_change(self, state: str, duration_ms=150):
         """설정 변경 시 창 배경색을 잠시 변경하여 시각적 피드백을 줍니다."""
