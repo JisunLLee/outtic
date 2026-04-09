@@ -385,8 +385,11 @@ class AppUI:
         except (ValueError, AttributeError):
             order_idx = area_number
 
-        order_label = tk.Label(header_frame, text=f"{order_idx}.", fg="white",  font=(None, 9, "bold"))
+        # 순서 번호 레이블을 드래그 핸들로 사용 (커서 변경 및 이벤트 바인딩)
+        order_label = tk.Label(header_frame, text=f"{order_idx}.", fg="white", font=(None, 9, "bold"), cursor="fleur")
         order_label.pack(side=tk.LEFT, padx=(2, 0))
+        order_label.bind("<Button-1>", lambda e: self._on_area_drag_start(e, area_number))
+        order_label.bind("<ButtonRelease-1>", lambda e: self._on_area_drag_release(e, area_number))
 
         name_entry = tk.Entry(header_frame, 
                               textvariable=self.area_vars[area_number]['name_var'],
@@ -403,17 +406,6 @@ class AppUI:
                                   font=(None, 8), pady=0,
                                   command=lambda: self.controller.remove_area(area_number))
         delete_button.pack(side=tk.LEFT)
-
-        # 순서 변경 버튼
-        up_button = tk.Button(header_frame, text="↑", fg="black", activeforeground="white", activebackground="#555555",
-                              font=(None, 8), pady=0, bg=self.WINDOW_COLORS['default'],
-                              command=lambda: self.controller.move_area(area_number, -1))
-        up_button.pack(side=tk.LEFT)
-        
-        down_button = tk.Button(header_frame, text="↓", fg="black", activeforeground="white", activebackground="#555555",
-                                font=(None, 8), pady=0, bg=self.WINDOW_COLORS['default'],
-                                command=lambda: self.controller.move_area(area_number, 1))
-        down_button.pack(side=tk.LEFT)
 
         area_group = tk.LabelFrame(parent, labelwidget=header_frame)
         area_group.pack(fill=tk.BOTH, expand=True, pady=(10))
@@ -597,8 +589,6 @@ class AppUI:
         widgets['delete_button'] = delete_button
         widgets['name_entry'] = name_entry
         widgets['order_label'] = order_label
-        widgets['up_button'] = up_button
-        widgets['down_button'] = down_button
         widgets['coord_label'] = coord_label
         widgets['coord_button'] = coord_button
         widgets['clicks_frame'] = clicks_frame
@@ -665,16 +655,44 @@ class AppUI:
     def refresh_area_order(self):
         """컨트롤러의 area_order에 맞춰 UI 구역 위젯들의 배치를 갱신합니다."""
         self.add_area_btn.pack_forget()
-        for i, area_num in enumerate(self.controller.area_order):
+        display_idx = 1
+        for area_num in self.controller.area_order:
             if area_num in self.area_widgets:
                 widgets = self.area_widgets[area_num]
                 # 순서 번호 레이블 텍스트 갱신
-                widgets['order_label'].config(text=f"{i+1}.")
+                widgets['order_label'].config(text=f"{display_idx}.", fg="white")
                 
                 group = widgets['group']
                 group.pack_forget()
                 group.pack(fill=tk.BOTH, expand=True, pady=10)
+                display_idx += 1
+                
         self.add_area_btn.pack(fill=tk.X, pady=10, padx=50)
+
+    def _on_area_drag_start(self, event, area_num):
+        """드래그 시작 시 시각적 피드백 제공."""
+        if area_num in self.area_widgets:
+            self.area_widgets[area_num]['order_label'].config(fg="#40E0D0") # 터콰이즈 색상으로 변경
+
+    def _on_area_drag_release(self, event, area_num):
+        """드래그 종료 시 마우스 위치를 기반으로 새로운 순서를 결정합니다."""
+        y_cursor = event.y_root
+        
+        # 현재 드래그 중인 구역을 제외한 나머지 구역들의 중앙 Y 좌표 수집
+        centers = []
+        for a_num in self.controller.area_order:
+            if a_num != area_num and a_num in self.area_widgets:
+                group = self.area_widgets[a_num]['group']
+                center_y = group.winfo_rooty() + (group.winfo_height() // 2)
+                centers.append(center_y)
+        
+        # 마우스 위치가 몇 번째 '슬롯'에 있는지 계산
+        new_index = 0
+        for c_y in centers:
+            if y_cursor > c_y:
+                new_index += 1
+        
+        self.controller.reorder_area(area_num, new_index)
 
     def remove_area_from_ui(self, area_number: int):
         """UI에서 특정 구역 위젯을 제거합니다."""
@@ -1193,8 +1211,6 @@ class AppUI:
                 widgets['name_entry'].config(state='normal', bg='#444444', fg='white')
                 widgets['order_label'].config(fg='white')
                 widgets['delete_button'].config(state='normal')
-                widgets['up_button'].config(state='normal')
-                widgets['down_button'].config(state='normal')
                 self.area_toggles[area_number]['search']()
                 self.area_toggles[area_number]['bounds']()
                 self.area_toggles[area_number]['color']()

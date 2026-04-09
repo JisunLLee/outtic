@@ -92,19 +92,20 @@ class AppController:
             new_area_num = 1
             
         self._initialize_area_settings(new_area_num)
-        self.area_order.append(new_area_num)
         if self.ui:
             self.ui.add_area_to_ui(new_area_num)
         return new_area_num
     
-    def move_area(self, area_number, direction):
-        """구역의 탐색 순서를 위(-1) 또는 아래(1)로 이동시킵니다."""
-        idx = self.area_order.index(area_number)
-        new_idx = idx + direction
-        if 0 <= new_idx < len(self.area_order):
-            self.area_order[idx], self.area_order[new_idx] = self.area_order[new_idx], self.area_order[idx]
+    def reorder_area(self, area_number, new_index):
+        """구역의 탐색 순서를 새로운 위치로 변경합니다 (Drag & Drop)."""
+        if area_number in self.area_order:
+            self.area_order.remove(area_number)
+            # 새 위치로 삽입 (인덱스 범위 보정)
+            target_idx = max(0, min(new_index, len(self.area_order)))
+            self.area_order.insert(target_idx, area_number)
             if self.ui:
                 self.ui.refresh_area_order()
+            self.auto_save_settings()
 
     def remove_area(self, area_number):
         """지정된 구역을 데이터 모델과 UI에서 제거합니다."""
@@ -502,9 +503,24 @@ class AppController:
             self.active_search_duration_sec = int(settings_data.get('active_search_duration_sec', self.active_search_duration_sec))
             self.wait_duration_sec = int(settings_data.get('wait_duration_sec', self.wait_duration_sec))
             self.search_time_tolerance_sec = int(settings_data.get('search_time_tolerance_sec', self.search_time_tolerance_sec))
-            self.area_order = settings_data.get('area_order', sorted([int(k) for k in settings_data.get('areas', {}).keys()]))
 
             loaded_areas = settings_data.get('areas', {})
+            loaded_area_ids = [int(k) for k in loaded_areas.keys()]
+            
+            # 불러온 순서 데이터에서 중복을 제거하고 실제 존재하는 구역만 필터링
+            raw_order = settings_data.get('area_order', [])
+            filtered_order = []
+            for aid in raw_order:
+                if aid in loaded_area_ids and aid not in filtered_order:
+                    filtered_order.append(aid)
+            
+            # 순서 데이터에 누락된 구역이 있다면 뒤에 추가
+            for aid in sorted(loaded_area_ids):
+                if aid not in filtered_order:
+                    filtered_order.append(aid)
+            
+            self.area_order = filtered_order
+
             for area_number_str, loaded in loaded_areas.items():
                 area_number = int(area_number_str)
                 while area_number not in self.areas:
@@ -575,9 +591,23 @@ class AppController:
             self.active_search_duration_sec = int(settings_data.get('active_search_duration_sec', self.active_search_duration_sec))
             self.wait_duration_sec = int(settings_data.get('wait_duration_sec', self.wait_duration_sec))
             self.search_time_tolerance_sec = int(settings_data.get('search_time_tolerance_sec', self.search_time_tolerance_sec))
-            self.area_order = settings_data.get('area_order', sorted([int(k) for k in settings_data.get('areas', {}).keys()]))
 
             loaded_areas = settings_data.get('areas', {})
+            loaded_area_ids = [int(k) for k in loaded_areas.keys()]
+            
+            # 순서 데이터 정화 (중복 제거 및 유효성 검사)
+            raw_order = settings_data.get('area_order', [])
+            filtered_order = []
+            for aid in raw_order:
+                if aid in loaded_area_ids and aid not in filtered_order:
+                    filtered_order.append(aid)
+            
+            for aid in sorted(loaded_area_ids):
+                if aid not in filtered_order:
+                    filtered_order.append(aid)
+            
+            self.area_order = filtered_order
+
             for area_number_str, loaded in loaded_areas.items():
                 area_number = int(area_number_str)
                 # 현재 생성된 구역보다 많은 구역이 설정 파일에 있다면 자동으로 추가합니다.
