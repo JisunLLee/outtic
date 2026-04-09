@@ -592,6 +592,7 @@ class AppUI:
         widgets['group'] = area_group
         widgets['use_search_check'] = use_search_checkbutton
         widgets['delete_button'] = delete_button
+        widgets['name_entry'] = name_entry
         widgets['order_label'] = order_label
         widgets['up_button'] = up_button
         widgets['down_button'] = down_button
@@ -1165,12 +1166,16 @@ class AppUI:
                         for sub_widget in widget.winfo_children():
                             if isinstance(sub_widget, tk.Entry): sub_widget.config(state='disabled', disabledbackground=entry_bg)
                             else: sub_widget.config(state='disabled')
-                    elif isinstance(widget, (tk.Button, tk.Entry, tk.OptionMenu)):
-                        widget.config(state='disabled')
-                    elif isinstance(widget, tk.Entry) and 'var' in str(widget.cget('textvariable')):
+                    elif isinstance(widget, tk.Entry):
                         widget.config(state='disabled', bg=label_bg, fg=label_fg, disabledbackground=entry_bg)
+                    elif isinstance(widget, (tk.Button, tk.OptionMenu)):
+                        widget.config(state='disabled')
+                    elif isinstance(widget, tk.Label):
+                        widget.config(fg=label_fg)
             else:
                 # '구역 탐색 사용'이 켜지면, 삭제 버튼은 항상 활성화하고 나머지 개별 상태를 다시 적용
+                widgets['name_entry'].config(state='normal', bg='#444444', fg='white')
+                widgets['order_label'].config(fg='white')
                 widgets['delete_button'].config(state='normal')
                 widgets['up_button'].config(state='normal')
                 widgets['down_button'].config(state='normal')
