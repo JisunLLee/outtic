@@ -226,20 +226,20 @@ class AppUI:
         self.wait_duration_frame.pack(expand=True, fill=tk.X)
 
         # 구역 세팅: 딜레이
-        delay_set_container, (left_frame, right_frame) = self._create_split_container(self.areas_container_group, weights=[2, 1])
+        delay_set_container, (frame1, frame2, frame3) = self._create_split_container(self.areas_container_group, weights=[1, 1, 1])
         
         # 시간 오차를 딜레이 설정 왼쪽에 추가
-        self.search_time_tolerance_frame = self._create_labeled_entry(left_frame, "시간 오차(초):", self.search_time_tolerance_var)
+        self.search_time_tolerance_frame = self._create_labeled_entry(frame1, "시간 오차(초):", self.search_time_tolerance_var)
         self.search_time_tolerance_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
 
         # 탐색 딜레이 사용 여부 체크박스
-        self.search_delay_check = tk.Checkbutton(left_frame, variable=self.use_search_delay_var, 
+        self.search_delay_check = tk.Checkbutton(frame2, variable=self.use_search_delay_var, 
                                                  fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", 
                                                  highlightthickness=0, command=self._toggle_search_delay_state)
         self.search_delay_check.pack(side=tk.LEFT)
-        self.search_delay_frame = self._create_labeled_entry(left_frame, "탐색 딜레이:", self.search_delay_var)
+        self.search_delay_frame = self._create_labeled_entry(frame2, "탐색 딜레이:", self.search_delay_var)
         self.search_delay_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
-        self.area_delay_frame = self._create_labeled_entry(left_frame, "구역선택 딜레이:", self.area_delay_var)
+        self.area_delay_frame = self._create_labeled_entry(frame3, "구역선택 딜레이:", self.area_delay_var)
         self.area_delay_frame.pack(side=tk.RIGHT,expand=True, fill=tk.X)
 
 
@@ -275,12 +275,21 @@ class AppUI:
         # 색상 입력창 + 통합 버튼
         self._create_color_preview(right_frame, self.op_check_color_var).pack(side=tk.LEFT, padx=(0, 5))
 
-        tk.Entry(right_frame, textvariable=self.op_check_color_var, bg="#555555", fg="white", 
-                 insertbackground='white', borderwidth=0, highlightthickness=0, width=12,
-                 validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
-        self.op_check_combined_btn = tk.Button(right_frame, text="좌표&색상", 
-                                               activeforeground="white", activebackground="#555555",
-                                               padx=5,
+        tk.Entry(right_frame, 
+                 textvariable=self.op_check_color_var, 
+                 bg="#555555", 
+                 fg="white", 
+                 insertbackground='white', 
+                 borderwidth=0, 
+                 highlightthickness=0, 
+                 width=12,
+                 validate="key", 
+                 validatecommand=self.tuple_vcmd
+                 ).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        self.op_check_combined_btn = tk.Button(right_frame, 
+                                               text="좌표&색상", 
+                                               activeforeground="white", 
+                                               activebackground="#555555",
                                                command=lambda: self.controller.start_combined_picker('op_check'))
         self.op_check_combined_btn.pack(side=tk.LEFT, padx=(5,0))
 
@@ -294,7 +303,7 @@ class AppUI:
         scroll_container = tk.Frame(self.areas_container_group)
         scroll_container.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
 
-        self.scrollable_canvas = tk.Canvas(scroll_container, borderwidth=0)
+        self.scrollable_canvas = tk.Canvas(scroll_container, borderwidth=0, highlightthickness=0)
         scrollbar = ttk.Scrollbar(scroll_container, orient="vertical", command=self.scrollable_canvas.yview)
         self.scrollable_canvas.configure(yscrollcommand=scrollbar.set)
 
@@ -302,7 +311,15 @@ class AppUI:
         self.scrollable_canvas.pack(side="left", fill=tk.BOTH, expand=True)
 
         self.scrollable_content_frame = tk.Frame(self.scrollable_canvas)
-        self.scrollable_canvas.create_window((0, 0), window=self.scrollable_content_frame, anchor="nw")
+        self.canvas_window = self.scrollable_canvas.create_window((0, 0), window=self.scrollable_content_frame, anchor="nw")
+
+        def on_canvas_configure(event):
+            # 캔버스 너비에서 미세한 여유(4px)를 빼서 가로 스크롤바가 생기는 것을 방지하고 
+            # 수직 스크롤바와의 겹침 현상을 해결합니다.
+            canvas_width = max(0, event.width - 4)
+            self.scrollable_canvas.itemconfig(self.canvas_window, width=canvas_width)
+
+        self.scrollable_canvas.bind('<Configure>', on_canvas_configure)
 
         def on_frame_configure(event):
             self.scrollable_canvas.configure(scrollregion=self.scrollable_canvas.bbox("all"))
@@ -329,7 +346,9 @@ class AppUI:
             self._create_area_group(self.scrollable_content_frame, i)
 
         # 구역 추가 버튼 생성 (상태 변경 메서드 호출 전에 생성되어야 함)
-        self.add_area_btn = tk.Button(self.scrollable_content_frame, text="+ 구역 추가", command=self.controller.add_area)
+        self.add_area_btn = tk.Button(self.scrollable_content_frame, 
+                                      text="+ 구역 추가", 
+                                      command=self.controller.add_area)
         self.add_area_btn.pack(fill=tk.X, pady=10, padx=50)
 
         # --- 액션 버튼 ---
@@ -340,22 +359,28 @@ class AppUI:
         action_frame.grid_columnconfigure(2, weight=1)
         action_frame.grid_columnconfigure(3, weight=1)
 
-        self.load_button = tk.Button(action_frame, text="불러오기", 
-                                     activeforeground="white", activebackground="#555555",
+        self.load_button = tk.Button(action_frame, 
+                                     text="불러오기", 
+                                     activeforeground="white", 
+                                     activebackground="#555555",
                                      command=self.controller.load_settings)
         self.load_button.grid(row=0, column=0, sticky=tk.EW, padx=(0, 5))
-        self.save_button = tk.Button(action_frame, text="저장하기", 
-                                     activeforeground="white", activebackground="#555555",
+        self.save_button = tk.Button(action_frame, 
+                                     text="저장하기", 
+                                     activeforeground="white", 
+                                     activebackground="#555555",
                                      command=self.controller.save_settings)
         self.save_button.grid(row=0, column=1, sticky=tk.EW, padx=(0, 5))
 
         self.area_button = tk.Button(action_frame, text="영역확인", 
-                                     activeforeground="white", activebackground="#555555",
+                                     activeforeground="white", 
+                                     activebackground="#555555",
                                      command=self.controller.show_area)
         self.area_button.grid(row=0, column=2, sticky=tk.EW, padx=(0, 5))
         
         self.find_button = tk.Button(action_frame, text="찾기(Shift x2 / ESC)", 
-                                     activeforeground="white", activebackground="#555555",
+                                     activeforeground="white", 
+                                     activebackground="#555555",
                                      command=self.controller.toggle_search)
         self.find_button.grid(row=0, column=3, sticky=tk.EW)
 
@@ -393,22 +418,31 @@ class AppUI:
         name_entry.pack(side=tk.LEFT, expand=True, fill=tk.X)
         
         # 헤더에 들어갈 삭제 버튼 
-        delete_button = tk.Button(header_frame, text="삭제", fg="#f58585", activeforeground="red", 
+        delete_button = tk.Button(header_frame, text="삭제", 
+                                  fg="#f58585", 
+                                  activeforeground="red", 
                                   activebackground="#444444",
-                                  font=(None, 8), padx=5, pady=0,
+                                  font=(None, 8), 
                                   command=lambda: self.controller.remove_area(area_number))
         delete_button.pack(side=tk.LEFT, padx=(5, 0))
 
         # 순서 변경 버튼
-        up_button = tk.Button(header_frame, text="↑", fg="black", activeforeground="white", activebackground="#555555",
-                              font=(None, 8), padx=5, pady=0, bg=self.WINDOW_COLORS['default'],
+        up_button = tk.Button(header_frame, 
+                              text="↑",
+                              fg="black", 
+                              activeforeground="white", 
+                              activebackground="#555555",
+                              font=(None, 8), 
                               command=lambda: self.controller.move_area(area_number, -1))
-        up_button.pack(side=tk.LEFT, padx=(5, 0))
+        up_button.pack(side=tk.LEFT)
         
-        down_button = tk.Button(header_frame, text="↓", fg="black", activeforeground="white", activebackground="#555555",
-                                font=(None, 8), padx=5, pady=0, bg=self.WINDOW_COLORS['default'],
+        down_button = tk.Button(header_frame, text="↓", 
+                                fg="black", 
+                                activeforeground="white", 
+                                activebackground="#555555",
+                                font=(None, 8), 
                                 command=lambda: self.controller.move_area(area_number, 1))
-        down_button.pack(side=tk.LEFT, padx=(2, 0))
+        down_button.pack(side=tk.LEFT)
 
         area_group = tk.LabelFrame(parent, labelwidget=header_frame)
         area_group.pack(fill=tk.BOTH, expand=True, pady=(10))
@@ -433,8 +467,8 @@ class AppUI:
                                validatecommand=self.tuple_vcmd)
         coord_button = tk.Button(left_frame, 
                                  text=f"구역 {area_number}", 
-                                 padx=5,
                                  activeforeground="white",
+
                                  activebackground="#555555",
                                  command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_click_coord'))
         
@@ -522,7 +556,6 @@ class AppUI:
                                validate="key",
                                validatecommand=self.tuple_vcmd)
         color_button = tk.Button(left_frame3, text="색상", 
-                                 padx=5,
                                  activeforeground="white",
                                  activebackground="#555555",
                                  command=lambda: self.controller.start_color_picker(f'area_{area_number}_color'))
@@ -875,8 +908,9 @@ class AppUI:
         except tk.TclError:
             pass
 
-    def _clear_visual_markers(self):
-        """표시된 모든 시각적 보조 마커를 제거합니다."""
+    def display_visual_aids(self, areas=None, points=None):
+        """화면에 영역과 좌표 마커들을 표시합니다."""
+        # 기존 마커 창들 제거
         for marker in self.area_marker_windows:
             if marker and marker.winfo_exists():
                 marker.destroy()
@@ -887,82 +921,89 @@ class AppUI:
                 marker.destroy()
         self.point_marker_windows.clear()
 
-    def display_visual_aids(self, steps):
-        """화면에 영역과 좌표 마커들을 그룹화하여 순차적으로 표시합니다."""
-        # 기존 마커 창들 제거
-        self._clear_visual_markers()
+        # 여러 영역 마커 표시
+        if areas:
+            for area_info in areas:
+                x, y, width, height = area_info.get('rect', (0,0,0,0))
+                color = area_info.get('color', 'red')
+                alpha = area_info.get('alpha', 0.9)
+                text = area_info.get('text') # 영역에 표시할 텍스트
 
-        def run_sequential_display(index):
-            if index >= len(steps):
-                self.update_status("영역 및 좌표 표시 완료 (3초 후 사라짐)")
-                # 모든 마커가 표시된 후 3초 뒤에 한꺼번에 사라지도록 예약합니다.
-                self.root.after(3000, self._clear_visual_markers)
-                return
-            
-            # 현재 단계의 모든 마커(영역과 좌표 등)를 동시에 표시
-            for item in steps[index]:
-                item_type = item.get('type')
-                if item_type == 'area':
-                    self._show_single_area_marker(item)
-                elif item_type == 'point':
-                    self._show_single_point_marker(item)
-            
-            # 400ms 간격으로 다음 그룹 표시
-            self.root.after(400, lambda: run_sequential_display(index + 1))
+                if width > 0 and height > 0:
+                    area_marker = tk.Toplevel(self.root)
+                    area_marker.overrideredirect(True)
+                    area_marker.geometry(f"{width}x{height}+{x}+{y}")
+                    area_marker.configure(bg=color)
+                    area_marker.attributes('-alpha', alpha)
+                    area_marker.attributes('-topmost', True)
 
-        self.update_status("순서대로 영역 확인 중...")
-        run_sequential_display(0)
+                    # 영역에 텍스트가 있으면, 우측 상단에 레이블 추가
+                    if text:
+                        label = tk.Label(area_marker, text=text, bg=color, fg='white', font=("Helvetica", 10, "bold"))
+                        label.pack(side=tk.TOP, anchor=tk.NE, padx=5, pady=2)
 
-    def _show_single_area_marker(self, info):
-        x, y, w, h = info.get('rect', (0,0,0,0))
-        if w <= 0 or h <= 0: return
-        m = tk.Toplevel(self.root)
-        m.overrideredirect(True); m.geometry(f"{w}x{h}+{x}+{y}"); m.configure(bg=info.get('color', 'red'))
-        m.attributes('-alpha', info.get('alpha', 0.3), '-topmost', True)
-        if info.get('text'):
-            tk.Label(m, text=info['text'], bg=m['bg'], fg='white', font=("Helvetica", 10, "bold")).pack(side=tk.TOP, anchor=tk.NE, padx=5, pady=2)
-        self.area_marker_windows.append(m)
+                    area_marker.after(3000, area_marker.destroy)
+                    self.area_marker_windows.append(area_marker)
 
-    def _show_single_point_marker(self, info):
-        pos = info.get('pos')
-        if not pos or pos == (0,0): return
-        size = 20; px, py = pos; color = info.get('color', 'white')
-        m = tk.Toplevel(self.root)
-        m.overrideredirect(True); m.geometry(f"{size}x{size}+{px-size//2}+{py-size//2}")
-        m.configure(bg=color, highlightthickness=1, highlightbackground="white")
-        m.attributes('-alpha', 0.7, '-topmost', True)
-        try:
-            r, g, b = self.root.winfo_rgb(color)
-            brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000
-            fg = "black" if brightness > 128000 else "white"
-        except: fg = "black"
-        tk.Label(m, text=info.get('text', ''), bg=color, fg=fg, font=("Helvetica", 8, "bold")).pack(expand=True, fill='both')
-        self.point_marker_windows.append(m)
+        # 좌표 마커들 표시
+        if points:
+            marker_size = 20
+            for point_info in points:
+                text = point_info.get('text', '')
+                pos = point_info.get('pos')
+                marker_color = point_info.get('color', '#FFFFFF') # 기본값 흰색
+
+                if not pos or (pos[0] == 0 and pos[1] == 0): continue
+                px, py = pos
+                
+                marker = tk.Toplevel(self.root)
+                marker.overrideredirect(True)
+                marker.geometry(f"{marker_size}x{marker_size}+{px - marker_size//2}+{py - marker_size//2}")
+                marker.configure(bg=marker_color, highlightthickness=1, highlightbackground="white")
+                marker.attributes('-alpha', 0.7)
+                marker.attributes('-topmost', True)
+                # 텍스트 색상을 마커 색상에 따라 흑/백으로 자동 조절
+                try:
+                    r, g, b = self.root.winfo_rgb(marker_color)
+                    # YIQ 공식으로 밝기 계산 (0-255000 범위)
+                    brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000
+                    text_color = "black" if brightness > 128000 else "white"
+                except tk.TclError:
+                    text_color = "black" # 색상 이름이 잘못된 경우 기본값
+
+                tk.Label(marker, text=text, bg=marker_color, fg=text_color, font=("Helvetica", 8, "bold")).pack(expand=True, fill='both')
+                marker.after(3000, marker.destroy)
+                self.point_marker_windows.append(marker)
+
+        self.update_status(f"영역 및 좌표 표시 중...")
 
     def _create_labeled_frame(self, parent, text, name=None):
         """제목이 있는 프레임을 생성합니다."""
         frame = tk.LabelFrame(parent, text=text, fg="white", padx=10, pady=5, relief=tk.SOLID, borderwidth=1, name=name)
         return frame
 
-    def _create_split_container(self, parent, weights=[1, 1], **pack_options):
+    def _create_split_container(self, parent, weights=[1, 1], min_widths=None, **pack_options):
         """
         지정된 가중치에 따라 여러 열로 나뉘는 컨테이너 프레임을 생성합니다.
         
         :param parent: 부모 위젯
         :param weights: 각 열의 가중치를 담은 리스트. 예: [2, 1] -> 왼쪽이 오른쪽보다 2배 넓음
+        :param min_widths: 각 열의 최소 너비 리스트 (픽셀 단위). 기본값 80px.
         :param pack_options: 컨테이너의 pack() 메서드에 전달할 추가 옵션 (예: ipady, pady)
         :return: (컨테이너 프레임, [각 열의 프레임 리스트])
         """
         container = tk.Frame(parent)
         
-        default_options = {'fill': tk.X, 'pady': 2}
+        default_options = {'fill': tk.X, 'pady': 2, 'padx': 10}
         default_options.update(pack_options)
         container.pack(**default_options)
 
         frames = []
         for i, weight in enumerate(weights):
-            # 각 열에 지정된 가중치(weight)를 설정합니다.
-            container.grid_columnconfigure(i, weight=weight)
+            # 최소 너비를 80에서 60으로 하향 조정하여 좁은 창에서도 유연하게 대응합니다.
+            # 가로 폭이 좁아질 때 스크롤바 공간을 확보하기 위함입니다.
+            mw = min_widths[i] if min_widths and i < len(min_widths) else 60
+            container.grid_columnconfigure(i, weight=weight, minsize=mw)
             frame = tk.Frame(container)
             frame.grid(row=0, column=i, sticky=tk.EW, padx=(5 if i > 0 else 0, 0))
             frames.append(frame)
@@ -1003,7 +1044,6 @@ class AppUI:
         label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         button = tk.Button(frame, 
                            text=button_text, 
-                           padx=5,
                            activeforeground="white",
                            activebackground="#555555",
                            command=command)
@@ -1027,8 +1067,11 @@ class AppUI:
                  validate="key", 
                  validatecommand=self.tuple_vcmd
                  ).pack(side=tk.LEFT, expand=True, fill=tk.X)
-        tk.Button(frame, text=button_text, padx=5,  bg="white", 
-                  activeforeground="white", activebackground="#555555",
+        tk.Button(frame, 
+                  text=button_text, 
+                  bg="white", 
+                  activeforeground="white", 
+                  activebackground="#555555",
                   command=command).pack(side=tk.LEFT)
         return frame
 
@@ -1064,8 +1107,10 @@ class AppUI:
                                width=12, 
                                validate="key", 
                                validatecommand=self.tuple_vcmd)
-        color_button = tk.Button(frame, text=button_text, padx=5, 
-                                 activeforeground="white", activebackground="#555555",
+        color_button = tk.Button(frame, 
+                                 text=button_text,  
+                                 activeforeground="white", 
+                                 activebackground="#555555",
                                  command=command)
         
         def toggle_state():
