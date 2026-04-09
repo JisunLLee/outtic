@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import sys
 import queue
+import ast
 
 from .color_finder import SearchDirection
 
@@ -152,7 +153,7 @@ class AppUI:
         # Row 2: 1순위 색상, 2순위 색상
         row2_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
         # Part 1: 1순위 색상 (기본 색상)
-        self._create_value_button_row(left_frame, self.color_var, "색상 1", command=lambda: self.controller.start_color_picker('main_color')).pack(expand=True, fill=tk.X)
+        self._create_value_button_row(left_frame, self.color_var, "색상 1", command=lambda: self.controller.start_color_picker('main_color'), show_preview=True).pack(expand=True, fill=tk.X)
 
         # Part 2: 2순위 색상 (토글 가능)
         secondary_color_selector, toggle_func = self._create_toggleable_color_selector(
@@ -272,6 +273,8 @@ class AppUI:
                  validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
         
         # 색상 입력창 + 통합 버튼
+        self._create_color_preview(right_frame, self.op_check_color_var).pack(side=tk.LEFT, padx=(0, 5))
+
         tk.Entry(right_frame, textvariable=self.op_check_color_var, bg="#555555", fg="white", 
                  insertbackground='white', borderwidth=0, highlightthickness=0, width=12,
                  validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
@@ -471,6 +474,8 @@ class AppUI:
         row3_container, (left_frame3, right_frame3) = self._create_split_container(area_group, weights=[1, 1])
 
         # --- Row 3 왼쪽: 색상 사용, 색상 값, 색상 선택 버튼 ---
+        self._create_color_preview(left_frame3, vars['color_var']).pack(side=tk.LEFT, padx=(0, 5))
+
         color_label = tk.Entry(left_frame3, 
                                textvariable=vars['color_var'], 
                                insertbackground='white', 
@@ -655,7 +660,9 @@ class AppUI:
                 elif isinstance(widget, tk.Entry):
                     widget.configure(bg=color, disabledbackground=color)
                 elif isinstance(widget, tk.Canvas):
-                    widget.configure(bg=color, highlightthickness=0)
+                    # 색상 프리뷰 캔버스는 배경색 변경에서 제외합니다.
+                    if "color_preview" not in str(widget):
+                        widget.configure(bg=color, highlightthickness=0)
                 else:
                     widget.configure(bg=color)
         except tk.TclError:
@@ -942,9 +949,12 @@ class AppUI:
         button.pack(side=tk.LEFT)
         return frame, label, button
 
-    def _create_value_button_row(self, parent, var, button_text, command=None):
+    def _create_value_button_row(self, parent, var, button_text, command=None, show_preview=False):
         """값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent)
+        if show_preview:
+            self._create_color_preview(frame, var).pack(side=tk.LEFT, padx=(0, 5))
+
         tk.Entry(frame, 
                  textvariable=var, 
                  bg="#555555", 
@@ -958,6 +968,24 @@ class AppUI:
                  ).pack(side=tk.LEFT, expand=True, fill=tk.X)
         tk.Button(frame, text=button_text, width=3,  bg="white", command=command).pack(side=tk.LEFT)
         return frame
+
+    def _create_color_preview(self, parent, var):
+        """색상 변수의 값을 실시간으로 보여주는 정사각형 프리뷰를 생성합니다."""
+        # Entry 높이보다 약간 작은 16x16 사이즈의 캔버스 생성
+        preview = tk.Canvas(parent, width=16, height=16, highlightthickness=1, 
+                           highlightbackground="#555555", bd=0, name="color_preview")
+        
+        def update_preview(*args):
+            try:
+                rgb = ast.literal_eval(var.get())
+                hex_color = '#%02x%02x%02x' % rgb[:3]
+                preview.config(bg=hex_color)
+            except:
+                preview.config(bg="black")
+
+        var.trace_add("write", update_preview)
+        update_preview() # 초기화 시점 반영
+        return preview
 
     def _create_toggleable_color_selector(self, parent, use_var, color_var, check_text, button_text, command):
         """체크박스로 활성화/비활성화되는 2순위 색상 선택 위젯 그룹을 생성합니다."""
@@ -973,6 +1001,9 @@ class AppUI:
                                width=12, 
                                validate="key", 
                                validatecommand=self.tuple_vcmd)
+        color_preview = self._create_color_preview(frame, color_var)
+        color_preview.pack(side=tk.LEFT, padx=(0, 5))
+        
         color_button = tk.Button(frame, text=button_text, width=3, command=command)
         
         def toggle_state():
