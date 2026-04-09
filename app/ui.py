@@ -82,13 +82,19 @@ class AppUI:
         self.search_time_tolerance_var = tk.StringVar(value=str(c.search_time_tolerance_sec))
         self.status_var = tk.StringVar(value="대기 중...")
 
+        # 전역 변수 변경 시 구역 설정을 동기화하기 위한 트레이스 등록 (중복 방지를 위해 여기에서 한 번만 설정)
+        self.p1_var.trace_add('write', self._sync_global_to_areas)
+        self.p2_var.trace_add('write', self._sync_global_to_areas)
+        self.color_var.trace_add('write', self._sync_global_to_areas)
+        self.direction_var.trace_add('write', self._sync_global_to_areas)
+
         # --- 창 색상 관리 ---
         self.WINDOW_COLORS = {
             'default': "#252525",
             'searching': "medium turquoise",
-            'waiting': "orange", # 가독성을 위해 LemonChiffon에서 orange로 변경
-            'global_setting_change': "#40E0D0", # 기본 설정 변경 시 플래시 색상 (터콰이즈)
-            'area_setting_change': "LemonChiffon",   # 구역 설정 변경 시 플래시 색상 (노랑)
+            'waiting': "orange",
+            'global_setting_change': "#40E0D0",
+            'area_setting_change': "LemonChiffon",
         }
         
         # --- 구역별 변수 초기화 ---
@@ -101,6 +107,7 @@ class AppUI:
         area_defaults = self.controller.areas[area_number]
 
         self.area_vars[area_number] = {
+            'order_var': tk.StringVar(),
             'name_var': tk.StringVar(value=area_defaults.get('name', f"구역{area_number}")),
             'use_var': tk.BooleanVar(value=area_defaults['use']),
             'coord_var': tk.StringVar(value=str(area_defaults['click_coord'])),
@@ -184,7 +191,7 @@ class AppUI:
 
         # Part 3: 탐색 방향
         direction_menu = tk.OptionMenu(right_frame, self.direction_var, *self.SEARCH_DIRECTION_MAP.values())
-        direction_menu.config( fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
+        direction_menu.config(fg="white", bg="#555555", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
         direction_menu["menu"].config(bg="#555555", fg="white")
         direction_menu.pack(side=tk.RIGHT, padx=(15,0))
 
@@ -268,14 +275,14 @@ class AppUI:
         operation_check_container, (left_frame, right_frame) = self._create_split_container(self.operation_check_group, weights=[1, 1])
         
         # 좌표 입력창 (통합 버튼 사용을 위해 버튼 없는 Entry 배치)
-        tk.Entry(left_frame, textvariable=self.op_check_coord_var, bg="#555555", fg="white", 
+        tk.Entry(left_frame, textvariable=self.op_check_coord_var, bg="#444444", fg="white", 
                  insertbackground='white', borderwidth=0, highlightthickness=0, width=12,
                  validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
         
         # 색상 입력창 + 통합 버튼
         self._create_color_preview(right_frame, self.op_check_color_var).pack(side=tk.LEFT, padx=(0, 5))
 
-        tk.Entry(right_frame, textvariable=self.op_check_color_var, bg="#555555", fg="white", 
+        tk.Entry(right_frame, textvariable=self.op_check_color_var, bg="#444444", fg="white", 
                  insertbackground='white', borderwidth=0, highlightthickness=0, width=12,
                  validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
         self.op_check_combined_btn = tk.Button(right_frame, text="좌표&색상", 
@@ -366,7 +373,7 @@ class AppUI:
         self.find_button.grid(row=0, column=3, sticky=tk.EW)
 
         # UI가 모두 생성된 후, 오버레이의 초기 상태를 설정합니다.
-        self._toggle_area_settings_active()
+        self.refresh_area_order()
 
     def _create_area_group(self, parent, area_number: int):
         """
@@ -392,8 +399,19 @@ class AppUI:
         drag_handle.bind("<B1-Motion>", lambda e: self._on_area_drag_motion(e, area_number))
         drag_handle.bind("<ButtonRelease-1>", lambda e: self._on_area_drag_release(e, area_number))
 
-        order_label = tk.Label(header_frame, text=f"{order_idx}.", fg="white", font=(None, 9, "bold"))
-        order_label.pack(side=tk.LEFT, padx=(2, 0))
+        # 순서 번호를 선택 가능한 OptionMenu로 변경
+        order_var = self.area_vars[area_number]['order_var']
+        order_var.set(str(order_idx))
+        
+        # 초기 메뉴 생성 (옵션은 refresh_area_order에서 채워짐)
+        order_menu = tk.OptionMenu(header_frame, order_var, str(order_idx))
+        order_menu.config(fg="#005A9E", bg="white", 
+                          font=(None, 8, "bold"), borderwidth=1, highlightthickness=0, 
+                          indicatoron=False, padx=2, pady=0, width=2, relief=tk.FLAT)
+        order_menu["menu"].config(bg="white", fg="black") 
+        order_menu.pack(side=tk.LEFT, padx=(2, 0))
+
+        tk.Label(header_frame, text=".", fg="white", font=(None, 9, "bold")).pack(side=tk.LEFT)
 
         name_entry = tk.Entry(header_frame, 
                               textvariable=self.area_vars[area_number]['name_var'],
@@ -533,20 +551,10 @@ class AppUI:
             use_default_color = vars['use_color_var'].get()
             is_enabled = not use_default_color
             state = 'normal' if is_enabled else 'disabled'
-            bg_color = '#444444' if is_enabled else '#555555'
-            label_fg = 'white' if is_enabled else '#2e2e2e'
-            
-            color_label.config(state=state, bg=bg_color, fg=label_fg, disabledbackground=bg_color, width=12)
-            color_button.config(state=state)
-            
-            if use_default_color:
-                # '기본'이 체크되면, 전역 색상 값을 해당 구역의 변수에 설정합니다.
-                vars['color_var'].set(self.color_var.get())
-            is_enabled = not use_default_color
-            state = 'normal' if is_enabled else 'disabled'
             bg_color = '#555555'
             label_fg = 'white' if is_enabled else '#2e2e2e'
             entry_bg = '#444444' if is_enabled else '#555555'
+
             color_label.config(state=state, bg=bg_color, fg=label_fg, disabledbackground=entry_bg, width=12)
             color_button.config(state=state)
 
@@ -569,7 +577,7 @@ class AppUI:
 
         # --- Row 3 오른쪽: 탐색 방향 ---
         direction_menu = tk.OptionMenu(right_frame3, vars['direction_var'], *self.SEARCH_DIRECTION_MAP.values())
-        direction_menu.config(fg="white", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
+        direction_menu.config(fg="white", bg="#555555", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
         direction_menu["menu"].config(bg="#555555", fg="white")
 
         def toggle_direction_state():
@@ -594,7 +602,7 @@ class AppUI:
         widgets['delete_button'] = delete_button
         widgets['drag_handle'] = drag_handle
         widgets['name_entry'] = name_entry
-        widgets['order_label'] = order_label
+        widgets['order_menu'] = order_menu
         widgets['coord_label'] = coord_label
         widgets['coord_button'] = coord_button
         widgets['clicks_frame'] = clicks_frame
@@ -646,6 +654,23 @@ class AppUI:
 
 
         return area_group   
+    
+    def _sync_global_to_areas(self, *args):
+        """전역 설정이 변경될 때, '기본'이 체크된 모든 구역의 값을 안전하게 동기화합니다."""
+        if not self.area_vars:
+            return
+        for area_num, v in self.area_vars.items():
+            try:
+                if v['use_area_bounds_var'].get():
+                    v['p1_var'].set(self.p1_var.get())
+                    v['p2_var'].set(self.p2_var.get())
+                if v['use_color_var'].get():
+                    v['color_var'].set(self.color_var.get())
+                if v['use_direction_var'].get():
+                    v['direction_var'].set(self.direction_var.get())
+            except (tk.TclError, KeyError):
+                continue
+
     def add_area_to_ui(self, area_number: int):
         """새로운 구역 위젯을 UI 리스트 끝에 추가합니다."""
         if area_number not in self.area_vars:
@@ -653,7 +678,7 @@ class AppUI:
         
         self.add_area_btn.pack_forget() # 버튼을 잠시 가리고 아래에 다시 추가
         self._create_area_group(self.scrollable_content_frame, area_number)
-        self.add_area_btn.pack(fill=tk.X)
+        self.add_area_btn.pack(fill=tk.X, pady=10, padx=50)
         
         # 새로 추가된 구역의 활성화 상태 동기화
         self._toggle_area_settings_active()
@@ -661,20 +686,47 @@ class AppUI:
     def refresh_area_order(self):
         """컨트롤러의 area_order에 맞춰 UI 구역 위젯들의 배치를 갱신합니다."""
         self.add_area_btn.pack_forget()
+
+        # 현재 UI에 존재하는 구역들만 대상으로 순서 리스트 필터링
+        present_ids = [aid for aid in self.controller.area_order if aid in self.area_widgets]
+        total_count = len(present_ids)
+        choices = [str(i + 1) for i in range(total_count)]
+
         display_idx = 1
-        for area_num in self.controller.area_order:
-            if area_num in self.area_widgets:
-                widgets = self.area_widgets[area_num]
-                # 순서 번호 레이블 텍스트 갱신
-                widgets['order_label'].config(text=f"{display_idx}.", fg="white")
-                widgets['drag_handle'].config(fg="white") # 핸들 색상 복구
+
+        for area_num in present_ids:
+            w_set = self.area_widgets[area_num]
+            self.area_vars[area_num]['order_var'].set(str(display_idx))
+            w_set['drag_handle'].config(fg="white")
+
+            # OptionMenu 메뉴 아이템 재구성
+            menu = w_set['order_menu']['menu']
+            menu.delete(0, 'end')
+            
+            # 클로저 문제를 피하기 위해 내부 함수 정의
+            def make_reorder_cmd(target_idx, an=area_num):
+                return lambda: self.controller.reorder_area(an, target_idx)
+
+            for i, choice in enumerate(choices):
+                menu.add_command(label=choice, command=make_reorder_cmd(i))
+
+            group = w_set['group']
+            group.pack_forget()
+            group.pack(fill=tk.BOTH, expand=True, pady=10)
+            display_idx += 1
                 
-                group = widgets['group']
-                group.pack_forget()
-                group.pack(fill=tk.BOTH, expand=True, pady=10)
-                display_idx += 1
                 
         self.add_area_btn.pack(fill=tk.X, pady=10, padx=50)
+
+    def reset_areas_ui(self):
+        """현재 생성된 모든 구역 UI 위젯을 제거하고 데이터를 초기화합니다."""
+        for widgets in self.area_widgets.values():
+            widgets['group'].destroy()
+        
+        self.area_widgets = {}
+        self.area_vars = {}
+        self.area_toggles = {}
+        self.scrollable_canvas.yview_moveto(0)
 
     def _on_area_drag_start(self, event, area_num):
         """드래그 시작 시 시각적 피드백 제공."""
@@ -882,22 +934,13 @@ class AppUI:
         self.wait_duration_var.set(str(c.wait_duration_sec))
         self.search_time_tolerance_var.set(str(c.search_time_tolerance_sec))
 
-        for area_number, area_settings in c.areas.items():
-            if area_number in self.area_vars:
-                vars = self.area_vars[area_number]
-                vars['name_var'].set(area_settings.get('name', f"구역 {area_number}"))
-                vars['use_var'].set(area_settings['use'])
-                vars['coord_var'].set(str(area_settings['click_coord']))
-                vars['clicks_var'].set(str(area_settings['clicks']))
-                vars['offset_var'].set(str(area_settings['offset']))
-                vars['p1_var'].set(str(area_settings['p1']))
-                vars['p2_var'].set(str(area_settings['p2']))
-                vars['color_var'].set(str(area_settings['color']))
-                vars['direction_var'].set(self.SEARCH_DIRECTION_MAP[area_settings['direction']])
-                # UI 체크박스(True)는 컨트롤러 값(False)과 반대입니다.
-                vars['use_area_bounds_var'].set(not area_settings['use_area_bounds'])
-                vars['use_color_var'].set(not area_settings['use_color'])
-                vars['use_direction_var'].   set(not area_settings['use_direction'])
+        # 로드된 데이터에 맞춰 UI 구역을 처음부터 다시 생성
+        for area_num in c.area_order:
+            if area_num not in self.area_vars:
+                self._initialize_area_vars(area_num)
+            self._create_area_group(self.scrollable_content_frame, area_num)
+
+        self.refresh_area_order()
         
         # '기본' 체크박스 상태에 따라 비활성화된 위젯들의 상태를 올바르게 갱신합니다.
         for toggle_func in self.global_toggles.values():
@@ -1100,7 +1143,7 @@ class AppUI:
 
         tk.Entry(frame, 
                  textvariable=var, 
-                 bg="#555555", 
+                 bg="#444444", 
                  fg="white", 
                  insertbackground='white', 
                  borderwidth=0, 
@@ -1120,11 +1163,18 @@ class AppUI:
         
         def update_preview(*args):
             try:
+                # 위젯 존재 여부 확인 (TclError 방지)
+                if not preview or not preview.winfo_exists():
+                    return
                 rgb = ast.literal_eval(var.get())
                 hex_color = '#%02x%02x%02x' % rgb[:3]
                 preview.config(bg=hex_color)
-            except:
-                preview.config(bg="black")
+            except (tk.TclError, ValueError, SyntaxError):
+                try:
+                    if preview and preview.winfo_exists():
+                        preview.config(bg="black")
+                except tk.TclError:
+                    pass
 
         var.trace_add("write", update_preview)
         update_preview() # 초기화 시점 반영
@@ -1188,7 +1238,6 @@ class AppUI:
         label_fg = 'white' if is_enabled else '#444444'
 
 
-        # '구역 설정' 그룹 전체의 스타일 변경
         # 이 그룹에 속한 모든 위젯을 재귀적으로 탐색하며 상태를 변경하는 함수
         def set_state_recursive(widget, state, fg_color, entry_bg_color):
             try:
@@ -1250,7 +1299,7 @@ class AppUI:
             else:
                 # '구역 탐색 사용'이 켜지면, 삭제 버튼은 항상 활성화하고 나머지 개별 상태를 다시 적용
                 widgets['name_entry'].config(state='normal', bg='#444444', fg='white')
-                widgets['order_label'].config(fg='white')
+                widgets['order_menu'].config(state='normal')
                 widgets['drag_handle'].config(fg='white')
                 widgets['delete_button'].config(state='normal')
                 self.area_toggles[area_number]['search']()

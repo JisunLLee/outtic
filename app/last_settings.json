@@ -55,30 +55,30 @@
     "search_time_tolerance_sec": 5,
     "areas": {
         "1": {
-            "name": "구역1",
+            "name": "R",
             "use": true,
             "click_coord": [
-                723,
-                301
+                816,
+                240
             ],
             "clicks": 1,
             "offset": 2,
-            "use_area_bounds": false,
+            "use_area_bounds": true,
             "p1": [
-                76,
-                233
+                100,
+                242
             ],
             "p2": [
-                616,
-                707
+                636,
+                366
             ],
-            "use_color": false,
+            "use_color": true,
             "color": [
-                0,
-                0,
-                0
+                190,
+                168,
+                134
             ],
-            "direction": "←↑",
+            "direction": "↓↔",
             "use_direction": false
         },
         "2": {
@@ -136,11 +136,11 @@
             "use_direction": false
         },
         "4": {
-            "name": "구역4",
-            "use": false,
+            "name": "8_2",
+            "use": true,
             "click_coord": [
-                737,
-                321
+                816,
+                292
             ],
             "clicks": 1,
             "offset": 2,
@@ -163,13 +163,13 @@
             "use_direction": false
         },
         "5": {
-            "name": "구역5",
-            "use": false,
+            "name": "7",
+            "use": true,
             "click_coord": [
-                0,
-                0
+                835,
+                291
             ],
-            "clicks": 6,
+            "clicks": 1,
             "offset": 2,
             "use_area_bounds": false,
             "p1": [
@@ -190,13 +190,67 @@
             "use_direction": false
         },
         "6": {
-            "name": "구역6",
-            "use": false,
+            "name": "T",
+            "use": true,
             "click_coord": [
-                0,
-                0
+                848,
+                237
             ],
-            "clicks": 6,
+            "clicks": 1,
+            "offset": 4,
+            "use_area_bounds": true,
+            "p1": [
+                54,
+                233
+            ],
+            "p2": [
+                634,
+                366
+            ],
+            "use_color": true,
+            "color": [
+                190,
+                168,
+                134
+            ],
+            "direction": "↓↔",
+            "use_direction": false
+        },
+        "7": {
+            "name": "R2",
+            "use": true,
+            "click_coord": [
+                817,
+                240
+            ],
+            "clicks": 1,
+            "offset": 2,
+            "use_area_bounds": true,
+            "p1": [
+                95,
+                239
+            ],
+            "p2": [
+                596,
+                426
+            ],
+            "use_color": true,
+            "color": [
+                190,
+                168,
+                134
+            ],
+            "direction": "↓↔",
+            "use_direction": false
+        },
+        "8": {
+            "name": "8",
+            "use": true,
+            "click_coord": [
+                818,
+                294
+            ],
+            "clicks": 1,
             "offset": 2,
             "use_area_bounds": false,
             "p1": [
@@ -218,11 +272,13 @@
         }
     },
     "area_order": [
-        6,
-        5,
-        4,
+        8,
         1,
         3,
-        2
+        4,
+        5,
+        7,
+        2,
+        6
     ]
 }

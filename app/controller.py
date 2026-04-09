@@ -83,33 +83,54 @@ class AppController:
         for i in range(1, 6):
             self._initialize_area_settings(i)
 
+    def _sanitize_area_order(self):
+        """area_order 리스트와 areas 데이터를 완벽하게 동기화합니다."""
+        seen = set()
+        clean_order = []
+        
+        # 1. 현재 순서 리스트에서 실제 존재하는 구역만 중복 없이 추출
+        for aid in self.area_order:
+            aid_int = int(aid)
+            if aid_int in self.areas and aid_int not in seen:
+                clean_order.append(aid_int)
+                seen.add(aid_int)
+        
+        # 2. areas에는 있지만 순서 리스트에 누락된 구역들을 뒤에 추가
+        for aid in sorted(self.areas.keys()):
+            if aid not in seen:
+                clean_order.append(aid)
+        
+        self.area_order = clean_order
+
     def add_area(self):
         """새로운 구역을 데이터 모델과 UI에 추가합니다."""
-        # 삭제된 구역이 있을 수 있으므로 현재 존재하는 구역 번호 중 최댓값 + 1을 새 번호로 사용합니다.
-        if self.areas:
-            new_area_num = max(self.areas.keys()) + 1
-        else:
-            new_area_num = 1
+        # 비어있는 번호 중 가장 작은 번호를 찾아 새 구역 번호로 사용합니다 (번호 점프 방지).
+        new_area_num = 1
+        while new_area_num in self.areas:
+            new_area_num += 1
             
         self._initialize_area_settings(new_area_num)
         self.area_order.append(new_area_num)
         if self.ui:
             self.ui.add_area_to_ui(new_area_num)
+        self.auto_save_settings() # 추가 즉시 저장
         return new_area_num
     
     def reorder_area(self, area_number, new_index):
         """구역의 탐색 순서를 새로운 위치로 변경합니다 (Drag & Drop)."""
-        # 기존 리스트에서 해당 번호의 모든 중복을 제거 (안전 장치)
-        self.area_order = [aid for aid in self.area_order if aid != area_number]
+        area_number = int(area_number)
+        self._sanitize_area_order()
+        
+        if area_number in self.area_order:
+            self.area_order.remove(area_number)
         
         # 새 위치로 삽입 (인덱스 범위 보정)
         target_idx = max(0, min(new_index, len(self.area_order)))
         self.area_order.insert(target_idx, area_number)
         
         if self.ui:
-            if self.ui:
-                self.ui.refresh_area_order()
-            self.auto_save_settings()
+            self.ui.refresh_area_order()
+        self.auto_save_settings()
 
     def remove_area(self, area_number):
         """지정된 구역을 데이터 모델과 UI에서 제거합니다."""
@@ -119,6 +140,7 @@ class AppController:
                 self.area_order.remove(area_number)
             if self.ui:
                 self.ui.remove_area_from_ui(area_number)
+            self.auto_save_settings() # 삭제 즉시 저장
 
     def set_ui(self, ui: 'AppUI'):
         """
@@ -132,8 +154,6 @@ class AppController:
     def _initialize_area_settings(self, area_number: int):
         """컨트롤러 내부에 지정된 구역의 기본 설정값을 생성합니다."""
         if area_number not in self.areas:
-            if area_number not in self.area_order:
-                self.area_order.append(area_number)
             # 구역별 기본값 설정
             default_use = (area_number == 1) # 구역 1만 기본 활성화, 나머지는 비활성화
             default_click_coord = (0, 0)
@@ -480,6 +500,12 @@ class AppController:
             with open(load_path, 'r', encoding='utf-8') as f:
                 settings_data = json.load(f)
 
+            # 불러오기 전 기존 데이터 및 UI 완전 초기화
+            if self.ui:
+                self.ui.reset_areas_ui()
+            self.areas = {}
+            self.area_order = []
+
             self.p1 = tuple(settings_data.get('p1', self.p1))
             self.p2 = tuple(settings_data.get('p2', self.p2))
             self.color = tuple(settings_data.get('color', self.color))
@@ -507,28 +533,14 @@ class AppController:
             self.active_search_duration_sec = int(settings_data.get('active_search_duration_sec', self.active_search_duration_sec))
             self.wait_duration_sec = int(settings_data.get('wait_duration_sec', self.wait_duration_sec))
             self.search_time_tolerance_sec = int(settings_data.get('search_time_tolerance_sec', self.search_time_tolerance_sec))
-
+            self.area_order = settings_data.get('area_order', [])
+            
             loaded_areas = settings_data.get('areas', {})
-            loaded_area_ids = [int(k) for k in loaded_areas.keys()]
-            
-            # 불러온 순서 데이터 정화: 중복 제거 및 실제로 존재하는 구역만 유지
-            raw_order = settings_data.get('area_order', [])
-            unique_order = []
-            for aid in raw_order:
-                if aid in loaded_area_ids and aid not in unique_order:
-                    unique_order.append(aid)
-            
-            # 누락된 구역이 있다면 뒤에 추가
-            for aid in sorted(loaded_area_ids):
-                if aid not in unique_order:
-                    unique_order.append(aid)
-            
-            self.area_order = unique_order
-
             for area_number_str, loaded in loaded_areas.items():
                 area_number = int(area_number_str)
-                while area_number not in self.areas:
-                    self.add_area()
+                # Ensure the area is initialized with defaults before loading specific values
+                # This prevents KeyError if 'loaded' is missing some keys or if 'area' was empty.
+                self._initialize_area_settings(area_number)
                 
                 area = self.areas[area_number]
                 area['name'] = loaded.get('name', f"구역{area_number}")
@@ -543,6 +555,8 @@ class AppController:
                 area['color'] = tuple(loaded.get('color', area['color']))
                 area['direction'] = SearchDirection(loaded.get('direction', area['direction'].value))
                 area['use_direction'] = bool(loaded.get('use_direction', area['use_direction']))
+
+            self._sanitize_area_order()
 
             if self.ui:
                 self.ui.update_ui_from_controller()
@@ -566,6 +580,12 @@ class AppController:
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 settings_data = json.load(f)
+
+            # 불러오기 전 기존 데이터 및 UI 완전 초기화
+            if self.ui:
+                self.ui.reset_areas_ui()
+            self.areas = {}
+            self.area_order = []
 
             # 컨트롤러 속성 업데이트 (get 메서드로 기본값 보장)
             self.p1 = tuple(settings_data.get('p1', self.p1))
@@ -595,14 +615,14 @@ class AppController:
             self.active_search_duration_sec = int(settings_data.get('active_search_duration_sec', self.active_search_duration_sec))
             self.wait_duration_sec = int(settings_data.get('wait_duration_sec', self.wait_duration_sec))
             self.search_time_tolerance_sec = int(settings_data.get('search_time_tolerance_sec', self.search_time_tolerance_sec))
-            self.area_order = settings_data.get('area_order', sorted([int(k) for k in settings_data.get('areas', {}).keys()]))
+            self.area_order = settings_data.get('area_order', [])
 
             loaded_areas = settings_data.get('areas', {})
             for area_number_str, loaded in loaded_areas.items():
                 area_number = int(area_number_str)
-                # 현재 생성된 구역보다 많은 구역이 설정 파일에 있다면 자동으로 추가합니다.
-                while area_number not in self.areas:
-                    self.add_area()
+                # Ensure the area is initialized with defaults before loading specific values
+                # This prevents KeyError if 'loaded' is missing some keys or if 'area' was empty.
+                self._initialize_area_settings(area_number)
                 
                 area = self.areas[area_number]
                 area['name'] = loaded.get('name', f"구역{area_number}")
@@ -617,6 +637,8 @@ class AppController:
                 area['color'] = tuple(loaded.get('color', area['color']))
                 area['direction'] = SearchDirection(loaded.get('direction', area['direction'].value))
                 area['use_direction'] = bool(loaded.get('use_direction', area['use_direction']))
+
+            self._sanitize_area_order()
 
             # UI에 변경된 설정값 반영
             self.ui.update_ui_from_controller()
