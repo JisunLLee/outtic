@@ -875,9 +875,8 @@ class AppUI:
         except tk.TclError:
             pass
 
-    def display_visual_aids(self, areas=None, points=None):
-        """화면에 영역과 좌표 마커들을 표시합니다."""
-        # 기존 마커 창들 제거
+    def _clear_visual_markers(self):
+        """표시된 모든 시각적 보조 마커를 제거합니다."""
         for marker in self.area_marker_windows:
             if marker and marker.winfo_exists():
                 marker.destroy()
@@ -888,61 +887,57 @@ class AppUI:
                 marker.destroy()
         self.point_marker_windows.clear()
 
-        # 여러 영역 마커 표시
-        if areas:
-            for area_info in areas:
-                x, y, width, height = area_info.get('rect', (0,0,0,0))
-                color = area_info.get('color', 'red')
-                alpha = area_info.get('alpha', 0.9)
-                text = area_info.get('text') # 영역에 표시할 텍스트
+    def display_visual_aids(self, steps):
+        """화면에 영역과 좌표 마커들을 그룹화하여 순차적으로 표시합니다."""
+        # 기존 마커 창들 제거
+        self._clear_visual_markers()
 
-                if width > 0 and height > 0:
-                    area_marker = tk.Toplevel(self.root)
-                    area_marker.overrideredirect(True)
-                    area_marker.geometry(f"{width}x{height}+{x}+{y}")
-                    area_marker.configure(bg=color)
-                    area_marker.attributes('-alpha', alpha)
-                    area_marker.attributes('-topmost', True)
+        def run_sequential_display(index):
+            if index >= len(steps):
+                self.update_status("영역 및 좌표 표시 완료 (3초 후 사라짐)")
+                # 모든 마커가 표시된 후 3초 뒤에 한꺼번에 사라지도록 예약합니다.
+                self.root.after(3000, self._clear_visual_markers)
+                return
+            
+            # 현재 단계의 모든 마커(영역과 좌표 등)를 동시에 표시
+            for item in steps[index]:
+                item_type = item.get('type')
+                if item_type == 'area':
+                    self._show_single_area_marker(item)
+                elif item_type == 'point':
+                    self._show_single_point_marker(item)
+            
+            # 400ms 간격으로 다음 그룹 표시
+            self.root.after(400, lambda: run_sequential_display(index + 1))
 
-                    # 영역에 텍스트가 있으면, 우측 상단에 레이블 추가
-                    if text:
-                        label = tk.Label(area_marker, text=text, bg=color, fg='white', font=("Helvetica", 10, "bold"))
-                        label.pack(side=tk.TOP, anchor=tk.NE, padx=5, pady=2)
+        self.update_status("순서대로 영역 확인 중...")
+        run_sequential_display(0)
 
-                    area_marker.after(3000, area_marker.destroy)
-                    self.area_marker_windows.append(area_marker)
+    def _show_single_area_marker(self, info):
+        x, y, w, h = info.get('rect', (0,0,0,0))
+        if w <= 0 or h <= 0: return
+        m = tk.Toplevel(self.root)
+        m.overrideredirect(True); m.geometry(f"{w}x{h}+{x}+{y}"); m.configure(bg=info.get('color', 'red'))
+        m.attributes('-alpha', info.get('alpha', 0.3), '-topmost', True)
+        if info.get('text'):
+            tk.Label(m, text=info['text'], bg=m['bg'], fg='white', font=("Helvetica", 10, "bold")).pack(side=tk.TOP, anchor=tk.NE, padx=5, pady=2)
+        self.area_marker_windows.append(m)
 
-        # 좌표 마커들 표시
-        if points:
-            marker_size = 20
-            for point_info in points:
-                text = point_info.get('text', '')
-                pos = point_info.get('pos')
-                marker_color = point_info.get('color', '#FFFFFF') # 기본값 흰색
-
-                if not pos or (pos[0] == 0 and pos[1] == 0): continue
-                px, py = pos
-                
-                marker = tk.Toplevel(self.root)
-                marker.overrideredirect(True)
-                marker.geometry(f"{marker_size}x{marker_size}+{px - marker_size//2}+{py - marker_size//2}")
-                marker.configure(bg=marker_color, highlightthickness=1, highlightbackground="white")
-                marker.attributes('-alpha', 0.7)
-                marker.attributes('-topmost', True)
-                # 텍스트 색상을 마커 색상에 따라 흑/백으로 자동 조절
-                try:
-                    r, g, b = self.root.winfo_rgb(marker_color)
-                    # YIQ 공식으로 밝기 계산 (0-255000 범위)
-                    brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000
-                    text_color = "black" if brightness > 128000 else "white"
-                except tk.TclError:
-                    text_color = "black" # 색상 이름이 잘못된 경우 기본값
-
-                tk.Label(marker, text=text, bg=marker_color, fg=text_color, font=("Helvetica", 8, "bold")).pack(expand=True, fill='both')
-                marker.after(3000, marker.destroy)
-                self.point_marker_windows.append(marker)
-
-        self.update_status(f"영역 및 좌표 표시 중...")
+    def _show_single_point_marker(self, info):
+        pos = info.get('pos')
+        if not pos or pos == (0,0): return
+        size = 20; px, py = pos; color = info.get('color', 'white')
+        m = tk.Toplevel(self.root)
+        m.overrideredirect(True); m.geometry(f"{size}x{size}+{px-size//2}+{py-size//2}")
+        m.configure(bg=color, highlightthickness=1, highlightbackground="white")
+        m.attributes('-alpha', 0.7, '-topmost', True)
+        try:
+            r, g, b = self.root.winfo_rgb(color)
+            brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000
+            fg = "black" if brightness > 128000 else "white"
+        except: fg = "black"
+        tk.Label(m, text=info.get('text', ''), bg=color, fg=fg, font=("Helvetica", 8, "bold")).pack(expand=True, fill='both')
+        self.point_marker_windows.append(m)
 
     def _create_labeled_frame(self, parent, text, name=None):
         """제목이 있는 프레임을 생성합니다."""
