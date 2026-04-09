@@ -272,11 +272,14 @@ class AppController:
 
             self.ui.update_status("설정이 적용되었습니다.")
             print("설정이 적용되었습니다.")
+            
+            # 설정이 성공적으로 적용되면 즉시 자동 저장 수행 (코드 수정 재시작 대응)
+            self.auto_save_settings()
             return True
         except (ValueError, SyntaxError) as e:
             error_msg = f"설정 오류: 입력값을 확인하세요. ({e})"
             self.ui.update_status(error_msg)
-            print(error_msg)
+            print(error_msg) 
             return False
 
     def show_area(self):
