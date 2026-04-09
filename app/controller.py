@@ -77,6 +77,7 @@ class AppController:
 
         # --- 구역별 설정 데이터 ---
         self.areas = {}
+        self.area_order = []
         # 기본적으로 5개의 구역을 초기화합니다.
         for i in range(1, 6):
             self._initialize_area_settings(i)
@@ -90,14 +91,26 @@ class AppController:
             new_area_num = 1
             
         self._initialize_area_settings(new_area_num)
+        self.area_order.append(new_area_num)
         if self.ui:
             self.ui.add_area_to_ui(new_area_num)
         return new_area_num
+    
+    def move_area(self, area_number, direction):
+        """구역의 탐색 순서를 위(-1) 또는 아래(1)로 이동시킵니다."""
+        idx = self.area_order.index(area_number)
+        new_idx = idx + direction
+        if 0 <= new_idx < len(self.area_order):
+            self.area_order[idx], self.area_order[new_idx] = self.area_order[new_idx], self.area_order[idx]
+            if self.ui:
+                self.ui.refresh_area_order()
 
     def remove_area(self, area_number):
         """지정된 구역을 데이터 모델과 UI에서 제거합니다."""
         if area_number in self.areas:
             del self.areas[area_number]
+            if area_number in self.area_order:
+                self.area_order.remove(area_number)
             if self.ui:
                 self.ui.remove_area_from_ui(area_number)
 
@@ -112,6 +125,8 @@ class AppController:
     def _initialize_area_settings(self, area_number: int):
         """컨트롤러 내부에 지정된 구역의 기본 설정값을 생성합니다."""
         if area_number not in self.areas:
+            if area_number not in self.area_order:
+                self.area_order.append(area_number)
             # 구역별 기본값 설정
             default_use = (area_number == 1) # 구역 1만 기본 활성화, 나머지는 비활성화
             default_click_coord = (0, 0)
@@ -345,7 +360,8 @@ class AppController:
             'active_search_duration_sec': self.active_search_duration_sec,
             'wait_duration_sec': self.wait_duration_sec,
             'search_time_tolerance_sec': self.search_time_tolerance_sec,
-            'areas': {}
+            'areas': {},
+            'area_order': self.area_order
         }
 
         for area_number, area_settings in self.areas.items():
@@ -426,6 +442,7 @@ class AppController:
             self.active_search_duration_sec = int(settings_data.get('active_search_duration_sec', self.active_search_duration_sec))
             self.wait_duration_sec = int(settings_data.get('wait_duration_sec', self.wait_duration_sec))
             self.search_time_tolerance_sec = int(settings_data.get('search_time_tolerance_sec', self.search_time_tolerance_sec))
+            self.area_order = settings_data.get('area_order', sorted([int(k) for k in settings_data.get('areas', {}).keys()]))
 
             loaded_areas = settings_data.get('areas', {})
             for area_number_str, loaded in loaded_areas.items():
@@ -662,8 +679,8 @@ class AppController:
 
         # 2. 재시도 탐색 계획
         if self.use_sequence:
-            for area_number, settings in sorted(self.areas.items()):
-                # '사용' 체크가 되어 있고, 클릭 좌표가 (0,0)이 아닌 경우에만 계획에 포함
+            for area_number in self.area_order:
+                settings = self.areas[area_number]
                 if settings['use'] and settings['click_coord'] != (0, 0):
                     # 이 재시도 단계에서 사용할 탐색 영역과 방향을 결정합니다.
                     retry_search_area = settings['search_area'] if settings['use_area_bounds'] else self._get_global_search_area()

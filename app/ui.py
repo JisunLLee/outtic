@@ -372,6 +372,15 @@ class AppUI:
                                   command=lambda: self.controller.remove_area(area_number))
         delete_button.pack(side=tk.LEFT, padx=(5, 0))
 
+        # 순서 변경 버튼
+        up_button = tk.Button(header_frame, text="↑", fg="white", font=(None, 8), padx=2, pady=0,
+                              command=lambda: self.controller.move_area(area_number, -1))
+        up_button.pack(side=tk.LEFT, padx=(5, 0))
+        
+        down_button = tk.Button(header_frame, text="↓", fg="white", font=(None, 8), padx=2, pady=0,
+                                command=lambda: self.controller.move_area(area_number, 1))
+        down_button.pack(side=tk.LEFT, padx=(2, 0))
+
         area_group = tk.LabelFrame(parent, labelwidget=header_frame)
         area_group.pack(fill=tk.BOTH, expand=True, pady=(10))
         # 이 구역에 해당하는 변수들을 가져옵니다.
@@ -549,6 +558,8 @@ class AppUI:
         widgets['group'] = area_group
         widgets['use_search_check'] = use_search_checkbutton
         widgets['delete_button'] = delete_button
+        widgets['up_button'] = up_button
+        widgets['down_button'] = down_button
         widgets['coord_label'] = coord_label
         widgets['coord_button'] = coord_button
         widgets['clicks_frame'] = clicks_frame
@@ -611,6 +622,16 @@ class AppUI:
         
         # 새로 추가된 구역의 활성화 상태 동기화
         self._toggle_area_settings_active()
+
+    def refresh_area_order(self):
+        """컨트롤러의 area_order에 맞춰 UI 구역 위젯들의 배치를 갱신합니다."""
+        self.add_area_btn.pack_forget()
+        for area_num in self.controller.area_order:
+            if area_num in self.area_widgets:
+                group = self.area_widgets[area_num]['group']
+                group.pack_forget()
+                group.pack(fill=tk.BOTH, expand=True, pady=10)
+        self.add_area_btn.pack(fill=tk.X, pady=10, padx=50)
 
     def remove_area_from_ui(self, area_number: int):
         """UI에서 특정 구역 위젯을 제거합니다."""
@@ -1105,6 +1126,8 @@ class AppUI:
             else:
                 # '구역 탐색 사용'이 켜지면, 삭제 버튼은 항상 활성화하고 나머지 개별 상태를 다시 적용
                 widgets['delete_button'].config(state='normal')
+                widgets['up_button'].config(state='normal')
+                widgets['down_button'].config(state='normal')
                 self.area_toggles[area_number]['search']()
                 self.area_toggles[area_number]['bounds']()
                 self.area_toggles[area_number]['color']()
