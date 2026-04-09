@@ -120,7 +120,7 @@ class AppUI:
         """메인 UI를 생성하고 배치합니다."""
         self.root.title("LuAuttic For히기 v.2.3.1")
 
-        window_width = 430
+        window_width = 400
         # 4개의 구역이 모두 보이도록 창 높이 설정합니다.
         window_height = 940
 
@@ -226,20 +226,20 @@ class AppUI:
         self.wait_duration_frame.pack(expand=True, fill=tk.X)
 
         # 구역 세팅: 딜레이
-        delay_set_container, (left_frame, right_frame) = self._create_split_container(self.areas_container_group, weights=[2, 1])
+        delay_set_container, (frame1, frame2, frame3) = self._create_split_container(self.areas_container_group, weights=[1, 1, 1])
         
         # 시간 오차를 딜레이 설정 왼쪽에 추가
-        self.search_time_tolerance_frame = self._create_labeled_entry(left_frame, "시간 오차(초):", self.search_time_tolerance_var)
+        self.search_time_tolerance_frame = self._create_labeled_entry(frame1, "시간 오차(초):", self.search_time_tolerance_var)
         self.search_time_tolerance_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
 
         # 탐색 딜레이 사용 여부 체크박스
-        self.search_delay_check = tk.Checkbutton(left_frame, variable=self.use_search_delay_var, 
+        self.search_delay_check = tk.Checkbutton(frame2, variable=self.use_search_delay_var, 
                                                  fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", 
                                                  highlightthickness=0, command=self._toggle_search_delay_state)
         self.search_delay_check.pack(side=tk.LEFT)
-        self.search_delay_frame = self._create_labeled_entry(left_frame, "탐색 딜레이:", self.search_delay_var)
+        self.search_delay_frame = self._create_labeled_entry(frame2, "탐색 딜레이:", self.search_delay_var)
         self.search_delay_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
-        self.area_delay_frame = self._create_labeled_entry(left_frame, "구역선택 딜레이:", self.area_delay_var)
+        self.area_delay_frame = self._create_labeled_entry(frame3, "구역선택 딜레이:", self.area_delay_var)
         self.area_delay_frame.pack(side=tk.RIGHT,expand=True, fill=tk.X)
 
 
@@ -262,7 +262,7 @@ class AppUI:
         self.op_check_label.pack(side=tk.LEFT)
 
         self.operation_check_group = tk.LabelFrame(self.areas_container_group, labelwidget=op_check_header, padx=10, pady=5)
-        self.operation_check_group.pack(fill=tk.X, pady=12, padx=5, ipady=5)
+        self.operation_check_group.pack(fill=tk.X, pady=12, ipady=5)
 
         # Row 1: 화면 정상 여부 확인: 화면 확인 좌표, 화면 확인 색상
         operation_check_container, (left_frame, right_frame) = self._create_split_container(self.operation_check_group, weights=[1, 1])
@@ -280,7 +280,6 @@ class AppUI:
                  validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
         self.op_check_combined_btn = tk.Button(right_frame, text="좌표&색상", 
                                                activeforeground="white", activebackground="#555555",
-                                               padx=5,
                                                command=lambda: self.controller.start_combined_picker('op_check'))
         self.op_check_combined_btn.pack(side=tk.LEFT, padx=(5,0))
 
@@ -294,7 +293,7 @@ class AppUI:
         scroll_container = tk.Frame(self.areas_container_group)
         scroll_container.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
 
-        self.scrollable_canvas = tk.Canvas(scroll_container, borderwidth=0)
+        self.scrollable_canvas = tk.Canvas(scroll_container, borderwidth=0, highlightthickness=0)
         scrollbar = ttk.Scrollbar(scroll_container, orient="vertical", command=self.scrollable_canvas.yview)
         self.scrollable_canvas.configure(yscrollcommand=scrollbar.set)
 
@@ -302,7 +301,14 @@ class AppUI:
         self.scrollable_canvas.pack(side="left", fill=tk.BOTH, expand=True)
 
         self.scrollable_content_frame = tk.Frame(self.scrollable_canvas)
-        self.scrollable_canvas.create_window((0, 0), window=self.scrollable_content_frame, anchor="nw")
+        self.canvas_window = self.scrollable_canvas.create_window((0, 0), window=self.scrollable_content_frame, anchor="nw")
+
+        def on_canvas_configure(event):
+            # 캔버스 너비가 변하면 내부 프레임 너비도 동적으로 조절 (스크롤바 간섭 방지 여유 4px 제외)
+            canvas_width = max(0, event.width - 4)
+            self.scrollable_canvas.itemconfig(self.canvas_window, width=canvas_width)
+
+        self.scrollable_canvas.bind('<Configure>', on_canvas_configure)
 
         def on_frame_configure(event):
             self.scrollable_canvas.configure(scrollregion=self.scrollable_canvas.bbox("all"))
@@ -394,21 +400,20 @@ class AppUI:
         
         # 헤더에 들어갈 삭제 버튼 
         delete_button = tk.Button(header_frame, text="삭제", fg="#f58585", activeforeground="red", 
-                                  activebackground="#444444",
-                                  font=(None, 8), padx=5, pady=0,
+                                  font=(None, 8), pady=0,
                                   command=lambda: self.controller.remove_area(area_number))
-        delete_button.pack(side=tk.LEFT, padx=(5, 0))
+        delete_button.pack(side=tk.LEFT)
 
         # 순서 변경 버튼
         up_button = tk.Button(header_frame, text="↑", fg="black", activeforeground="white", activebackground="#555555",
-                              font=(None, 8), padx=5, pady=0, bg=self.WINDOW_COLORS['default'],
+                              font=(None, 8), pady=0, bg=self.WINDOW_COLORS['default'],
                               command=lambda: self.controller.move_area(area_number, -1))
-        up_button.pack(side=tk.LEFT, padx=(5, 0))
+        up_button.pack(side=tk.LEFT)
         
         down_button = tk.Button(header_frame, text="↓", fg="black", activeforeground="white", activebackground="#555555",
-                                font=(None, 8), padx=5, pady=0, bg=self.WINDOW_COLORS['default'],
+                                font=(None, 8), pady=0, bg=self.WINDOW_COLORS['default'],
                                 command=lambda: self.controller.move_area(area_number, 1))
-        down_button.pack(side=tk.LEFT, padx=(2, 0))
+        down_button.pack(side=tk.LEFT)
 
         area_group = tk.LabelFrame(parent, labelwidget=header_frame)
         area_group.pack(fill=tk.BOTH, expand=True, pady=(10))
@@ -433,7 +438,6 @@ class AppUI:
                                validatecommand=self.tuple_vcmd)
         coord_button = tk.Button(left_frame, 
                                  text=f"구역 {area_number}", 
-                                 padx=5,
                                  activeforeground="white",
                                  activebackground="#555555",
                                  command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_click_coord'))
@@ -522,7 +526,6 @@ class AppUI:
                                validate="key",
                                validatecommand=self.tuple_vcmd)
         color_button = tk.Button(left_frame3, text="색상", 
-                                 padx=5,
                                  activeforeground="white",
                                  activebackground="#555555",
                                  command=lambda: self.controller.start_color_picker(f'area_{area_number}_color'))
@@ -956,12 +959,13 @@ class AppUI:
         frame = tk.LabelFrame(parent, text=text, fg="white", padx=10, pady=5, relief=tk.SOLID, borderwidth=1, name=name)
         return frame
 
-    def _create_split_container(self, parent, weights=[1, 1], **pack_options):
+    def _create_split_container(self, parent, weights=[1, 1], min_widths=None, **pack_options):
         """
         지정된 가중치에 따라 여러 열로 나뉘는 컨테이너 프레임을 생성합니다.
         
         :param parent: 부모 위젯
         :param weights: 각 열의 가중치를 담은 리스트. 예: [2, 1] -> 왼쪽이 오른쪽보다 2배 넓음
+        :param min_widths: 각 열의 최소 너비 리스트. 기본값 60px.
         :param pack_options: 컨테이너의 pack() 메서드에 전달할 추가 옵션 (예: ipady, pady)
         :return: (컨테이너 프레임, [각 열의 프레임 리스트])
         """
@@ -973,8 +977,9 @@ class AppUI:
 
         frames = []
         for i, weight in enumerate(weights):
-            # 각 열에 지정된 가중치(weight)를 설정합니다.
-            container.grid_columnconfigure(i, weight=weight)
+            # 가중치와 최소 너비(minsize)를 설정하여 반응형 레이아웃 구현
+            mw = min_widths[i] if min_widths and i < len(min_widths) else 60
+            container.grid_columnconfigure(i, weight=weight, minsize=mw)
             frame = tk.Frame(container)
             frame.grid(row=0, column=i, sticky=tk.EW, padx=(5 if i > 0 else 0, 0))
             frames.append(frame)
@@ -1014,7 +1019,6 @@ class AppUI:
                          validatecommand=self.tuple_vcmd)
         button = tk.Button(frame, 
                            text=button_text, 
-                           padx=5,
                            activeforeground="white",
                            activebackground="#555555",
                            command=command)
@@ -1033,7 +1037,6 @@ class AppUI:
                   bg="white", 
                   activeforeground="white", 
                   activebackground="#555555",
-                  padx=5,
                   command=command).pack(side=tk.RIGHT)
 
         tk.Entry(frame, 
@@ -1047,9 +1050,7 @@ class AppUI:
                  validate="key", 
                  validatecommand=self.tuple_vcmd
                  ).pack(side=tk.LEFT, expand=True, fill=tk.X)
-        tk.Button(frame, text=button_text, padx=5,  bg="white", 
-                  activeforeground="white", activebackground="#555555",
-                  command=command).pack(side=tk.LEFT)
+
         return frame
 
     def _create_color_preview(self, parent, var):
@@ -1084,7 +1085,7 @@ class AppUI:
                                width=12, 
                                validate="key", 
                                validatecommand=self.tuple_vcmd)
-        color_button = tk.Button(frame, text=button_text, padx=5, 
+        color_button = tk.Button(frame, text=button_text, 
                                  activeforeground="white", activebackground="#555555",
                                  command=command)
         
