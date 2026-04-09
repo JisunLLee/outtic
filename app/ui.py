@@ -278,7 +278,10 @@ class AppUI:
         tk.Entry(right_frame, textvariable=self.op_check_color_var, bg="#555555", fg="white", 
                  insertbackground='white', borderwidth=0, highlightthickness=0, width=12,
                  validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
-        self.op_check_combined_btn = tk.Button(right_frame, text="좌표&색상", width=7, command=lambda: self.controller.start_combined_picker('op_check'))
+        self.op_check_combined_btn = tk.Button(right_frame, text="좌표&색상", 
+                                               activeforeground="white", activebackground="#555555",
+                                               padx=5,
+                                               command=lambda: self.controller.start_combined_picker('op_check'))
         self.op_check_combined_btn.pack(side=tk.LEFT, padx=(5,0))
 
         # Row 2: 재시도 설정 (횟수, 간격)
@@ -337,15 +340,23 @@ class AppUI:
         action_frame.grid_columnconfigure(2, weight=1)
         action_frame.grid_columnconfigure(3, weight=1)
 
-        self.load_button = tk.Button(action_frame, text="불러오기", command=self.controller.load_settings)
+        self.load_button = tk.Button(action_frame, text="불러오기", 
+                                     activeforeground="white", activebackground="#555555",
+                                     command=self.controller.load_settings)
         self.load_button.grid(row=0, column=0, sticky=tk.EW, padx=(0, 5))
-        self.save_button = tk.Button(action_frame, text="저장하기", command=self.controller.save_settings)
+        self.save_button = tk.Button(action_frame, text="저장하기", 
+                                     activeforeground="white", activebackground="#555555",
+                                     command=self.controller.save_settings)
         self.save_button.grid(row=0, column=1, sticky=tk.EW, padx=(0, 5))
 
-        self.area_button = tk.Button(action_frame, text="영역확인", command=self.controller.show_area)
+        self.area_button = tk.Button(action_frame, text="영역확인", 
+                                     activeforeground="white", activebackground="#555555",
+                                     command=self.controller.show_area)
         self.area_button.grid(row=0, column=2, sticky=tk.EW, padx=(0, 5))
         
-        self.find_button = tk.Button(action_frame, text="찾기(Shift x2 / ESC)", command=self.controller.toggle_search)
+        self.find_button = tk.Button(action_frame, text="찾기(Shift x2 / ESC)", 
+                                     activeforeground="white", activebackground="#555555",
+                                     command=self.controller.toggle_search)
         self.find_button.grid(row=0, column=3, sticky=tk.EW)
 
         # UI가 모두 생성된 후, 오버레이의 초기 상태를 설정합니다.
@@ -368,16 +379,19 @@ class AppUI:
         
         # 헤더에 들어갈 삭제 버튼 (텍스트 형태로 복구)
         delete_button = tk.Button(header_frame, text="삭제", fg="#f58585", activeforeground="red", 
-                                  font=(None, 8), padx=2, pady=0,
+                                  activebackground="#444444",
+                                  font=(None, 8), padx=5, pady=0,
                                   command=lambda: self.controller.remove_area(area_number))
         delete_button.pack(side=tk.LEFT, padx=(5, 0))
 
         # 순서 변경 버튼
-        up_button = tk.Button(header_frame, text="↑", fg="white", font=(None, 8), padx=2, pady=0,
+        up_button = tk.Button(header_frame, text="↑", fg="black", activeforeground="white", activebackground="#555555",
+                              font=(None, 8), padx=5, pady=0, bg=self.WINDOW_COLORS['default'],
                               command=lambda: self.controller.move_area(area_number, -1))
         up_button.pack(side=tk.LEFT, padx=(5, 0))
         
-        down_button = tk.Button(header_frame, text="↓", fg="white", font=(None, 8), padx=2, pady=0,
+        down_button = tk.Button(header_frame, text="↓", fg="black", activeforeground="white", activebackground="#555555",
+                                font=(None, 8), padx=5, pady=0, bg=self.WINDOW_COLORS['default'],
                                 command=lambda: self.controller.move_area(area_number, 1))
         down_button.pack(side=tk.LEFT, padx=(2, 0))
 
@@ -404,7 +418,9 @@ class AppUI:
                                validatecommand=self.tuple_vcmd)
         coord_button = tk.Button(left_frame, 
                                  text=f"구역 {area_number}", 
-                                 width=3, 
+                                 padx=5,
+                                 activeforeground="white",
+                                 activebackground="#555555",
                                  command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_click_coord'))
         
 
@@ -492,7 +508,11 @@ class AppUI:
                                highlightthickness=0, 
                                validate="key",
                                validatecommand=self.tuple_vcmd)
-        color_button = tk.Button(left_frame3, text="색상", command=lambda: self.controller.start_color_picker(f'area_{area_number}_color'))
+        color_button = tk.Button(left_frame3, text="색상", 
+                                 padx=5,
+                                 activeforeground="white",
+                                 activebackground="#555555",
+                                 command=lambda: self.controller.start_color_picker(f'area_{area_number}_color'))
 
         def toggle_color_state():
             """'기본' 체크박스 상태에 따라 색상 위젯들을 활성화/비활성화하고 값을 동기화합니다."""
@@ -965,7 +985,9 @@ class AppUI:
         label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         button = tk.Button(frame, 
                            text=button_text, 
-                           width=3, 
+                           padx=5,
+                           activeforeground="white",
+                           activebackground="#555555",
                            command=command)
         button.pack(side=tk.LEFT)
         return frame, label, button
@@ -987,7 +1009,9 @@ class AppUI:
                  validate="key", 
                  validatecommand=self.tuple_vcmd
                  ).pack(side=tk.LEFT, expand=True, fill=tk.X)
-        tk.Button(frame, text=button_text, width=3,  bg="white", command=command).pack(side=tk.LEFT)
+        tk.Button(frame, text=button_text, padx=5,  bg="white", 
+                  activeforeground="white", activebackground="#555555",
+                  command=command).pack(side=tk.LEFT)
         return frame
 
     def _create_color_preview(self, parent, var):
@@ -1025,7 +1049,9 @@ class AppUI:
         color_preview = self._create_color_preview(frame, color_var)
         color_preview.pack(side=tk.LEFT, padx=(0, 5))
         
-        color_button = tk.Button(frame, text=button_text, width=3, command=command)
+        color_button = tk.Button(frame, text=button_text, padx=5, 
+                                 activeforeground="white", activebackground="#555555",
+                                 command=command)
         
         def toggle_state():
             is_enabled = use_var.get()
