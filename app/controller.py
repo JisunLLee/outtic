@@ -314,50 +314,56 @@ class AppController:
         if not self.apply_settings():
             return
 
-        # 표시할 영역들을 리스트로 구성합니다.
-        areas_to_display = []
-        left = min(self.p1[0], self.p2[0])
-        top = min(self.p1[1], self.p2[1])
-        right = max(self.p1[0], self.p2[0])
-        bottom = max(self.p1[1], self.p2[1])
-        areas_to_display.append({
-            'rect': (left, top, right - left, bottom - top),
-            'color': 'red', # 기본 영역은 빨간색
-            'alpha': 0.3
-        })
+        visual_steps = []
 
-        # 구역별로 고유한 색상을 지정하기 위한 리스트
-        area_overlay_colors = ['cyan', 'magenta', 'yellow', 'lime', 'orange', 'purple']
+        # 1. 기본 탐색 영역
+        x1, y1, x2, y2 = self._get_global_search_area()
+        visual_steps.append([{
+            'type': 'area',
+            'rect': (x1, y1, x2 - x1, y2 - y1),
+            'color': 'red',
+            'alpha': 0.3,
+            'text': '기본 영역'
+        }])
 
-        # 활성화된 구역들의 탐색 영역도 함께 표시
-        for area_number, settings in self.areas.items():
-            # '기본' 영역 사용이 체크 해제된 경우(개별 영역 사용 시)에만 개별 영역을 표시
-            if settings['use'] and settings['use_area_bounds']:
-                x1, y1, x2, y2 = settings['search_area']
-                # 구역 번호에 따라 색상 순환
-                overlay_color = area_overlay_colors[(area_number - 1) % len(area_overlay_colors)]
-                areas_to_display.append({
-                    'rect': (x1, y1, x2 - x1, y2 - y1),
-                    'color': overlay_color,
-                    'alpha': 0.4,
-                    'text': settings.get('name', f'구역{area_number}') # 설정된 이름 표시
-                })
+        # 2. 완료 좌표
+        visual_steps.append([{
+            'type': 'point',
+            'text': '완료',
+            'pos': self.complete_coord,
+            'color': '#50E3C2'
+        }])
 
-        # 마커로 표시할 좌표들
-        points_to_mark = [
-            {'text': '완료', 'pos': self.complete_coord, 'color': '#50E3C2'}, # Teal
-        ]
-        # 활성화된 구역들의 클릭 좌표도 함께 표시
-        for area_number, settings in self.areas.items():
-            if settings['use']:
-                marker_color = area_overlay_colors[(area_number - 1) % len(area_overlay_colors)]
-                points_to_mark.append({
-                    'text': f'{area_number}',
-                    'pos': settings['click_coord'],
-                    'color': marker_color
-                })
+        # 3. 구역별 설정 (켜져 있을 때만)
+        if self.use_sequence:
+            area_overlay_colors = ['cyan', 'magenta', 'yellow', 'lime', 'orange', 'purple']
+            for area_number in self.area_order:
+                settings = self.areas.get(area_number)
+                if settings and settings['use'] and settings['click_coord'] != (0, 0):
+                    marker_color = area_overlay_colors[(area_number - 1) % len(area_overlay_colors)]
+                    
+                    step_markers = []
+                    # 구역 탐색 영역
+                    if settings['use_area_bounds']:
+                        sx1, sy1, sx2, sy2 = settings['search_area']
+                        step_markers.append({
+                            'type': 'area',
+                            'rect': (sx1, sy1, sx2 - sx1, sy2 - sy1),
+                            'color': marker_color,
+                            'alpha': 0.4,
+                            'text': settings.get('name', f'구역{area_number}')
+                        })
+                    
+                    # 구역 클릭 좌표
+                    step_markers.append({
+                        'type': 'point',
+                        'text': settings.get('name', str(area_number)),
+                        'pos': settings['click_coord'],
+                        'color': marker_color
+                    })
+                    visual_steps.append(step_markers)
 
-        self.ui.display_visual_aids(areas=areas_to_display, points=points_to_mark)
+        self.ui.display_visual_aids(visual_steps)
 
     def save_settings(self):
         """현재 설정을 JSON 파일로 저장합니다."""

@@ -8,9 +8,9 @@
         516
     ],
     "color": [
-        255,
-        138,
-        180
+        0,
+        205,
+        60
     ],
     "use_secondary_color": false,
     "secondary_color": [
@@ -31,13 +31,13 @@
     "use_screen_activation": false,
     "use_operation_check": true,
     "op_check_coord": [
-        467,
-        178
+        615,
+        344
     ],
     "op_check_color": [
-        200,
-        200,
-        200
+        244,
+        244,
+        244
     ],
     "op_check_max_retries": 3,
     "op_check_retry_interval": 0.5,
@@ -128,9 +128,9 @@
             ],
             "use_color": false,
             "color": [
-                255,
-                138,
-                180
+                0,
+                205,
+                60
             ],
             "direction": "↓↔",
             "use_direction": false
@@ -155,9 +155,9 @@
             ],
             "use_color": false,
             "color": [
-                255,
-                138,
-                180
+                0,
+                205,
+                60
             ],
             "direction": "↓↔",
             "use_direction": false
@@ -182,9 +182,9 @@
             ],
             "use_color": false,
             "color": [
-                255,
-                138,
-                180
+                0,
+                205,
+                60
             ],
             "direction": "↓↔",
             "use_direction": false
@@ -263,9 +263,9 @@
             ],
             "use_color": false,
             "color": [
-                255,
-                138,
-                180
+                0,
+                205,
+                60
             ],
             "direction": "↓↔",
             "use_direction": false
