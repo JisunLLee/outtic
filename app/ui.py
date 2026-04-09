@@ -514,8 +514,6 @@ class AppUI:
         row3_container, (left_frame3, right_frame3) = self._create_split_container(area_group, weights=[1, 1])
 
         # --- Row 3 왼쪽: 색상 사용, 색상 값, 색상 선택 버튼 ---
-        self._create_color_preview(left_frame3, vars['color_var']).pack(side=tk.LEFT, padx=(0, 5))
-
         color_label = tk.Entry(left_frame3, 
                                textvariable=vars['color_var'], 
                                insertbackground='white', 
@@ -564,7 +562,8 @@ class AppUI:
                                                activebackground="#2e2e2e", 
                                                highlightthickness=0, 
                                                command=toggle_color_state)
-        use_color_checkbutton.pack(expand=True, side=tk.LEFT)
+        use_color_checkbutton.pack(side=tk.LEFT)
+        self._create_color_preview(left_frame3, vars['color_var']).pack(side=tk.LEFT, padx=(0, 5))
         color_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         color_button.pack(side=tk.RIGHT)
 
@@ -1069,9 +1068,6 @@ class AppUI:
                                width=12, 
                                validate="key", 
                                validatecommand=self.tuple_vcmd)
-        color_preview = self._create_color_preview(frame, color_var)
-        color_preview.pack(side=tk.LEFT, padx=(0, 5))
-        
         color_button = tk.Button(frame, text=button_text, padx=5, 
                                  activeforeground="white", activebackground="#555555",
                                  command=command)
@@ -1096,6 +1092,7 @@ class AppUI:
                                   highlightthickness=0, 
                                   command=toggle_state)
         checkbox.pack(side=tk.LEFT)
+        self._create_color_preview(frame, color_var).pack(side=tk.LEFT, padx=(0, 5))
         
         color_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         color_button.pack(side=tk.LEFT)
