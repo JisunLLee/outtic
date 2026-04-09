@@ -440,6 +440,7 @@ class AppUI:
         
 
         right_inner_frame = tk.Frame(right_frame)
+        right_inner_frame.pack(padx=5)
         clicks_frame = self._create_labeled_entry(right_inner_frame, "횟수:", vars['clicks_var'])
         offset_frame = self._create_labeled_entry(right_inner_frame, "오차:", vars['offset_var'])
 
@@ -585,7 +586,7 @@ class AppUI:
 
         use_direction_checkbutton = tk.Checkbutton(right_frame3, text="기본", variable=vars['use_direction_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_direction_state)
         use_direction_checkbutton.pack(side=tk.LEFT)
-        direction_menu.pack(fill=tk.X, expand=True, side=tk.LEFT)
+        direction_menu.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=4)
         
         # 나중에 전체 활성/비활성화를 위해 위젯들을 저장합니다.
         widgets['group'] = area_group
