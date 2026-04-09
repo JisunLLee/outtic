@@ -385,11 +385,15 @@ class AppUI:
         except (ValueError, AttributeError):
             order_idx = area_number
 
-        # 순서 번호 레이블을 드래그 핸들로 사용 (커서 변경 및 이벤트 바인딩)
-        order_label = tk.Label(header_frame, text=f"{order_idx}.", fg="white", font=(None, 9, "bold"), cursor="fleur")
+        # 드래그 핸들 (☰)
+        drag_handle = tk.Label(header_frame, text="☰", fg="white", font=(None, 10), cursor="fleur")
+        drag_handle.pack(side=tk.LEFT, padx=(2, 0), pady=(0,3))  
+        drag_handle.bind("<Button-1>", lambda e: self._on_area_drag_start(e, area_number))
+        drag_handle.bind("<B1-Motion>", lambda e: self._on_area_drag_motion(e, area_number))
+        drag_handle.bind("<ButtonRelease-1>", lambda e: self._on_area_drag_release(e, area_number))
+
+        order_label = tk.Label(header_frame, text=f"{order_idx}.", fg="white", font=(None, 9, "bold"))
         order_label.pack(side=tk.LEFT, padx=(2, 0))
-        order_label.bind("<Button-1>", lambda e: self._on_area_drag_start(e, area_number))
-        order_label.bind("<ButtonRelease-1>", lambda e: self._on_area_drag_release(e, area_number))
 
         name_entry = tk.Entry(header_frame, 
                               textvariable=self.area_vars[area_number]['name_var'],
@@ -587,6 +591,7 @@ class AppUI:
         widgets['group'] = area_group
         widgets['use_search_check'] = use_search_checkbutton
         widgets['delete_button'] = delete_button
+        widgets['drag_handle'] = drag_handle
         widgets['name_entry'] = name_entry
         widgets['order_label'] = order_label
         widgets['coord_label'] = coord_label
@@ -661,6 +666,7 @@ class AppUI:
                 widgets = self.area_widgets[area_num]
                 # 순서 번호 레이블 텍스트 갱신
                 widgets['order_label'].config(text=f"{display_idx}.", fg="white")
+                widgets['drag_handle'].config(fg="white") # 핸들 색상 복구
                 
                 group = widgets['group']
                 group.pack_forget()
@@ -672,10 +678,44 @@ class AppUI:
     def _on_area_drag_start(self, event, area_num):
         """드래그 시작 시 시각적 피드백 제공."""
         if area_num in self.area_widgets:
-            self.area_widgets[area_num]['order_label'].config(fg="#40E0D0") # 터콰이즈 색상으로 변경
+            self.area_widgets[area_num]['drag_handle'].config(fg="#40E0D0") # 핸들 색상 변경
+
+    def _on_area_drag_motion(self, event, area_num):
+        """드래그 중 마우스 위치를 추적하여 삽입 위치 가이드 라인을 표시합니다."""
+        y_cursor = event.y_root
+        
+        # 가이드 라인 생성 (처음 한 번만)
+        if not hasattr(self, 'drag_guide'):
+            self.drag_guide = tk.Frame(self.scrollable_content_frame, height=3, bg="#40E0D0", bd=0)
+
+        # 각 구역의 위치 정보 수집
+        y_positions = []
+        for a_num in self.controller.area_order:
+            if a_num in self.area_widgets:
+                group = self.area_widgets[a_num]['group']
+                y_top = group.winfo_rooty()
+                y_bottom = y_top + group.winfo_height()
+                y_positions.append((y_top, y_bottom))
+        
+        if not y_positions: return
+
+        # 마우스 위치에 따른 삽입 좌표 결정 (가장 가까운 경계면)
+        insert_y = y_positions[0][0] - self.scrollable_content_frame.winfo_rooty()
+        for top, bottom in y_positions:
+            if y_cursor > (top + bottom) // 2:
+                insert_y = bottom - self.scrollable_content_frame.winfo_rooty() + 5 # 패딩 보정
+        
+        self.drag_guide.place(x=0, y=insert_y, relwidth=1)
+        self.drag_guide.lift()
 
     def _on_area_drag_release(self, event, area_num):
-        """드래그 종료 시 마우스 위치를 기반으로 새로운 순서를 결정합니다."""
+        """드래그 종료 시 가이드 라인을 숨기고 새로운 순서를 결정합니다."""
+        if hasattr(self, 'drag_guide'):
+            self.drag_guide.place_forget()
+
+        # 위젯들의 현재 화면 위치 정보를 정확히 가져오기 위해 레이아웃 갱신
+        self.root.update_idletasks()
+
         y_cursor = event.y_root
         
         # 현재 드래그 중인 구역을 제외한 나머지 구역들의 중앙 Y 좌표 수집
@@ -1210,6 +1250,7 @@ class AppUI:
                 # '구역 탐색 사용'이 켜지면, 삭제 버튼은 항상 활성화하고 나머지 개별 상태를 다시 적용
                 widgets['name_entry'].config(state='normal', bg='#444444', fg='white')
                 widgets['order_label'].config(fg='white')
+                widgets['drag_handle'].config(fg='white')
                 widgets['delete_button'].config(state='normal')
                 self.area_toggles[area_number]['search']()
                 self.area_toggles[area_number]['bounds']()

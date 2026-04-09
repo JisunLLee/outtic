@@ -54,6 +54,33 @@
     "wait_duration_sec": 40,
     "search_time_tolerance_sec": 5,
     "areas": {
+        "1": {
+            "name": "구역1",
+            "use": true,
+            "click_coord": [
+                723,
+                301
+            ],
+            "clicks": 1,
+            "offset": 2,
+            "use_area_bounds": false,
+            "p1": [
+                76,
+                233
+            ],
+            "p2": [
+                616,
+                707
+            ],
+            "use_color": false,
+            "color": [
+                0,
+                0,
+                0
+            ],
+            "direction": "←↑",
+            "use_direction": false
+        },
         "2": {
             "name": "E",
             "use": true,
@@ -119,20 +146,20 @@
             "offset": 2,
             "use_area_bounds": false,
             "p1": [
-                98,
-                229
+                93,
+                238
             ],
             "p2": [
-                225,
-                450
+                596,
+                516
             ],
             "use_color": false,
             "color": [
-                0,
-                0,
-                0
+                255,
+                138,
+                180
             ],
-            "direction": "→↑",
+            "direction": "↓↔",
             "use_direction": false
         },
         "5": {
@@ -155,9 +182,9 @@
             ],
             "use_color": false,
             "color": [
-                0,
-                0,
-                0
+                255,
+                138,
+                180
             ],
             "direction": "↓↔",
             "use_direction": false
@@ -182,19 +209,20 @@
             ],
             "use_color": false,
             "color": [
-                0,
-                0,
-                0
+                255,
+                138,
+                180
             ],
             "direction": "↓↔",
             "use_direction": false
         }
     },
     "area_order": [
-        5,
         6,
+        5,
         4,
-        2,
-        3
+        1,
+        3,
+        2
     ]
 }
