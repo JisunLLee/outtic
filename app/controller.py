@@ -1,6 +1,7 @@
 import tkinter as tk
 import threading
 import time
+import os
 from pynput import mouse, keyboard
 from typing import Optional, TYPE_CHECKING
 import ast
@@ -121,6 +122,7 @@ class AppController:
         """
         self.ui = ui
         self.ui.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.auto_load_settings() # 프로그램 시작 시 마지막 설정 자동 로드
 
     def _initialize_area_settings(self, area_number: int):
         """컨트롤러 내부에 지정된 구역의 기본 설정값을 생성합니다."""
@@ -186,6 +188,10 @@ class AppController:
     def on_closing(self):
         """창을 닫을 때 리소스를 안전하게 정리합니다."""
         self.is_searching = False
+        # 종료 전 현재 설정을 'last_settings.json'에 자동 저장
+        if self.ui:
+            self.apply_settings()
+            self.auto_save_settings()
         self.keyboard_listener.stop()
         self.ui.root.destroy()
 
@@ -402,6 +408,130 @@ class AppController:
             self.ui.update_status(f"설정이 '{filepath.split('/')[-1]}'에 저장되었습니다.")
         except Exception as e:
             self.ui.update_status(f"파일 저장 오류: {e}")
+
+    def auto_save_settings(self):
+        """별도의 창 없이 'last_settings.json' 파일에 현재 설정을 저장합니다."""
+        save_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'last_settings.json')
+        
+        settings_data = {
+            'p1': self.p1,
+            'p2': self.p2,
+            'color': self.color,
+            'use_secondary_color': self.use_secondary_color,
+            'secondary_color': self.secondary_color,
+            'complete_coord': self.complete_coord,
+            'color_tolerance': self.color_tolerance,
+            'color_area_tolerance': self.color_area_tolerance,
+            'search_direction': self.search_direction.value,
+            'complete_click_delay': self.complete_click_delay,
+            'use_sequence': self.use_sequence,
+            'use_space_complete': self.use_space_complete,
+            'use_screen_activation': self.use_screen_activation,
+            'use_operation_check': self.use_operation_check,
+            'op_check_coord': self.op_check_coord,
+            'op_check_color': self.op_check_color,
+            'op_check_max_retries': self.op_check_max_retries,
+            'op_check_retry_interval': self.op_check_retry_interval,
+            'empty_coord': self.empty_coord,
+            'use_search_delay': self.use_search_delay,
+            'use_initial_search': self.use_initial_search,
+            'area_delay': self.area_delay,
+            'search_delay': self.search_delay,
+            'total_duration_sec': self.total_duration_sec,
+            'active_search_duration_sec': self.active_search_duration_sec,
+            'wait_duration_sec': self.wait_duration_sec,
+            'search_time_tolerance_sec': self.search_time_tolerance_sec,
+            'areas': {},
+            'area_order': self.area_order
+        }
+
+        for area_number, area_settings in self.areas.items():
+            settings_data['areas'][area_number] = {
+                'name': area_settings.get('name', f"구역{area_number}"),
+                'use': area_settings['use'],
+                'click_coord': area_settings['click_coord'],
+                'clicks': area_settings['clicks'],
+                'offset': area_settings['offset'],
+                'use_area_bounds': area_settings['use_area_bounds'],
+                'p1': area_settings['p1'],
+                'p2': area_settings['p2'],
+                'use_color': area_settings['use_color'],
+                'color': area_settings['color'],
+                'direction': area_settings['direction'].value,
+                'use_direction': area_settings['use_direction'],
+            }
+
+        try:
+            with open(save_path, 'w', encoding='utf-8') as f:
+                json.dump(settings_data, f, ensure_ascii=False, indent=4)
+            print(f"자동 저장 완료: {save_path}")
+        except Exception as e:
+            print(f"자동 저장 실패: {e}")
+
+    def auto_load_settings(self):
+        """프로그램 시작 시 'last_settings.json' 파일이 있으면 자동으로 불러옵/니다."""
+        load_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'last_settings.json')
+        if not os.path.exists(load_path):
+            return
+
+        try:
+            with open(load_path, 'r', encoding='utf-8') as f:
+                settings_data = json.load(f)
+
+            self.p1 = tuple(settings_data.get('p1', self.p1))
+            self.p2 = tuple(settings_data.get('p2', self.p2))
+            self.color = tuple(settings_data.get('color', self.color))
+            self.use_secondary_color = bool(settings_data.get('use_secondary_color', self.use_secondary_color))
+            self.secondary_color = tuple(settings_data.get('secondary_color', self.secondary_color))
+            self.complete_coord = tuple(settings_data.get('complete_coord', self.complete_coord))
+            self.color_tolerance = int(settings_data.get('color_tolerance', self.color_tolerance))
+            self.color_area_tolerance = int(settings_data.get('color_area_tolerance', self.color_area_tolerance))
+            self.search_direction = SearchDirection(settings_data.get('search_direction', self.search_direction.value))
+            self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
+            self.use_initial_search = bool(settings_data.get('use_initial_search', self.use_initial_search))
+            self.use_space_complete = bool(settings_data.get('use_space_complete', self.use_space_complete))
+            self.use_screen_activation = bool(settings_data.get('use_screen_activation', self.use_screen_activation))
+            self.use_operation_check = bool(settings_data.get('use_operation_check', self.use_operation_check))
+            self.op_check_coord = tuple(settings_data.get('op_check_coord', self.op_check_coord))
+            self.op_check_color = tuple(settings_data.get('op_check_color', self.op_check_color))
+            self.op_check_max_retries = int(settings_data.get('op_check_max_retries', self.op_check_max_retries))
+            self.op_check_retry_interval = float(settings_data.get('op_check_retry_interval', self.op_check_retry_interval))
+            self.empty_coord = tuple(settings_data.get('empty_coord', self.empty_coord))
+            self.use_search_delay = bool(settings_data.get('use_search_delay', self.use_search_delay))
+            self.use_sequence = bool(settings_data.get('use_sequence', self.use_sequence))
+            self.area_delay = float(settings_data.get('area_delay', self.area_delay))
+            self.search_delay = float(settings_data.get('search_delay', self.search_delay))
+            self.total_duration_sec = int(settings_data.get('total_duration_sec', self.total_duration_sec))
+            self.active_search_duration_sec = int(settings_data.get('active_search_duration_sec', self.active_search_duration_sec))
+            self.wait_duration_sec = int(settings_data.get('wait_duration_sec', self.wait_duration_sec))
+            self.search_time_tolerance_sec = int(settings_data.get('search_time_tolerance_sec', self.search_time_tolerance_sec))
+            self.area_order = settings_data.get('area_order', sorted([int(k) for k in settings_data.get('areas', {}).keys()]))
+
+            loaded_areas = settings_data.get('areas', {})
+            for area_number_str, loaded in loaded_areas.items():
+                area_number = int(area_number_str)
+                while area_number not in self.areas:
+                    self.add_area()
+                
+                area = self.areas[area_number]
+                area['name'] = loaded.get('name', f"구역{area_number}")
+                area['use'] = bool(loaded.get('use', area['use']))
+                area['click_coord'] = tuple(loaded.get('click_coord', area['click_coord']))
+                area['clicks'] = int(loaded.get('clicks', area['clicks']))
+                area['offset'] = int(loaded.get('offset', area['offset']))
+                area['use_area_bounds'] = bool(loaded.get('use_area_bounds', area['use_area_bounds']))
+                area['p1'] = tuple(loaded.get('p1', area['p1']))
+                area['p2'] = tuple(loaded.get('p2', area['p2']))
+                area['use_color'] = bool(loaded.get('use_color', area['use_color']))
+                area['color'] = tuple(loaded.get('color', area['color']))
+                area['direction'] = SearchDirection(loaded.get('direction', area['direction'].value))
+                area['use_direction'] = bool(loaded.get('use_direction', area['use_direction']))
+
+            if self.ui:
+                self.ui.update_ui_from_controller()
+                self.ui.update_status("이전 세션의 설정을 자동으로 불러왔습니다.")
+        except Exception as e:
+            print(f"자동 로드 실패: {e}")
 
     def load_settings(self):
         """JSON 파일에서 설정을 불러옵니다."""
