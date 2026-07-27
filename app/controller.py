@@ -60,7 +60,7 @@ class AppController:
         # --- 구역값 설정 ---
         self.use_initial_search = True # '기본 탐색 사용' 체크박스 기본값
         self.exit_after_select = False # '선택 후 프로그램 중지' 체크박스 기본값 (미체크)
-        self.research_delay = 0.05 # 재탐색 대기 (초), UI 기본값 50ms
+        self.research_delay = 0.7 # 재탐색 대기 (초), UI 기본값 700ms
         self.use_sequence = False # 구역 사용 여부 (UI 체크박스 기본값)
         self.use_space_complete = True # 스페이스 완료 사용 여부
         self.area_delay = 0.70 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms

@@ -1,16 +1,16 @@
 {
     "p1": [
-        161,
-        234
+        63,
+        333
     ],
     "p2": [
-        430,
-        483
+        661,
+        819
     ],
     "color": [
-        124,
-        104,
-        238
+        249,
+        127,
+        172
     ],
     "use_secondary_color": false,
     "secondary_color": [
@@ -19,14 +19,14 @@
         20
     ],
     "complete_coord": [
-        737,
-        662
+        904,
+        876
     ],
     "color_tolerance": 15,
     "color_area_tolerance": 5,
     "search_direction": "→↓",
     "complete_click_delay": 0.1,
-    "use_sequence": true,
+    "use_sequence": false,
     "exit_after_select": false,
     "use_space_complete": true,
     "use_screen_activation": false,
@@ -48,7 +48,7 @@
     ],
     "use_search_delay": false,
     "use_initial_search": true,
-    "research_delay": 2.0,
+    "research_delay": 0.7,
     "area_delay": 0.65,
     "search_delay": 0.0,
     "total_duration_sec": 1800,
@@ -67,18 +67,18 @@
             "offset": 2,
             "use_area_bounds": false,
             "p1": [
-                161,
-                234
+                63,
+                333
             ],
             "p2": [
-                430,
-                483
+                661,
+                819
             ],
             "use_color": false,
             "color": [
-                124,
-                104,
-                238
+                249,
+                127,
+                172
             ],
             "direction": "→↓",
             "use_direction": false
@@ -94,18 +94,18 @@
             "offset": 2,
             "use_area_bounds": false,
             "p1": [
-                161,
-                234
+                63,
+                333
             ],
             "p2": [
-                430,
-                483
+                661,
+                819
             ],
             "use_color": false,
             "color": [
-                124,
-                104,
-                238
+                249,
+                127,
+                172
             ],
             "direction": "→↓",
             "use_direction": false
@@ -121,18 +121,18 @@
             "offset": 2,
             "use_area_bounds": false,
             "p1": [
-                161,
-                234
+                63,
+                333
             ],
             "p2": [
-                430,
-                483
+                661,
+                819
             ],
             "use_color": false,
             "color": [
-                124,
-                104,
-                238
+                249,
+                127,
+                172
             ],
             "direction": "→↓",
             "use_direction": false
@@ -148,18 +148,18 @@
             "offset": 2,
             "use_area_bounds": false,
             "p1": [
-                161,
-                234
+                63,
+                333
             ],
             "p2": [
-                430,
-                483
+                661,
+                819
             ],
             "use_color": false,
             "color": [
-                124,
-                104,
-                238
+                249,
+                127,
+                172
             ],
             "direction": "→↓",
             "use_direction": false
