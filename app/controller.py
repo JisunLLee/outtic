@@ -59,6 +59,8 @@ class AppController:
 
         # --- 구역값 설정 ---
         self.use_initial_search = True # '기본 탐색 사용' 체크박스 기본값
+        self.exit_after_select = False # '선택 후 프로그램 중지' 체크박스 기본값 (미체크)
+        self.research_delay = 0.05 # 재탐색 대기 (초), UI 기본값 50ms
         self.use_sequence = False # 구역 사용 여부 (UI 체크박스 기본값)
         self.use_space_complete = True # 스페이스 완료 사용 여부
         self.area_delay = 0.70 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
@@ -256,6 +258,7 @@ class AppController:
             selected_direction_str = self.ui.direction_var.get()
             self.search_direction = direction_map.get(selected_direction_str, SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT)
             self.use_initial_search = self.ui.use_initial_search_var.get()
+            self.exit_after_select = self.ui.exit_after_select_var.get()
             self.use_space_complete = self.ui.use_space_complete_var.get()
             self.use_sequence = self.ui.use_sequence_var.get()
             self.use_screen_activation = self.ui.use_screen_activation_var.get()
@@ -269,6 +272,7 @@ class AppController:
             self.active_search_duration_sec = int(self.ui.active_search_duration_var.get())
             self.wait_duration_sec = int(self.ui.wait_duration_var.get())
             self.search_time_tolerance_sec = int(self.ui.search_time_tolerance_var.get())
+            self.research_delay = int(self.ui.research_delay_var.get()) / 1000.0
             
             # --- 구역 설정 적용 ---
             for area_number, area_ui_vars in self.ui.area_vars.items():
@@ -384,6 +388,7 @@ class AppController:
             'search_direction': self.search_direction.value, # Enum을 문자열로 저장
             'complete_click_delay': self.complete_click_delay,
             'use_sequence': self.use_sequence,
+            'exit_after_select': self.exit_after_select,
             'use_space_complete': self.use_space_complete,
             'use_screen_activation': self.use_screen_activation,
             'use_operation_check': self.use_operation_check,
@@ -394,6 +399,7 @@ class AppController:
             'empty_coord': self.empty_coord,
             'use_search_delay': self.use_search_delay,
             'use_initial_search': self.use_initial_search,
+            'research_delay': self.research_delay,
             'area_delay': self.area_delay,
             'search_delay': self.search_delay,
             'total_duration_sec': self.total_duration_sec,
@@ -453,6 +459,7 @@ class AppController:
             'search_direction': self.search_direction.value,
             'complete_click_delay': self.complete_click_delay,
             'use_sequence': self.use_sequence,
+            'exit_after_select': self.exit_after_select,
             'use_space_complete': self.use_space_complete,
             'use_screen_activation': self.use_screen_activation,
             'use_operation_check': self.use_operation_check,
@@ -463,6 +470,7 @@ class AppController:
             'empty_coord': self.empty_coord,
             'use_search_delay': self.use_search_delay,
             'use_initial_search': self.use_initial_search,
+            'research_delay': self.research_delay,
             'area_delay': self.area_delay,
             'search_delay': self.search_delay,
             'total_duration_sec': self.total_duration_sec,
@@ -523,6 +531,7 @@ class AppController:
             self.search_direction = SearchDirection(settings_data.get('search_direction', self.search_direction.value))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
             self.use_initial_search = bool(settings_data.get('use_initial_search', self.use_initial_search))
+            self.exit_after_select = bool(settings_data.get('exit_after_select', self.exit_after_select))
             self.use_space_complete = bool(settings_data.get('use_space_complete', self.use_space_complete))
             self.use_screen_activation = bool(settings_data.get('use_screen_activation', self.use_screen_activation))
             self.use_operation_check = bool(settings_data.get('use_operation_check', self.use_operation_check))
@@ -532,6 +541,7 @@ class AppController:
             self.op_check_retry_interval = float(settings_data.get('op_check_retry_interval', self.op_check_retry_interval))
             self.empty_coord = tuple(settings_data.get('empty_coord', self.empty_coord))
             self.use_search_delay = bool(settings_data.get('use_search_delay', self.use_search_delay))
+            self.research_delay = float(settings_data.get('research_delay', self.research_delay))
             self.use_sequence = bool(settings_data.get('use_sequence', self.use_sequence))
             self.area_delay = float(settings_data.get('area_delay', self.area_delay))
             self.search_delay = float(settings_data.get('search_delay', self.search_delay))
@@ -605,6 +615,7 @@ class AppController:
             self.search_direction = SearchDirection(settings_data.get('search_direction', self.search_direction.value))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
             self.use_initial_search = bool(settings_data.get('use_initial_search', self.use_initial_search))
+            self.exit_after_select = bool(settings_data.get('exit_after_select', self.exit_after_select))
             self.use_space_complete = bool(settings_data.get('use_space_complete', self.use_space_complete))
             self.use_screen_activation = bool(settings_data.get('use_screen_activation', self.use_screen_activation))
             self.use_operation_check = bool(settings_data.get('use_operation_check', self.use_operation_check))
@@ -614,6 +625,7 @@ class AppController:
             self.op_check_retry_interval = float(settings_data.get('op_check_retry_interval', self.op_check_retry_interval))
             self.empty_coord = tuple(settings_data.get('empty_coord', self.empty_coord))
             self.use_search_delay = bool(settings_data.get('use_search_delay', self.use_search_delay))
+            self.research_delay = float(settings_data.get('research_delay', self.research_delay))
             self.use_sequence = bool(settings_data.get('use_sequence', self.use_sequence))
             self.area_delay = float(settings_data.get('area_delay', self.area_delay))
             self.search_delay = float(settings_data.get('search_delay', self.search_delay))
@@ -949,7 +961,13 @@ class AppController:
         else:
             status_message = f"{success_message}"
 
-        self.stop_search(message=status_message)
+        if self.exit_after_select:
+            self.stop_search(message=status_message)
+        else:
+            if self.ui:
+                self.ui.queue_task(lambda msg=status_message: self.ui.update_status(f"{msg} (계속 탐색 중)"))
+            if self.research_delay > 0:
+                time.sleep(self.research_delay)
 
     def _perform_space_complete_action(self):
         """스페이스 완료 모드에서 스페이스바 입력 시 수행할 동작"""
@@ -974,8 +992,13 @@ class AppController:
         if self.ui:
             self.ui.queue_task(lambda: self.ui.play_sound(3))
 
-        # 즉시 탐색 중단 및 상태 업데이트 (is_searching 플래그가 False가 되어 탐색 루프가 종료됨)
-        self.stop_search(message=f"스페이스바 입력으로 완료 ({x}, {y})")
+        if self.exit_after_select:
+            self.stop_search(message=f"스페이스바 입력으로 완료 ({x}, {y})")
+        else:
+            if self.ui:
+                self.ui.queue_task(lambda: self.ui.update_status(f"스페이스바 입력으로 완료 ({x}, {y}) (계속 탐색 중)"))
+            if self.research_delay > 0:
+                time.sleep(self.research_delay)
 
     def on_key_press(self, key):
         """전역 키 입력을 감지하여 단축키 조합을 처리합니다."""
@@ -1164,7 +1187,8 @@ class AppController:
                 self.stop_search(f"총 탐색 시간({int(actual_total_duration)}s) 도달, 검색 종료.", play_sound=False)
         else:
             # [구역 사용 OFF]: 색상을 찾을 때까지 초기 탐색만 무한 반복
-            self._perform_search_cycle(search_plan, time.time(), time.time(), float('inf'), float('inf'), float('inf'))
+            while self.is_searching:
+                self._perform_search_cycle(search_plan, time.time(), time.time(), float('inf'), float('inf'), float('inf'))
 
     def _perform_search_cycle(self, search_plan: list, start_time: float, main_start_time: float, duration: float, cycle_target_duration: float, total_target_duration: float):
         """주어진 시간(duration) 동안 탐색 로직을 수행합니다."""

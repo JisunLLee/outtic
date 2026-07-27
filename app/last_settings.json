@@ -1,172 +1,174 @@
 {
     "p1": [
-        132,
-        203
+        161,
+        234
     ],
     "p2": [
-        605,
-        391
+        430,
+        483
     ],
     "color": [
-        190,
-        168,
-        134
+        124,
+        104,
+        238
     ],
     "use_secondary_color": false,
     "secondary_color": [
-        146,
-        118,
-        240
+        28,
+        168,
+        20
     ],
     "complete_coord": [
-        787,
-        715
+        737,
+        662
     ],
     "color_tolerance": 15,
     "color_area_tolerance": 5,
-    "search_direction": "↓↔",
+    "search_direction": "→↓",
     "complete_click_delay": 0.1,
     "use_sequence": true,
+    "exit_after_select": false,
     "use_space_complete": true,
     "use_screen_activation": false,
     "use_operation_check": true,
     "op_check_coord": [
-        467,
-        178
+        551,
+        186
     ],
     "op_check_color": [
-        200,
-        200,
-        200
+        235,
+        235,
+        235
     ],
     "op_check_max_retries": 3,
     "op_check_retry_interval": 0.5,
     "empty_coord": [
-        0,
-        0
+        731,
+        195
     ],
     "use_search_delay": false,
     "use_initial_search": true,
+    "research_delay": 2.0,
     "area_delay": 0.65,
-    "search_delay": 0.15,
-    "total_duration_sec": 1750,
-    "active_search_duration_sec": 300,
-    "wait_duration_sec": 40,
+    "search_delay": 0.0,
+    "total_duration_sec": 1800,
+    "active_search_duration_sec": 600,
+    "wait_duration_sec": 180,
     "search_time_tolerance_sec": 5,
     "areas": {
         "1": {
-            "name": "R",
+            "name": "구역1",
             "use": true,
             "click_coord": [
-                816,
-                239
+                721,
+                381
             ],
-            "clicks": 1,
+            "clicks": 3,
             "offset": 2,
-            "use_area_bounds": true,
+            "use_area_bounds": false,
             "p1": [
-                100,
-                242
+                161,
+                234
             ],
             "p2": [
-                636,
-                366
+                430,
+                483
             ],
-            "use_color": true,
+            "use_color": false,
             "color": [
-                190,
-                168,
-                134
+                124,
+                104,
+                238
             ],
-            "direction": "↓↔",
+            "direction": "→↓",
             "use_direction": false
         },
-        "7": {
-            "name": "R2",
+        "2": {
+            "name": "구역2",
             "use": true,
             "click_coord": [
-                817,
-                245
+                742,
+                383
             ],
-            "clicks": 1,
+            "clicks": 2,
             "offset": 2,
-            "use_area_bounds": true,
+            "use_area_bounds": false,
             "p1": [
-                95,
-                239
+                161,
+                234
             ],
             "p2": [
-                596,
-                426
+                430,
+                483
             ],
-            "use_color": true,
+            "use_color": false,
             "color": [
-                190,
-                168,
-                134
+                124,
+                104,
+                238
             ],
-            "direction": "↓↔",
+            "direction": "→↓",
             "use_direction": false
         },
         "3": {
-            "name": "8",
-            "use": true,
+            "name": "구역3",
+            "use": false,
             "click_coord": [
-                818,
-                294
+                728,
+                332
             ],
             "clicks": 1,
             "offset": 2,
-            "use_area_bounds": true,
+            "use_area_bounds": false,
             "p1": [
-                90,
-                236
+                161,
+                234
             ],
             "p2": [
-                600,
-                514
+                430,
+                483
             ],
-            "use_color": true,
+            "use_color": false,
             "color": [
-                255,
-                138,
-                180
+                124,
+                104,
+                238
             ],
-            "direction": "↓↔",
+            "direction": "→↓",
             "use_direction": false
         },
         "4": {
-            "name": "8",
-            "use": true,
+            "name": "구역4",
+            "use": false,
             "click_coord": [
-                819,
-                292
+                738,
+                346
             ],
             "clicks": 1,
             "offset": 2,
-            "use_area_bounds": true,
+            "use_area_bounds": false,
             "p1": [
-                82,
-                238
+                161,
+                234
             ],
             "p2": [
-                600,
-                523
+                430,
+                483
             ],
-            "use_color": true,
+            "use_color": false,
             "color": [
-                255,
-                138,
-                180
+                124,
+                104,
+                238
             ],
-            "direction": "↓↔",
+            "direction": "→↓",
             "use_direction": false
         }
     },
     "area_order": [
         1,
+        2,
         3,
-        7,
         4
     ]
 }

@@ -45,6 +45,8 @@ class AppUI:
         self.search_delay_var = tk.StringVar(value=str(int(c.search_delay * 100)))
         self.complete_coord_var = tk.StringVar(value=str(c.complete_coord))
         self.use_initial_search_var = tk.BooleanVar(value=c.use_initial_search)
+        self.exit_after_select_var = tk.BooleanVar(value=c.exit_after_select)
+        self.research_delay_var = tk.StringVar(value=str(int(c.research_delay * 1000)))
         self.use_space_complete_var = tk.BooleanVar(value=c.use_space_complete)
         self.use_screen_activation_var = tk.BooleanVar(value=c.use_screen_activation)
         self.use_operation_check_var = tk.BooleanVar(value=c.use_operation_check)
@@ -204,8 +206,18 @@ class AppUI:
         # --- 구역, 기본 탐색 사용 여부 ---
         toggle_frame = tk.Frame(status_and_toggle_container)
         toggle_frame.pack(fill=tk.X)
-        tk.Checkbutton(toggle_frame, text="기본 탐색 사용", variable=self.use_initial_search_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
-        tk.Checkbutton(toggle_frame, text="스페이스완료", variable=self.use_space_complete_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT, padx=(10,0))
+
+        toggle_row1 = tk.Frame(toggle_frame)
+        toggle_row1.pack(fill=tk.X)
+        tk.Checkbutton(toggle_row1, text="기본 탐색 사용", variable=self.use_initial_search_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
+        tk.Checkbutton(toggle_row1, text="스페이스완료", variable=self.use_space_complete_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT, padx=(10,0))
+
+        toggle_row2 = tk.Frame(toggle_frame)
+        toggle_row2.pack(fill=tk.X, pady=(2,0))
+        tk.Checkbutton(toggle_row2, text="선택 후 프로그램 중지", variable=self.exit_after_select_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
+        tk.Label(toggle_row2, text="재탐색:", fg="white").pack(side=tk.LEFT, padx=(10,2))
+        tk.Entry(toggle_row2, textvariable=self.research_delay_var, width=5, justify='center', bg="#444444", fg="white", insertbackground="white", borderwidth=0, highlightthickness=0).pack(side=tk.LEFT)
+        tk.Label(toggle_row2, text="ms", fg="gray").pack(side=tk.LEFT, padx=(2,0))
         # --- 상태 메시지 ---
         status_label = tk.Label(status_and_toggle_container, bg="#555555", textvariable=self.status_var, fg="lightblue", anchor='w')
         status_label.pack(fill=tk.X, pady=(5,0))
@@ -918,6 +930,8 @@ class AppUI:
         self.search_delay_var.set(str(int(c.search_delay * 100)))
         self.complete_coord_var.set(str(c.complete_coord))
         self.use_initial_search_var.set(c.use_initial_search)
+        self.exit_after_select_var.set(c.exit_after_select)
+        self.research_delay_var.set(str(int(c.research_delay * 1000)))
         self.use_space_complete_var.set(c.use_space_complete)
         self.use_screen_activation_var.set(c.use_screen_activation)
         self.use_operation_check_var.set(c.use_operation_check)
