@@ -59,7 +59,7 @@ class AppController:
 
         # --- 구역값 설정 ---
         self.use_initial_search = True # '기본 탐색 사용' 체크박스 기본값
-        self.exit_after_select = False # '선택 후 프로그램 중지' 체크박스 기본값 (미체크)
+        self.continuous_search = False # '연속 찾기 모드' 체크박스 기본값 (미체크)
         self.research_delay = 0.7 # 재탐색 대기 (초), UI 기본값 700ms
         self.use_sequence = False # 구역 사용 여부 (UI 체크박스 기본값)
         self.use_space_complete = True # 스페이스 완료 사용 여부
@@ -258,7 +258,7 @@ class AppController:
             selected_direction_str = self.ui.direction_var.get()
             self.search_direction = direction_map.get(selected_direction_str, SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT)
             self.use_initial_search = self.ui.use_initial_search_var.get()
-            self.exit_after_select = self.ui.exit_after_select_var.get()
+            self.continuous_search = self.ui.continuous_search_var.get()
             self.use_space_complete = self.ui.use_space_complete_var.get()
             self.use_sequence = self.ui.use_sequence_var.get()
             self.use_screen_activation = self.ui.use_screen_activation_var.get()
@@ -388,7 +388,7 @@ class AppController:
             'search_direction': self.search_direction.value, # Enum을 문자열로 저장
             'complete_click_delay': self.complete_click_delay,
             'use_sequence': self.use_sequence,
-            'exit_after_select': self.exit_after_select,
+            'continuous_search': self.continuous_search,
             'use_space_complete': self.use_space_complete,
             'use_screen_activation': self.use_screen_activation,
             'use_operation_check': self.use_operation_check,
@@ -459,7 +459,7 @@ class AppController:
             'search_direction': self.search_direction.value,
             'complete_click_delay': self.complete_click_delay,
             'use_sequence': self.use_sequence,
-            'exit_after_select': self.exit_after_select,
+            'continuous_search': self.continuous_search,
             'use_space_complete': self.use_space_complete,
             'use_screen_activation': self.use_screen_activation,
             'use_operation_check': self.use_operation_check,
@@ -531,7 +531,7 @@ class AppController:
             self.search_direction = SearchDirection(settings_data.get('search_direction', self.search_direction.value))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
             self.use_initial_search = bool(settings_data.get('use_initial_search', self.use_initial_search))
-            self.exit_after_select = bool(settings_data.get('exit_after_select', self.exit_after_select))
+            self.continuous_search = bool(settings_data.get('continuous_search', not settings_data.get('exit_after_select', not self.continuous_search)))
             self.use_space_complete = bool(settings_data.get('use_space_complete', self.use_space_complete))
             self.use_screen_activation = bool(settings_data.get('use_screen_activation', self.use_screen_activation))
             self.use_operation_check = bool(settings_data.get('use_operation_check', self.use_operation_check))
@@ -615,7 +615,7 @@ class AppController:
             self.search_direction = SearchDirection(settings_data.get('search_direction', self.search_direction.value))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
             self.use_initial_search = bool(settings_data.get('use_initial_search', self.use_initial_search))
-            self.exit_after_select = bool(settings_data.get('exit_after_select', self.exit_after_select))
+            self.continuous_search = bool(settings_data.get('continuous_search', not settings_data.get('exit_after_select', not self.continuous_search)))
             self.use_space_complete = bool(settings_data.get('use_space_complete', self.use_space_complete))
             self.use_screen_activation = bool(settings_data.get('use_screen_activation', self.use_screen_activation))
             self.use_operation_check = bool(settings_data.get('use_operation_check', self.use_operation_check))
@@ -961,13 +961,13 @@ class AppController:
         else:
             status_message = f"{success_message}"
 
-        if self.exit_after_select:
-            self.stop_search(message=status_message)
-        else:
+        if self.continuous_search:
             if self.ui:
                 self.ui.queue_task(lambda msg=status_message: self.ui.update_status(f"{msg} (계속 탐색 중)"))
             if self.research_delay > 0:
                 time.sleep(self.research_delay)
+        else:
+            self.stop_search(message=status_message)
 
     def _perform_space_complete_action(self):
         """스페이스 완료 모드에서 스페이스바 입력 시 수행할 동작"""
@@ -992,13 +992,13 @@ class AppController:
         if self.ui:
             self.ui.queue_task(lambda: self.ui.play_sound(3))
 
-        if self.exit_after_select:
-            self.stop_search(message=f"스페이스바 입력으로 완료 ({x}, {y})")
-        else:
+        if self.continuous_search:
             if self.ui:
                 self.ui.queue_task(lambda: self.ui.update_status(f"스페이스바 입력으로 완료 ({x}, {y}) (계속 탐색 중)"))
             if self.research_delay > 0:
                 time.sleep(self.research_delay)
+        else:
+            self.stop_search(message=f"스페이스바 입력으로 완료 ({x}, {y})")
 
     def on_key_press(self, key):
         """전역 키 입력을 감지하여 단축키 조합을 처리합니다."""
