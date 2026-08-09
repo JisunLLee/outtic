@@ -1152,14 +1152,10 @@ class AppController:
                 current_cycle_duration = min(actual_active_search_duration, remaining_total_time)
 
                 cycle_start_time = time.time()
-                found_color = self._perform_search_cycle(search_plan, cycle_start_time, main_start_time, current_cycle_duration, actual_active_search_duration, actual_total_duration)
+                self._perform_search_cycle(search_plan, cycle_start_time, main_start_time, current_cycle_duration, actual_active_search_duration, actual_total_duration)
                 
-                # 탐색 중 색상을 발견했거나 사용자가 중지하면 루프 탈출
+                # 탐색 중 사용자가 중지하면 루프 탈출
                 if not self.is_searching: break
-                
-                # 연속 찾기 모드에서 색상을 발견한 경우, '대기(초)' 사이클을 수행하지 않고 다음 탐색 사이클로 즉시 이동
-                if found_color and self.continuous_search:
-                    continue
 
                 # --- 대기 사이클 ---
                 if self.wait_duration_sec > 0:
@@ -1209,7 +1205,7 @@ class AppController:
                 found_pos = self.color_finder.find_color_in_area(initial_step['search_area'], initial_step['search_color'], self.color_tolerance, initial_step['search_direction'])
                 if found_pos:
                     self._handle_found_color(found_pos, "초기 탐색 중 1순위 색상 발견")
-                    return True
+                    if not self.continuous_search: return True
 
                 # 2. 2순위 색상 탐색 (조건부)
                 if self.is_searching and self.use_secondary_color:
@@ -1219,7 +1215,7 @@ class AppController:
                     found_pos_secondary = self.color_finder.find_color_in_area(initial_step['search_area'], self.secondary_color, self.color_tolerance, initial_step['search_direction'])
                     if found_pos_secondary:
                         self._handle_found_color(found_pos_secondary, "초기 탐색 중 2순위 색상 발견")
-                        return True
+                        if not self.continuous_search: return True
 
             retry_steps = [step for step in search_plan if step['type'] == 'retry']
             if not retry_steps:
@@ -1270,7 +1266,7 @@ class AppController:
                     found_pos = self.color_finder.find_color_in_area(step['search_area'], step['search_color'], self.color_tolerance, step['search_direction'])
                     if found_pos:
                         self._handle_found_color(found_pos, f"재시도 중 구역{step['area_number']}에서 색상 발견")
-                        return True
+                        if not self.continuous_search: return True
             
             if self.is_searching and duration != float('inf'):
                 # 한 탐색 사이클의 최대 시간 도달 시 소리 1번 재생
@@ -1287,7 +1283,7 @@ class AppController:
                 found_pos = self.color_finder.find_color_in_area(initial_step['search_area'], initial_step['search_color'], self.color_tolerance, initial_step['search_direction'])
                 if found_pos:
                     self._handle_found_color(found_pos, "기본 영역에서 1순위 색상 발견")
-                    return True
+                    if not self.continuous_search: return True
 
                 # 2. 2순위 색상 탐색 (조건부)
                 if self.is_searching and self.use_secondary_color:
@@ -1297,7 +1293,7 @@ class AppController:
                     found_pos_secondary = self.color_finder.find_color_in_area(initial_step['search_area'], self.secondary_color, self.color_tolerance, initial_step['search_direction'])
                     if found_pos_secondary:
                         self._handle_found_color(found_pos_secondary, "기본 영역에서 2순위 색상 발견")
-                        return True
+                        if not self.continuous_search: return True
 
                 if self.use_search_delay and self.search_delay > 0:
                     time.sleep(self.search_delay)
