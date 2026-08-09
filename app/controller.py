@@ -44,13 +44,21 @@ class AppController:
 
         # --- 기본값 설정 ---
         # 이 값들은 UI의 초기값을 설정하는 데 사용됩니다.
-        self.p1 = (76, 233)
-        self.p2 = (616, 707)
+        # 기본 탐색 영역 목록: 순서대로 탐색하며 못 찾으면 다음 영역으로 넘어갑니다.
+        # (구역 내 sub_areas와 동일한 구조. 첫 번째 항목은 새 구역/영역을 만들 때 시드값으로도 쓰입니다.)
+        self.initial_areas = {
+            1: {
+                'p1': (76, 233),
+                'p2': (616, 707),
+                'direction': SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT,
+                'search_area': (0, 0, 0, 0),
+            }
+        }
+        self.initial_area_order = [1]
         self.color = (190, 168, 134)
         self.complete_coord = (1314,905)
         self.color_tolerance = 15
         self.color_area_tolerance = 5
-        self.search_direction = SearchDirection.TOP_RIGHT_TO_BOTTOM_LEFT
         self.complete_click_delay = 0.1 # 완료 클릭 전 딜레이 (초), UI 기본값 10 -> 100ms
         
         # 2순위 색상 추가
@@ -167,10 +175,12 @@ class AppController:
         """지정된 구역에 새 영역(sub-area)의 기본 설정값을 생성합니다."""
         area = self.areas[area_number]
         if sub_id not in area['sub_areas']:
+            # 기본 탐색 영역 목록의 첫 번째 영역 값을 시드로 사용합니다.
+            seed = self.initial_areas[self.initial_area_order[0]]
             area['sub_areas'][sub_id] = {
-                'p1': self.p1,
-                'p2': self.p2,
-                'direction': self.search_direction,
+                'p1': seed['p1'],
+                'p2': seed['p2'],
+                'direction': seed['direction'],
                 'search_area': (0, 0, 0, 0),
             }
 
@@ -220,6 +230,77 @@ class AppController:
             self.ui.refresh_subarea_order(area_number)
         self.auto_save_settings()
 
+    def _sanitize_initial_area_order(self):
+        """initial_area_order 리스트와 initial_areas 데이터를 동기화합니다."""
+        seen = set()
+        clean_order = []
+
+        for aid in self.initial_area_order:
+            aid_int = int(aid)
+            if aid_int in self.initial_areas and aid_int not in seen:
+                clean_order.append(aid_int)
+                seen.add(aid_int)
+
+        for aid in sorted(self.initial_areas.keys()):
+            if aid not in seen:
+                clean_order.append(aid)
+
+        self.initial_area_order = clean_order
+
+    def _initialize_initial_area(self, area_id: int):
+        """기본 탐색 영역 목록에 새 영역의 기본 설정값을 생성합니다."""
+        if area_id not in self.initial_areas:
+            seed = self.initial_areas[self.initial_area_order[0]]
+            self.initial_areas[area_id] = {
+                'p1': seed['p1'],
+                'p2': seed['p2'],
+                'direction': seed['direction'],
+                'search_area': (0, 0, 0, 0),
+            }
+
+    def add_initial_area(self):
+        """기본 탐색 영역 목록에 새로운 영역을 추가합니다."""
+        new_area_id = 1
+        while new_area_id in self.initial_areas:
+            new_area_id += 1
+
+        self._initialize_initial_area(new_area_id)
+        self.initial_area_order.append(new_area_id)
+        if self.ui:
+            self.ui.add_initial_area_to_ui()
+        self.auto_save_settings()
+        return new_area_id
+
+    def remove_initial_area(self, area_id: int):
+        """기본 탐색 영역 목록에서 영역을 제거합니다. 최소 1개는 남아야 합니다."""
+        if len(self.initial_area_order) <= 1:
+            if self.ui:
+                self.ui.update_status("기본 탐색 영역은 최소 1개가 필요합니다.")
+            return
+
+        if area_id in self.initial_areas:
+            del self.initial_areas[area_id]
+            if area_id in self.initial_area_order:
+                self.initial_area_order.remove(area_id)
+            if self.ui:
+                self.ui.remove_initial_area_from_ui(area_id)
+            self.auto_save_settings()
+
+    def reorder_initial_area(self, area_id: int, new_index: int):
+        """기본 탐색 영역의 순서를 새로운 위치로 변경합니다 (Drag & Drop)."""
+        area_id = int(area_id)
+        self._sanitize_initial_area_order()
+
+        if area_id in self.initial_area_order:
+            self.initial_area_order.remove(area_id)
+
+        target_idx = max(0, min(new_index, len(self.initial_area_order)))
+        self.initial_area_order.insert(target_idx, area_id)
+
+        if self.ui:
+            self.ui.refresh_initial_area_order()
+        self.auto_save_settings()
+
     def set_ui(self, ui: 'AppUI'):
         """
         컨트롤러에 UI 인스턴스를 연결합니다.
@@ -237,9 +318,11 @@ class AppController:
             default_click_coord = (0, 0)
             default_clicks = 6
             default_offset = 2
-            default_p1 = self.p1
-            default_p2 = self.p2
-            default_direction = self.search_direction # 기본 탐색 방향으로 초기화
+            # 기본 탐색 영역 목록의 첫 번째 영역 값을 시드로 사용합니다.
+            seed = self.initial_areas[self.initial_area_order[0]]
+            default_p1 = seed['p1']
+            default_p2 = seed['p2']
+            default_direction = seed['direction'] # 기본 탐색 방향으로 초기화
             default_name = f"구역{area_number}"
 
 
@@ -282,14 +365,6 @@ class AppController:
                 'sub_area_order': [1],
             }
 
-    def _get_global_search_area(self):
-        """기본 탐색 영역 좌표를 계산하여 반환합니다."""
-        left = min(self.p1[0], self.p2[0])
-        top = min(self.p1[1], self.p2[1])
-        right = max(self.p1[0], self.p2[0])
-        bottom = max(self.p1[1], self.p2[1])
-        return (left, top, right, bottom)
-
     def on_closing(self):
         """창을 닫을 때 리소스를 안전하게 정리합니다."""
         self.is_searching = False
@@ -304,8 +379,6 @@ class AppController:
         """UI의 설정값들을 컨트롤러의 속성에 적용합니다."""
         if not self.ui: return False
         try:
-            self.p1 = ast.literal_eval(self.ui.p1_var.get())
-            self.p2 = ast.literal_eval(self.ui.p2_var.get())
             self.complete_coord = ast.literal_eval(self.ui.complete_coord_var.get())
             self.color = ast.literal_eval(self.ui.color_var.get())
             self.use_secondary_color = self.ui.use_secondary_color_var.get()
@@ -333,8 +406,6 @@ class AppController:
                 "←↕ (v)": SearchDirection.CENTER_RIGHT_TO_LEFT,
                 "중앙 ☉ (g)": SearchDirection.CENTER_TO_CENTER,
             }
-            selected_direction_str = self.ui.direction_var.get()
-            self.search_direction = direction_map.get(selected_direction_str, SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT)
             self.use_initial_search = self.ui.use_initial_search_var.get()
             self.continuous_search = self.ui.continuous_search_var.get()
             self.use_space_complete = self.ui.use_space_complete_var.get()
@@ -351,7 +422,20 @@ class AppController:
             self.wait_duration_sec = int(self.ui.wait_duration_var.get())
             self.search_time_tolerance_sec = int(self.ui.search_time_tolerance_var.get())
             self.research_delay = int(self.ui.research_delay_var.get()) / 1000.0
-            
+
+            # --- 기본 탐색 영역 목록 적용 ---
+            for area_id, initial_ui_vars in self.ui.initial_area_vars.items():
+                if area_id not in self.initial_areas:
+                    self._initialize_initial_area(area_id)
+                initial_settings = self.initial_areas[area_id]
+                initial_settings['p1'] = ast.literal_eval(initial_ui_vars['p1_var'].get())
+                initial_settings['p2'] = ast.literal_eval(initial_ui_vars['p2_var'].get())
+                initial_settings['direction'] = direction_map.get(initial_ui_vars['direction_var'].get(), SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT)
+
+                p1 = initial_settings['p1']
+                p2 = initial_settings['p2']
+                initial_settings['search_area'] = (min(p1[0], p2[0]), min(p1[1], p2[1]), max(p1[0], p2[0]), max(p1[1], p2[1]))
+
             # --- 구역 설정 적용 ---
             for area_number, area_ui_vars in self.ui.area_vars.items():
                 if area_number not in self.areas:
@@ -373,7 +457,7 @@ class AppController:
                     sub_settings = area_settings['sub_areas'][sub_id]
                     sub_settings['p1'] = ast.literal_eval(sub_ui_vars['p1_var'].get())
                     sub_settings['p2'] = ast.literal_eval(sub_ui_vars['p2_var'].get())
-                    sub_settings['direction'] = direction_map.get(sub_ui_vars['direction_var'].get(), self.search_direction)
+                    sub_settings['direction'] = direction_map.get(sub_ui_vars['direction_var'].get(), SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT)
 
                     p1 = sub_settings['p1']
                     p2 = sub_settings['p2']
@@ -401,15 +485,18 @@ class AppController:
 
         visual_steps = []
 
-        # 1. 기본 탐색 영역
-        x1, y1, x2, y2 = self._get_global_search_area()
-        visual_steps.append([{
-            'type': 'area',
-            'rect': (x1, y1, x2 - x1, y2 - y1),
-            'color': 'red',
-            'alpha': 0.3,
-            'text': '기본 영역'
-        }])
+        # 1. 기본 탐색 영역들 (순서대로 탐색하는 영역 목록을 한꺼번에 표시)
+        initial_area_markers = []
+        for idx, area_id in enumerate(self.initial_area_order):
+            x1, y1, x2, y2 = self.initial_areas[area_id]['search_area']
+            initial_area_markers.append({
+                'type': 'area',
+                'rect': (x1, y1, x2 - x1, y2 - y1),
+                'color': 'red',
+                'alpha': 0.3,
+                'text': f'기본 영역{idx + 1}'
+            })
+        visual_steps.append(initial_area_markers)
 
         # 2. 완료 좌표
         visual_steps.append([{
@@ -452,6 +539,41 @@ class AppController:
 
         self.ui.display_visual_aids(visual_steps)
 
+    def _serialize_initial_areas(self) -> list:
+        """기본 탐색 영역 목록을 JSON 직렬화 가능한 리스트로 변환합니다."""
+        return [
+            {
+                'p1': self.initial_areas[aid]['p1'],
+                'p2': self.initial_areas[aid]['p2'],
+                'direction': self.initial_areas[aid]['direction'].value, # Enum을 문자열로 저장
+            }
+            for aid in self.initial_area_order
+        ]
+
+    def _deserialize_initial_areas(self, settings_data: dict):
+        """JSON에서 불러온 기본 탐색 영역 목록을 컨트롤러 상태에 반영합니다 (구버전 형식 자동 변환 포함)."""
+        loaded_initial_areas = settings_data.get('initial_areas')
+        if loaded_initial_areas is None:
+            # 구버전 형식(최상위 p1/p2/search_direction 단일값)을 영역 1개짜리 목록으로 변환합니다.
+            loaded_initial_areas = [{
+                'p1': settings_data.get('p1', (76, 233)),
+                'p2': settings_data.get('p2', (616, 707)),
+                'direction': settings_data.get('search_direction', SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT.value),
+            }]
+
+        self.initial_areas = {}
+        self.initial_area_order = []
+        for area_id, loaded in enumerate(loaded_initial_areas, start=1):
+            p1 = tuple(loaded.get('p1', (76, 233)))
+            p2 = tuple(loaded.get('p2', (616, 707)))
+            self.initial_areas[area_id] = {
+                'p1': p1,
+                'p2': p2,
+                'direction': SearchDirection(loaded.get('direction', SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT.value)),
+                'search_area': (min(p1[0], p2[0]), min(p1[1], p2[1]), max(p1[0], p2[0]), max(p1[1], p2[1])),
+            }
+            self.initial_area_order.append(area_id)
+
     def _serialize_area(self, area_settings: dict) -> dict:
         """구역 설정 하나를 JSON 직렬화 가능한 dict로 변환합니다."""
         return {
@@ -484,11 +606,13 @@ class AppController:
         area['use_color'] = bool(loaded.get('use_color', area['use_color']))
         area['color'] = tuple(loaded.get('color', area['color']))
 
+        # 개별 필드가 누락됐을 때 쓸 기본값(이 구역이 처음 초기화될 때 시드된 값).
+        default_sub = area['sub_areas'][area['sub_area_order'][0]]
+
         loaded_sub_areas = loaded.get('sub_areas')
         if loaded_sub_areas is None:
             # 구버전 형식(구역당 영역이 1개뿐이고 p1/p2/direction이 구역에 직접 있던 형식)을
             # 영역이 1개인 sub_areas 리스트로 변환합니다.
-            default_sub = area['sub_areas'][area['sub_area_order'][0]]
             loaded_sub_areas = [{
                 'p1': loaded.get('p1', default_sub['p1']),
                 'p2': loaded.get('p2', default_sub['p2']),
@@ -499,9 +623,9 @@ class AppController:
         area['sub_area_order'] = []
         for sub_id, sub_loaded in enumerate(loaded_sub_areas, start=1):
             area['sub_areas'][sub_id] = {
-                'p1': tuple(sub_loaded.get('p1', self.p1)),
-                'p2': tuple(sub_loaded.get('p2', self.p2)),
-                'direction': SearchDirection(sub_loaded.get('direction', self.search_direction.value)),
+                'p1': tuple(sub_loaded.get('p1', default_sub['p1'])),
+                'p2': tuple(sub_loaded.get('p2', default_sub['p2'])),
+                'direction': SearchDirection(sub_loaded.get('direction', default_sub['direction'].value)),
                 'search_area': (0, 0, 0, 0),
             }
             area['sub_area_order'].append(sub_id)
@@ -514,15 +638,13 @@ class AppController:
             return
 
         settings_data = {
-            'p1': self.p1,
-            'p2': self.p2,
+            'initial_areas': self._serialize_initial_areas(),
             'color': self.color,
             'use_secondary_color': self.use_secondary_color,
             'secondary_color': self.secondary_color,
             'complete_coord': self.complete_coord,
             'color_tolerance': self.color_tolerance,
             'color_area_tolerance': self.color_area_tolerance,
-            'search_direction': self.search_direction.value, # Enum을 문자열로 저장
             'complete_click_delay': self.complete_click_delay,
             'use_sequence': self.use_sequence,
             'continuous_search': self.continuous_search,
@@ -572,15 +694,13 @@ class AppController:
         save_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'last_settings.json')
         
         settings_data = {
-            'p1': self.p1,
-            'p2': self.p2,
+            'initial_areas': self._serialize_initial_areas(),
             'color': self.color,
             'use_secondary_color': self.use_secondary_color,
             'secondary_color': self.secondary_color,
             'complete_coord': self.complete_coord,
             'color_tolerance': self.color_tolerance,
             'color_area_tolerance': self.color_area_tolerance,
-            'search_direction': self.search_direction.value,
             'complete_click_delay': self.complete_click_delay,
             'use_sequence': self.use_sequence,
             'continuous_search': self.continuous_search,
@@ -628,18 +748,19 @@ class AppController:
             # 불러오기 전 기존 데이터 및 UI 완전 초기화
             if self.ui:
                 self.ui.reset_areas_ui()
+                self.ui.reset_initial_areas_ui()
             self.areas = {}
             self.area_order = []
 
-            self.p1 = tuple(settings_data.get('p1', self.p1))
-            self.p2 = tuple(settings_data.get('p2', self.p2))
+            # 기본 탐색 영역 목록은 구역들의 시드값으로도 쓰이므로 구역 로드보다 먼저 반영합니다.
+            self._deserialize_initial_areas(settings_data)
+
             self.color = tuple(settings_data.get('color', self.color))
             self.use_secondary_color = bool(settings_data.get('use_secondary_color', self.use_secondary_color))
             self.secondary_color = tuple(settings_data.get('secondary_color', self.secondary_color))
             self.complete_coord = tuple(settings_data.get('complete_coord', self.complete_coord))
             self.color_tolerance = int(settings_data.get('color_tolerance', self.color_tolerance))
             self.color_area_tolerance = int(settings_data.get('color_area_tolerance', self.color_area_tolerance))
-            self.search_direction = SearchDirection(settings_data.get('search_direction', self.search_direction.value))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
             self.use_initial_search = bool(settings_data.get('use_initial_search', self.use_initial_search))
             self.continuous_search = bool(settings_data.get('continuous_search', not settings_data.get('exit_after_select', not self.continuous_search)))
@@ -661,7 +782,7 @@ class AppController:
             self.wait_duration_sec = int(settings_data.get('wait_duration_sec', self.wait_duration_sec))
             self.search_time_tolerance_sec = int(settings_data.get('search_time_tolerance_sec', self.search_time_tolerance_sec))
             self.area_order = settings_data.get('area_order', [])
-            
+
             loaded_areas = settings_data.get('areas', {})
             for area_number_str, loaded in loaded_areas.items():
                 area_number = int(area_number_str)
@@ -697,19 +818,20 @@ class AppController:
             # 불러오기 전 기존 데이터 및 UI 완전 초기화
             if self.ui:
                 self.ui.reset_areas_ui()
+                self.ui.reset_initial_areas_ui()
             self.areas = {}
             self.area_order = []
 
+            # 기본 탐색 영역 목록은 구역들의 시드값으로도 쓰이므로 구역 로드보다 먼저 반영합니다.
+            self._deserialize_initial_areas(settings_data)
+
             # 컨트롤러 속성 업데이트 (get 메서드로 기본값 보장)
-            self.p1 = tuple(settings_data.get('p1', self.p1))
-            self.p2 = tuple(settings_data.get('p2', self.p2))
             self.color = tuple(settings_data.get('color', self.color))
             self.use_secondary_color = bool(settings_data.get('use_secondary_color', self.use_secondary_color))
             self.secondary_color = tuple(settings_data.get('secondary_color', self.secondary_color))
             self.complete_coord = tuple(settings_data.get('complete_coord', self.complete_coord))
             self.color_tolerance = int(settings_data.get('color_tolerance', self.color_tolerance))
             self.color_area_tolerance = int(settings_data.get('color_area_tolerance', self.color_area_tolerance))
-            self.search_direction = SearchDirection(settings_data.get('search_direction', self.search_direction.value))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
             self.use_initial_search = bool(settings_data.get('use_initial_search', self.use_initial_search))
             self.continuous_search = bool(settings_data.get('continuous_search', not settings_data.get('exit_after_select', not self.continuous_search)))
@@ -761,11 +883,15 @@ class AppController:
 
         # 표시 이름을 더 동적으로 생성
         display_name = coord_key
-        if coord_key == 'p1': display_name = '기본 ↖영역'
-        elif coord_key == 'p2': display_name = '기본 ↘영역'
-        elif coord_key == 'complete': display_name = '완료'
+        if coord_key == 'complete': display_name = '완료'
         elif coord_key == 'empty_coord': display_name = '빈공간'
         elif coord_key == 'area_op_check_coord': display_name = '화면확인 좌표'
+        elif coord_key.startswith('initial_'):
+            # 예: 'initial_1_p1' -> 기본 영역1 ↖영역
+            parts = coord_key.split('_')
+            area_id, type_key = parts[1], parts[2]
+            type_map = {'p1': '↖영역', 'p2': '↘영역'}
+            display_name = f"기본 영역{area_id} {type_map.get(type_key, type_key)}"
         elif coord_key.startswith('area_') and '_sub_' in coord_key:
             # 예: 'area_1_sub_2_p1' -> 구역1 영역2 ↖영역
             parts = coord_key.split('_')
@@ -792,12 +918,17 @@ class AppController:
         new_pos = (int(x), int(y))
 
         # 키에 따라 컨트롤러의 속성과 UI의 변수를 업데이트
-        if coord_key == 'p1':
-            self.ui.p1_var.set(str(new_pos))
-            self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
-        elif coord_key == 'p2':
-            self.ui.p2_var.set(str(new_pos))
-            self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
+        if coord_key.startswith('initial_'): # 예: 'initial_1_p1'
+            try:
+                parts = coord_key.split('_')
+                area_id = int(parts[1])
+                key_type = parts[2] # 'p1' or 'p2'
+                var_key_map = {'p1': 'p1_var', 'p2': 'p2_var'}
+                var_key = var_key_map[key_type]
+                self.ui.initial_area_vars[area_id][var_key].set(str(new_pos))
+                self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
+            except (IndexError, KeyError, ValueError) as e:
+                print(f"잘못된 기본 영역 좌표 키입니다: {coord_key}, 오류: {e}")
         elif coord_key == 'complete':
             self.ui.complete_coord_var.set(str(new_pos))
             self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
@@ -960,12 +1091,17 @@ class AppController:
         # --- 검색 계획 생성 ---
         # 찾기 버튼을 누르는 시점에 모든 검색 단계를 미리 정의합니다.
         search_plan = []
-        # 1. 초기 탐색 계획
+        # 1. 초기 탐색 계획 (기본 탐색 영역들을 순서대로 시도, 못 찾으면 다음 영역으로 폴백)
         search_plan.append({
             'type': 'initial',
             'search_color': self.color,
-            'search_area': self._get_global_search_area(),
-            'search_direction': self.search_direction,
+            'initial_areas': [
+                {
+                    'search_area': self.initial_areas[aid]['search_area'],
+                    'search_direction': self.initial_areas[aid]['direction'],
+                }
+                for aid in self.initial_area_order
+            ],
             'description': '초기 탐색 (기본 색상)'
         })
 
@@ -1147,11 +1283,14 @@ class AppController:
 
             # key.char가 존재하는지 확인 (특수키가 아닐 경우)
             if hasattr(key, 'char') and key.char in direction_map:
-                self.search_direction = direction_map[key.char]
+                # 기본 탐색 영역 목록의 첫 번째 영역 방향을 변경합니다.
+                first_id = self.initial_area_order[0]
+                new_direction = direction_map[key.char]
+                self.initial_areas[first_id]['direction'] = new_direction
                 # UI에도 변경된 방향을 즉시 반영합니다.
                 if self.ui:
-                    self.ui.direction_var.set(self.ui.SEARCH_DIRECTION_MAP[self.search_direction])
-                print(f"탐색 방향이 {self.search_direction.value}로 변경되었습니다.")
+                    self.ui.initial_area_vars[first_id]['direction_var'].set(self.ui.SEARCH_DIRECTION_MAP[new_direction])
+                print(f"탐색 방향이 {new_direction.value}로 변경되었습니다.")
             
             # 숫자키가 눌렸든 아니든, 방향 변경 상태를 해제하고 검색을 시작합니다.
             self.direction_change_pending = False
@@ -1303,6 +1442,14 @@ class AppController:
             while self.is_searching:
                 self._perform_search_cycle(search_plan, time.time(), time.time(), float('inf'), float('inf'), float('inf'))
 
+    def _find_color_in_areas(self, areas: list, color: tuple, tolerance: int):
+        """area 목록을 순서대로 탐색하며 첫 발견 위치를 반환합니다. 못 찾으면 None을 반환합니다."""
+        for area_plan in areas:
+            found = self.color_finder.find_color_in_area(area_plan['search_area'], color, tolerance, area_plan['search_direction'])
+            if found:
+                return found
+        return None
+
     def _perform_search_cycle(self, search_plan: list, start_time: float, main_start_time: float, duration: float, cycle_target_duration: float, total_target_duration: float):
         """주어진 시간(duration) 동안 탐색 로직을 수행합니다."""
         if self.use_sequence:
@@ -1311,21 +1458,21 @@ class AppController:
 
             # '기본 탐색 사용'이 체크된 경우에만 초기 탐색을 수행합니다.
             if self.use_initial_search:
-                # 1. 1순위 색상 탐색
-                status_text = f"초기 탐색 (1순위): 기본 영역에서 탐색 중 ({initial_step['search_direction'].value})..."
+                # 1. 1순위 색상 탐색 (기본 탐색 영역들을 순서대로, 못 찾으면 다음 영역으로)
+                status_text = "초기 탐색 (1순위): 기본 영역에서 탐색 중..."
                 self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
                 if not self._check_operation_status(): return False
-                found_pos = self.color_finder.find_color_in_area(initial_step['search_area'], initial_step['search_color'], self.color_tolerance, initial_step['search_direction'])
+                found_pos = self._find_color_in_areas(initial_step['initial_areas'], initial_step['search_color'], self.color_tolerance)
                 if found_pos:
                     self._handle_found_color(found_pos, "초기 탐색 중 1순위 색상 발견")
                     if not self.continuous_search: return True
 
                 # 2. 2순위 색상 탐색 (조건부)
                 if self.is_searching and self.use_secondary_color:
-                    status_text = f"초기 탐색 (2순위): 기본 영역에서 탐색 중 ({initial_step['search_direction'].value})..."
+                    status_text = "초기 탐색 (2순위): 기본 영역에서 탐색 중..."
                     self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
                     if not self._check_operation_status(): return False
-                    found_pos_secondary = self.color_finder.find_color_in_area(initial_step['search_area'], self.secondary_color, self.color_tolerance, initial_step['search_direction'])
+                    found_pos_secondary = self._find_color_in_areas(initial_step['initial_areas'], self.secondary_color, self.color_tolerance)
                     if found_pos_secondary:
                         self._handle_found_color(found_pos_secondary, "초기 탐색 중 2순위 색상 발견")
                         if not self.continuous_search: return True
@@ -1377,11 +1524,7 @@ class AppController:
                     if not self._check_operation_status(): return False
 
                     # 구역 내 영역들을 순서대로 탐색합니다. 앞 영역에서 못 찾으면 다음 영역으로 넘어갑니다.
-                    found_pos = None
-                    for sub_area_plan in step['sub_areas']:
-                        found_pos = self.color_finder.find_color_in_area(sub_area_plan['search_area'], step['search_color'], self.color_tolerance, sub_area_plan['search_direction'])
-                        if found_pos:
-                            break
+                    found_pos = self._find_color_in_areas(step['sub_areas'], step['search_color'], self.color_tolerance)
                     if found_pos:
                         self._handle_found_color(found_pos, f"재시도 중 구역{step['area_number']}에서 색상 발견")
                         if not self.continuous_search: return True
@@ -1394,21 +1537,21 @@ class AppController:
             # [구역 사용 OFF]: 색상을 찾을 때까지 초기 탐색만 무한 반복
             initial_step = search_plan[0]
             while self.is_searching:
-                # 1. 1순위 색상 탐색
-                status_text = f"기본 영역 반복 탐색 (1순위) ({initial_step['search_direction'].value})..."
+                # 1. 1순위 색상 탐색 (기본 탐색 영역들을 순서대로, 못 찾으면 다음 영역으로)
+                status_text = "기본 영역 반복 탐색 (1순위)..."
                 self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
                 if not self._check_operation_status(): return False
-                found_pos = self.color_finder.find_color_in_area(initial_step['search_area'], initial_step['search_color'], self.color_tolerance, initial_step['search_direction'])
+                found_pos = self._find_color_in_areas(initial_step['initial_areas'], initial_step['search_color'], self.color_tolerance)
                 if found_pos:
                     self._handle_found_color(found_pos, "기본 영역에서 1순위 색상 발견")
                     if not self.continuous_search: return True
 
                 # 2. 2순위 색상 탐색 (조건부)
                 if self.is_searching and self.use_secondary_color:
-                    status_text = f"기본 영역 반복 탐색 (2순위) ({initial_step['search_direction'].value})..."
+                    status_text = "기본 영역 반복 탐색 (2순위)..."
                     self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
                     if not self._check_operation_status(): return False
-                    found_pos_secondary = self.color_finder.find_color_in_area(initial_step['search_area'], self.secondary_color, self.color_tolerance, initial_step['search_direction'])
+                    found_pos_secondary = self._find_color_in_areas(initial_step['initial_areas'], self.secondary_color, self.color_tolerance)
                     if found_pos_secondary:
                         self._handle_found_color(found_pos_secondary, "기본 영역에서 2순위 색상 발견")
                         if not self.continuous_search: return True

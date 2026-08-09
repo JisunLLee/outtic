@@ -22,6 +22,7 @@ class AppUI:
         self.area_toggles = {}
         self.ui_queue = queue.Queue()
         self.area_vars = {}
+        self.initial_area_widgets = {} # 기본 탐색 영역별 위젯을 저장하기 위한 딕셔너리
         # 튜플 형식(숫자, 괄호, 콤마, 공백) 입력을 검증하기 위한 커맨드 등록
         self.tuple_vcmd = (self.root.register(self._validate_tuple_input), '%P')
         self._initialize_vars()
@@ -35,8 +36,6 @@ class AppUI:
         self.color_tolerance_var = tk.StringVar(value=str(c.color_tolerance))
         self.color_area_tolerance_var = tk.StringVar(value=str(c.color_area_tolerance))
         self.complete_delay_var = tk.StringVar(value=str(int(c.complete_click_delay * 100)))
-        self.p1_var = tk.StringVar(value=str(c.p1))
-        self.p2_var = tk.StringVar(value=str(c.p2))
         self.color_var = tk.StringVar(value=str(c.color))
         self.use_secondary_color_var = tk.BooleanVar(value=c.use_secondary_color)
         self.secondary_color_var = tk.StringVar(value=str(c.secondary_color))
@@ -77,7 +76,6 @@ class AppUI:
             SearchDirection.CENTER_RIGHT_TO_LEFT: "←↕ (v)",
             SearchDirection.CENTER_TO_CENTER: "중앙 ☉ (g)",
         }
-        self.direction_var = tk.StringVar(value=self.SEARCH_DIRECTION_MAP[c.search_direction])
         self.total_duration_var = tk.StringVar(value=str(c.total_duration_sec))
         self.active_search_duration_var = tk.StringVar(value=str(c.active_search_duration_sec))
         self.wait_duration_var = tk.StringVar(value=str(c.wait_duration_sec))
@@ -96,9 +94,24 @@ class AppUI:
             'area_setting_change': "LemonChiffon",
         }
         
+        # --- 기본 탐색 영역 목록 변수 초기화 ---
+        self.initial_area_vars = {}
+        for area_id in c.initial_area_order:
+            self._initialize_initial_area_vars(area_id)
+
         # --- 구역별 변수 초기화 ---
         for i in range(1, 6):
             self._initialize_area_vars(i)
+
+    def _initialize_initial_area_vars(self, area_id: int):
+        """기본 탐색 영역 목록의 영역 하나에 대한 Tkinter 변수들을 초기화하고 저장합니다."""
+        defaults = self.controller.initial_areas[area_id]
+        self.initial_area_vars[area_id] = {
+            'order_var': tk.StringVar(),
+            'p1_var': tk.StringVar(value=str(defaults['p1'])),
+            'p2_var': tk.StringVar(value=str(defaults['p2'])),
+            'direction_var': tk.StringVar(value=self.SEARCH_DIRECTION_MAP[defaults['direction']]),
+        }
 
     def _initialize_area_vars(self, area_number: int):
         """지정된 번호의 구역에 대한 Tkinter 변수들을 초기화하고 저장합니다."""
@@ -157,13 +170,9 @@ class AppUI:
         basic_group = self._create_labeled_frame(main_frame, "기본", name="basic_group")
         basic_group.pack(fill=tk.X, pady=(0, 10))
 
-        # Row 1: 영역 설정
-        row1_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
-        p1_selector_frame, _, _ = self._create_coordinate_selector(left_frame, self.p1_var, "↖영역", command=lambda: self.controller.start_coordinate_picker('p1'))
-        p1_selector_frame.pack(expand=True, fill=tk.X)
-        p2_selector_frame, _, _ = self._create_coordinate_selector(right_frame, self.p2_var, "↘영역", command=lambda: self.controller.start_coordinate_picker('p2'))
-        p2_selector_frame.pack(expand=True, fill=tk.X)
-        
+        # Row 1: 기본 탐색 영역 목록 (순서대로 탐색, 못 찾으면 다음 영역으로)
+        self._create_initial_area_list(basic_group)
+
         # Row 2: 1순위 색상, 2순위 색상
         row2_container, (left_frame, right_frame) = self._create_split_container(basic_group, weights=[1, 1])
         # Part 1: 1순위 색상 (기본 색상)
@@ -193,16 +202,8 @@ class AppUI:
         # Part 1: 완료 좌표
         self._create_value_button_row(left_frame, self.complete_coord_var, "완료", command=lambda: self.controller.start_coordinate_picker('complete')).pack(side=tk.LEFT)
       
-        # Part 2: 완료 선택 딜레이, 탐색 방향
+        # Part 2: 완료 선택 딜레이
         self._create_labeled_entry(right_frame, "완료 딜레이:", self.complete_delay_var).pack(expand=True, fill=tk.X, side=tk.LEFT)
-
-        # Part 3: 탐색 방향
-        direction_menu = tk.OptionMenu(right_frame, self.direction_var, *self.SEARCH_DIRECTION_MAP.values())
-        direction_menu.config(fg="white", bg="#555555", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
-        direction_menu["menu"].config(bg="#555555", fg="white")
-        direction_menu.pack(side=tk.RIGHT, padx=(15,0))
-
-        
 
         # --- 상태 메시지 및 구역/기본 탐색 토글 ---
         status_and_toggle_container = tk.Frame(main_frame)
@@ -678,7 +679,78 @@ class AppUI:
             'delete_button': delete_button,
         }
         return row
-    
+
+    def _create_initial_area_list(self, parent):
+        """
+        기본 탐색 영역 목록 UI를 생성합니다.
+        위에서부터 순서대로 탐색하며, 앞 영역에서 색을 못 찾으면 다음 영역으로 넘어갑니다.
+        """
+        outer = tk.Frame(parent, highlightbackground="#4a4a4a", highlightthickness=1)
+        outer.pack(fill=tk.X, expand=True, pady=(0, 6))
+
+        tk.Label(outer, text="탐색 영역 목록 (순서대로 탐색)", fg="#999999", font=(None, 8)).pack(anchor=tk.W, padx=4, pady=(2, 0))
+
+        self.initial_area_rows_container = tk.Frame(outer)
+        self.initial_area_rows_container.pack(fill=tk.X, expand=True, padx=2)
+
+        self.add_initial_area_btn = tk.Button(outer, text="+ 영역 추가", font=(None, 8),
+                                              command=lambda: self.controller.add_initial_area())
+        self.add_initial_area_btn.pack(fill=tk.X, padx=4, pady=4)
+
+        for area_id in self.controller.initial_area_order:
+            self._create_initial_area_row(self.initial_area_rows_container, area_id)
+
+        self.refresh_initial_area_order()
+        return outer
+
+    def _create_initial_area_row(self, parent, area_id: int):
+        """기본 탐색 영역 하나를 나타내는 한 줄짜리 컴팩트 행을 생성합니다."""
+        area_vars = self.initial_area_vars[area_id]
+
+        row = tk.Frame(parent)
+        row.pack(fill=tk.X, expand=True, pady=1)
+
+        drag_handle = tk.Label(row, text="☰", fg="white", font=(None, 8), cursor="fleur")
+        drag_handle.pack(side=tk.LEFT, padx=(0, 2))
+        drag_handle.bind("<Button-1>", lambda e: self._on_initial_area_drag_start(e, area_id))
+        drag_handle.bind("<B1-Motion>", lambda e: self._on_initial_area_drag_motion(e, area_id))
+        drag_handle.bind("<ButtonRelease-1>", lambda e: self._on_initial_area_drag_release(e, area_id))
+
+        order_label = tk.Label(row, textvariable=area_vars['order_var'], fg="#999999", font=(None, 8), width=2)
+        order_label.pack(side=tk.LEFT)
+
+        p1_frame, _, _ = self._create_compact_coord_button(
+            row, area_vars['p1_var'], "↖",
+            command=lambda: self.controller.start_coordinate_picker(f'initial_{area_id}_p1'))
+        p1_frame.pack(side=tk.LEFT)
+
+        p2_frame, _, _ = self._create_compact_coord_button(
+            row, area_vars['p2_var'], "↘",
+            command=lambda: self.controller.start_coordinate_picker(f'initial_{area_id}_p2'))
+        p2_frame.pack(side=tk.LEFT, padx=(3, 0))
+
+        # 가변 공백: 방향 선택을 행의 오른쪽 끝으로 밀어줍니다.
+        tk.Frame(row).pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        direction_menu = tk.OptionMenu(row, area_vars['direction_var'], *self.SEARCH_DIRECTION_MAP.values())
+        direction_menu.config(fg="white", bg="#555555", activebackground="#666666", activeforeground="white",
+                              highlightthickness=0, borderwidth=1, font=(None, 8), padx=2, pady=0)
+        direction_menu["menu"].config(bg="#555555", fg="white")
+        direction_menu.pack(side=tk.LEFT) # expand/fill 없이 글자 폭에 맞춰서만 배치
+
+        delete_button = tk.Button(row, text="×", fg="#f58585", activeforeground="red",
+                                  font=(None, 9), padx=3, pady=0,
+                                  command=lambda: self.controller.remove_initial_area(area_id))
+        delete_button.pack(side=tk.LEFT, padx=(3, 0))
+
+        self.initial_area_widgets[area_id] = {
+            'row': row,
+            'drag_handle': drag_handle,
+            'order_label': order_label,
+            'delete_button': delete_button,
+        }
+        return row
+
     def _sync_global_to_areas(self, *args):
         """전역 색상이 변경될 때, '기본'이 체크된 모든 구역의 색상 값을 안전하게 동기화합니다."""
         if not self.area_vars:
@@ -696,9 +768,12 @@ class AppUI:
             self._initialize_area_vars(area_number)
         
         self.add_area_btn.pack_forget() # 버튼을 잠시 가리고 아래에 다시 추가
-        self._create_area_group(self.scrollable_content_frame, area_number)
+        new_group = self._create_area_group(self.scrollable_content_frame, area_number)
         self.add_area_btn.pack(fill=tk.X, pady=10, padx=50)
-        
+
+        # 새로 만들어진 위젯은 아직 어두운 배경이 적용되지 않은 상태이므로 칠해줍니다.
+        self._set_bg_recursively(new_group, self.WINDOW_COLORS['default'])
+
         # 새로 추가된 구역의 활성화 상태 동기화
         self._toggle_area_settings_active()
 
@@ -816,7 +891,9 @@ class AppUI:
         add_btn = area_vars['add_subarea_btn']
         add_btn.pack_forget() # 버튼을 잠시 가리고 아래에 다시 추가
         for sub_id in new_sub_ids:
-            self._create_subarea_row(area_vars['subarea_rows_container'], area_number, sub_id)
+            new_row = self._create_subarea_row(area_vars['subarea_rows_container'], area_number, sub_id)
+            # 새로 만들어진 위젯은 아직 어두운 배경이 적용되지 않은 상태이므로 칠해줍니다.
+            self._set_bg_recursively(new_row, self.WINDOW_COLORS['default'])
         add_btn.pack(fill=tk.X, padx=4, pady=4)
 
         self.refresh_subarea_order(area_number)
@@ -901,6 +978,102 @@ class AppUI:
             del area_vars['sub_area_widgets'][sub_id]
             del area_vars['sub_area_vars'][sub_id]
             self.refresh_subarea_order(area_number)
+
+    def add_initial_area_to_ui(self):
+        """새로운 기본 탐색 영역 위젯을 목록 끝에 추가합니다."""
+        new_area_ids = [aid for aid in self.controller.initial_area_order if aid not in self.initial_area_vars]
+        for area_id in new_area_ids:
+            self._initialize_initial_area_vars(area_id)
+
+        self.add_initial_area_btn.pack_forget() # 버튼을 잠시 가리고 아래에 다시 추가
+        for area_id in new_area_ids:
+            new_row = self._create_initial_area_row(self.initial_area_rows_container, area_id)
+            # 새로 만들어진 위젯은 아직 어두운 배경이 적용되지 않은 상태이므로 칠해줍니다.
+            self._set_bg_recursively(new_row, self.WINDOW_COLORS['default'])
+        self.add_initial_area_btn.pack(fill=tk.X, padx=4, pady=4)
+
+        self.refresh_initial_area_order()
+
+    def refresh_initial_area_order(self):
+        """컨트롤러의 initial_area_order에 맞춰 영역 행들의 배치와 순서 번호를 갱신합니다."""
+        present_ids = [aid for aid in self.controller.initial_area_order if aid in self.initial_area_widgets]
+
+        for display_idx, area_id in enumerate(present_ids, start=1):
+            self.initial_area_vars[area_id]['order_var'].set(str(display_idx))
+            w_set = self.initial_area_widgets[area_id]
+            w_set['drag_handle'].config(fg="white")
+            row = w_set['row']
+            row.pack_forget()
+            row.pack(fill=tk.X, expand=True, pady=1)
+
+    def _on_initial_area_drag_start(self, event, area_id):
+        """기본 탐색 영역 행 드래그 시작 시 시각적 피드백 제공."""
+        if area_id in self.initial_area_widgets:
+            self.initial_area_widgets[area_id]['drag_handle'].config(fg="#40E0D0")
+
+    def _on_initial_area_drag_motion(self, event, area_id):
+        """기본 탐색 영역 행 드래그 중 마우스 위치를 추적하여 삽입 위치 가이드 라인을 표시합니다."""
+        rows_container = self.initial_area_rows_container
+        y_cursor = event.y_root
+
+        if not hasattr(self, 'initial_area_drag_guide'):
+            self.initial_area_drag_guide = tk.Frame(rows_container, height=2, bg="#40E0D0", bd=0)
+
+        y_positions = []
+        for aid in self.controller.initial_area_order:
+            if aid in self.initial_area_widgets:
+                row = self.initial_area_widgets[aid]['row']
+                y_top = row.winfo_rooty()
+                y_bottom = y_top + row.winfo_height()
+                y_positions.append((y_top, y_bottom))
+
+        if not y_positions: return
+
+        insert_y = y_positions[0][0] - rows_container.winfo_rooty()
+        for top, bottom in y_positions:
+            if y_cursor > (top + bottom) // 2:
+                insert_y = bottom - rows_container.winfo_rooty()
+
+        self.initial_area_drag_guide.place(in_=rows_container, x=0, y=insert_y, relwidth=1)
+        self.initial_area_drag_guide.lift()
+
+    def _on_initial_area_drag_release(self, event, area_id):
+        """기본 탐색 영역 행 드래그 종료 시 가이드 라인을 숨기고 새로운 순서를 결정합니다."""
+        if hasattr(self, 'initial_area_drag_guide'):
+            self.initial_area_drag_guide.place_forget()
+
+        self.root.update_idletasks()
+
+        y_cursor = event.y_root
+
+        centers = []
+        for aid in self.controller.initial_area_order:
+            if aid != area_id and aid in self.initial_area_widgets:
+                row = self.initial_area_widgets[aid]['row']
+                center_y = row.winfo_rooty() + (row.winfo_height() // 2)
+                centers.append(center_y)
+
+        new_index = 0
+        for c_y in centers:
+            if y_cursor > c_y:
+                new_index += 1
+
+        self.controller.reorder_initial_area(area_id, new_index)
+
+    def remove_initial_area_from_ui(self, area_id: int):
+        """UI에서 특정 기본 탐색 영역 행을 제거합니다."""
+        if area_id in self.initial_area_widgets:
+            self.initial_area_widgets[area_id]['row'].destroy()
+            del self.initial_area_widgets[area_id]
+            del self.initial_area_vars[area_id]
+            self.refresh_initial_area_order()
+
+    def reset_initial_areas_ui(self):
+        """현재 생성된 모든 기본 탐색 영역 행 위젯을 제거하고 데이터를 초기화합니다."""
+        for widgets in self.initial_area_widgets.values():
+            widgets['row'].destroy()
+        self.initial_area_widgets = {}
+        self.initial_area_vars = {}
 
     def remove_area_from_ui(self, area_number: int):
         """UI에서 특정 구역 위젯을 제거합니다."""
@@ -1025,8 +1198,6 @@ class AppUI:
         self.color_tolerance_var.set(str(c.color_tolerance))
         self.color_area_tolerance_var.set(str(c.color_area_tolerance))
         self.complete_delay_var.set(str(int(c.complete_click_delay * 100)))
-        self.p1_var.set(str(c.p1))
-        self.p2_var.set(str(c.p2))
         self.color_var.set(str(c.color))
         self.use_secondary_color_var.set(c.use_secondary_color)
         self.secondary_color_var.set(str(c.secondary_color))
@@ -1046,11 +1217,17 @@ class AppUI:
         self.empty_coord_var.set(str(c.empty_coord))
         self.use_search_delay_var.set(c.use_search_delay)
         self.use_sequence_var.set(c.use_sequence)
-        self.direction_var.set(self.SEARCH_DIRECTION_MAP[c.search_direction])
         self.total_duration_var.set(str(c.total_duration_sec))
         self.active_search_duration_var.set(str(c.active_search_duration_sec))
         self.wait_duration_var.set(str(c.wait_duration_sec))
         self.search_time_tolerance_var.set(str(c.search_time_tolerance_sec))
+
+        # 로드된 데이터에 맞춰 기본 탐색 영역 목록을 처음부터 다시 생성
+        for area_id in c.initial_area_order:
+            if area_id not in self.initial_area_vars:
+                self._initialize_initial_area_vars(area_id)
+            self._create_initial_area_row(self.initial_area_rows_container, area_id)
+        self.refresh_initial_area_order()
 
         # 로드된 데이터에 맞춰 UI 구역을 처음부터 다시 생성
         for area_num in c.area_order:

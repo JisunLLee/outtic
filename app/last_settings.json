@@ -1,16 +1,32 @@
 {
-    "p1": [
-        172,
-        342
-    ],
-    "p2": [
-        524,
-        686
+    "initial_areas": [
+        {
+            "p1": [
+                310,
+                184
+            ],
+            "p2": [
+                427,
+                304
+            ],
+            "direction": "←↓"
+        },
+        {
+            "p1": [
+                308,
+                306
+            ],
+            "p2": [
+                565,
+                429
+            ],
+            "direction": "↑↔"
+        }
     ],
     "color": [
-        204,
-        255,
-        0
+        153,
+        0,
+        201
     ],
     "use_secondary_color": false,
     "secondary_color": [
@@ -19,26 +35,25 @@
         192
     ],
     "complete_coord": [
-        639,
-        420
+        942,
+        537
     ],
     "color_tolerance": 15,
     "color_area_tolerance": 5,
-    "search_direction": "☉",
     "complete_click_delay": 0.1,
     "use_sequence": true,
     "continuous_search": true,
     "use_space_complete": true,
     "use_screen_activation": false,
-    "use_operation_check": false,
+    "use_operation_check": true,
     "op_check_coord": [
-        607,
-        184
+        847,
+        426
     ],
     "op_check_color": [
-        214,
-        214,
-        214
+        32,
+        32,
+        31
     ],
     "op_check_max_retries": 3,
     "op_check_retry_interval": 0.5,
@@ -47,8 +62,8 @@
         179
     ],
     "use_search_delay": false,
-    "use_initial_search": false,
-    "research_delay": 0.03,
+    "use_initial_search": true,
+    "research_delay": 0.7,
     "area_delay": 0.4,
     "search_delay": 0.0,
     "total_duration_sec": 1800,
@@ -67,9 +82,9 @@
             "offset": 2,
             "use_color": false,
             "color": [
-                204,
-                255,
-                0
+                153,
+                0,
+                201
             ],
             "sub_areas": [
                 {
@@ -107,9 +122,9 @@
             "offset": 2,
             "use_color": false,
             "color": [
-                204,
-                255,
-                0
+                153,
+                0,
+                201
             ],
             "sub_areas": [
                 {
@@ -147,9 +162,9 @@
             "offset": 2,
             "use_color": false,
             "color": [
-                204,
-                255,
-                0
+                153,
+                0,
+                201
             ],
             "sub_areas": [
                 {
@@ -176,9 +191,9 @@
             "offset": 2,
             "use_color": false,
             "color": [
-                204,
-                255,
-                0
+                153,
+                0,
+                201
             ],
             "sub_areas": [
                 {
