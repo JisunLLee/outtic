@@ -133,7 +133,7 @@ class AppUI:
 
     def _setup_ui(self):
         """메인 UI를 생성하고 배치합니다."""
-        self.root.title("LuAuttic For 히기 v.2.5.1")
+        self.root.title("LuAuttic For 히기 v.3.0.0")
 
         window_width = 400
         # 4개의 구역이 모두 보이도록 창 높이 설정합니다.
@@ -148,7 +148,6 @@ class AppUI:
         y_pos = 0 # 상단 여백
 
         self.root.geometry(f"{window_width}x{window_height}+{x_pos}+{y_pos}")
-        self.update_window_bg('default')
         self.root.resizable(True, True)
 
         main_frame = tk.Frame(self.root, padx=10, pady=10)
@@ -392,6 +391,10 @@ class AppUI:
 
         # UI가 모두 생성된 후, 오버레이의 초기 상태를 설정합니다.
         self.refresh_area_order()
+
+        # 모든 위젯이 생성된 뒤에 배경색을 적용해야 전체 화면이 처음부터 어둡게 표시됩니다.
+        # (위젯 생성 전에 호출하면 그 시점에 존재하는 위젯이 없어 아무 효과가 없습니다.)
+        self.update_window_bg('default')
 
     def _create_area_group(self, parent, area_number: int):
         """
@@ -940,10 +943,11 @@ class AppUI:
             if isinstance(widget, target_widgets):
                 # 체크박스는 배경과 관련된 여러 속성을 함께 변경해야 자연스럽습니다.
                 if isinstance(widget, tk.Checkbutton):
-                    # Windows에서는 체크박스 배경색이 잘 적용되지 않는 문제가 있어 OS별로 다르게 처리합니다.
                     if sys.platform.startswith("win"):
-                        # Windows: 시스템 기본 배경을 유지하고 글자색만 흰색으로 설정
-                        widget.configure(fg='white')
+                        # Windows: 배경색뿐 아니라 highlight 관련 속성도 함께 지정해야
+                        # 체크박스 주변에 흰 테두리/배경이 남지 않습니다.
+                        widget.configure(fg='white', bg=color, activebackground=color, selectcolor=color,
+                                         highlightbackground=color, highlightcolor=color, highlightthickness=0)
                     else:
                         # macOS/Linux: 배경색을 테마에 맞게 설정
                         widget.configure(bg=color, activebackground=color, selectcolor=color)
@@ -1063,6 +1067,10 @@ class AppUI:
             for toggle_func in toggles.values():
                 toggle_func()
         self._toggle_area_settings_active()
+
+        # 구역 위젯들을 이 시점에 새로 만들었기 때문에, 아직 어두운 배경이 적용되지 않은 상태입니다.
+        # 다시 칠해서 화면 전체가 처음부터 어둡게 보이도록 합니다.
+        self.update_window_bg('default')
 
     def _toggle_operation_check_state(self):
         """탐색 화면 정상 여부 확인 그룹 내의 위젯 상태를 체크박스에 따라 토글합니다."""
