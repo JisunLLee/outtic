@@ -32,8 +32,8 @@ class AppController:
         self.search_thread: Optional[threading.Thread] = None
         self.shift_press_count = 0
         self.shift_press_timer: Optional[threading.Timer] = None
-        self.space_press_count = 0
-        self.space_press_timer: Optional[threading.Timer] = None
+        self.up_press_count = 0
+        self.up_press_timer: Optional[threading.Timer] = None
         self.tries_count = 0 # 현재 시도 횟수
         self.direction_change_pending = False
 
@@ -1106,24 +1106,25 @@ class AppController:
 
     def on_key_press(self, key):
         """전역 키 입력을 감지하여 단축키 조합을 처리합니다."""
-        # 스페이스 완료 모드 동작 (실행 중일 때)
+        # 스페이스 완료 모드 동작 (검색 중일 때 스페이스바로 완료 표시)
         if key == keyboard.Key.space:
             if self.is_searching and self.use_space_complete:
                 self._perform_space_complete_action()
-                return
+            return
 
-            # Space + Space 활성화 (검색 시작/중지 토글)
-            if self.space_press_timer:
-                self.space_press_timer.cancel()
-            self.space_press_count += 1
-            
-            if self.space_press_count >= 2:
-                self._reset_space_count()
+        # ↑ + ↑ 활성화 (검색 시작/중지 토글)
+        if key == keyboard.Key.up:
+            if self.up_press_timer:
+                self.up_press_timer.cancel()
+            self.up_press_count += 1
+
+            if self.up_press_count >= 2:
+                self._reset_up_count()
                 # UI 버튼이나 Shift 연타와 동일하게 검색 상태를 토글합니다.
                 self.toggle_search()
             else:
-                self.space_press_timer = threading.Timer(0.4, self._reset_space_count)
-                self.space_press_timer.start()
+                self.up_press_timer = threading.Timer(0.4, self._reset_up_count)
+                self.up_press_timer.start()
             return
 
         # Shift + Shift + Number 조합 처리
@@ -1192,9 +1193,9 @@ class AppController:
         self.shift_press_count = 0
         self.shift_press_timer = None
 
-    def _reset_space_count(self):
-        self.space_press_count = 0
-        self.space_press_timer = None
+    def _reset_up_count(self):
+        self.up_press_count = 0
+        self.up_press_timer = None
 
     def _check_operation_status(self) -> bool:
         """탐색 화면이 정상인지 확인합니다. 정상이 아니면 False를 반환하고 검색을 중지합니다."""
