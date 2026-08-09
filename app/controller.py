@@ -2,6 +2,7 @@ import tkinter as tk
 import threading
 import time
 import os
+import sys
 from pynput import mouse, keyboard
 from typing import Optional, TYPE_CHECKING
 import ast
@@ -622,11 +623,13 @@ class AppController:
         area['sub_areas'] = {}
         area['sub_area_order'] = []
         for sub_id, sub_loaded in enumerate(loaded_sub_areas, start=1):
+            p1 = tuple(sub_loaded.get('p1', default_sub['p1']))
+            p2 = tuple(sub_loaded.get('p2', default_sub['p2']))
             area['sub_areas'][sub_id] = {
-                'p1': tuple(sub_loaded.get('p1', default_sub['p1'])),
-                'p2': tuple(sub_loaded.get('p2', default_sub['p2'])),
+                'p1': p1,
+                'p2': p2,
                 'direction': SearchDirection(sub_loaded.get('direction', default_sub['direction'].value)),
-                'search_area': (0, 0, 0, 0),
+                'search_area': (min(p1[0], p2[0]), min(p1[1], p2[1]), max(p1[0], p2[0]), max(p1[1], p2[1])),
             }
             area['sub_area_order'].append(sub_id)
 
@@ -689,9 +692,22 @@ class AppController:
         except Exception as e:
             self.ui.update_status(f"파일 저장 오류: {e}")
 
+    def _get_app_data_dir(self) -> str:
+        """
+        자동 저장/불러오기에 사용할 안정적인 폴더 경로를 반환합니다.
+        PyInstaller `--onefile`로 빌드된 exe는 매 실행마다 새로운 임시 폴더에 압축을
+        풀기 때문에, __file__ 기준 경로를 쓰면 'last_settings.json'이 실행할 때마다
+        새 폴더에 저장되어 다음 실행 때 이전 설정을 찾지 못합니다(구역 탐색이 켜져 있어도
+        구역이 모두 기본값으로 초기화되어 "활성화된 재시도 구역이 없어 중지합니다"가 뜨는 원인).
+        따라서 빌드된 실행 파일(sys.frozen)일 때는 exe가 실제로 위치한 폴더를 사용합니다.
+        """
+        if getattr(sys, 'frozen', False):
+            return os.path.dirname(sys.executable)
+        return os.path.dirname(os.path.abspath(__file__))
+
     def auto_save_settings(self):
         """별도의 창 없이 'last_settings.json' 파일에 현재 설정을 저장합니다."""
-        save_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'last_settings.json')
+        save_path = os.path.join(self._get_app_data_dir(), 'last_settings.json')
         
         settings_data = {
             'initial_areas': self._serialize_initial_areas(),
@@ -737,7 +753,7 @@ class AppController:
 
     def auto_load_settings(self):
         """프로그램 시작 시 'last_settings.json' 파일이 있으면 자동으로 불러옵/니다."""
-        load_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'last_settings.json')
+        load_path = os.path.join(self._get_app_data_dir(), 'last_settings.json')
         if not os.path.exists(load_path):
             return
 

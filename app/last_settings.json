@@ -41,7 +41,7 @@
     "color_tolerance": 15,
     "color_area_tolerance": 5,
     "complete_click_delay": 0.1,
-    "use_sequence": true,
+    "use_sequence": false,
     "continuous_search": true,
     "use_space_complete": true,
     "use_screen_activation": false,
