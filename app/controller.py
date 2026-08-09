@@ -1237,21 +1237,30 @@ class AppController:
             self.ui.queue_task(lambda: self.ui.play_sound(5))
         return False
 
+    def _jitter_duration(self, base_seconds: float) -> float:
+        """
+        설정된 시간 오차(초)를 적용해 약간 무작위화된 시간을 반환합니다.
+        오차가 기준 시간보다 크면(예: 탐색(초)=5, 시간 오차(초)=5보다 더 큰 경우) 0 아래로
+        잘리면서 평균이 기준값보다 커지고, 짧은 시간일수록 오차에 완전히 뒤덮여 설정값이
+        거의 반영되지 않는 것처럼 보이는 문제가 있어, 오차 범위를 기준 시간 이하로 제한합니다.
+        """
+        tolerance = min(self.search_time_tolerance_sec, base_seconds)
+        offset = random.uniform(-tolerance, tolerance)
+        return max(0, base_seconds + offset)
+
     def _search_worker(self, search_plan: list):
         """(스레드 워커) 전달받은 검색 계획(search_plan)을 순차적으로 실행합니다."""
         if self.use_sequence:
             # [구역 사용 ON]: 총 탐색 시간 동안 (탐색 -> 대기) 사이클 반복
-            
+
             # 오차를 적용한 실제 총 탐색 시간 계산
-            total_duration_offset = random.uniform(-self.search_time_tolerance_sec, self.search_time_tolerance_sec)
-            actual_total_duration = max(0, self.total_duration_sec + total_duration_offset)
+            actual_total_duration = self._jitter_duration(self.total_duration_sec)
 
             main_start_time = time.time()
             while self.is_searching and (time.time() - main_start_time) < actual_total_duration:
                 # --- 탐색 사이클 ---
                 # 남은 총 탐색 시간과 한 사이클의 탐색 시간 중 더 작은 값을 이번 사이클의 duration으로 설정합니다.
-                active_search_offset = random.uniform(-self.search_time_tolerance_sec, self.search_time_tolerance_sec)
-                actual_active_search_duration = max(0, self.active_search_duration_sec + active_search_offset)
+                actual_active_search_duration = self._jitter_duration(self.active_search_duration_sec)
 
                 remaining_total_time = actual_total_duration - (time.time() - main_start_time)
                 current_cycle_duration = min(actual_active_search_duration, remaining_total_time)
@@ -1267,8 +1276,7 @@ class AppController:
                     # 대기 상태 시작 시 창 색상을 'waiting'으로 변경
                     self.ui.queue_task(lambda: self.ui.update_window_bg('waiting'))
 
-                    wait_duration_offset = random.uniform(-self.search_time_tolerance_sec, self.search_time_tolerance_sec)
-                    actual_wait_duration = max(0, self.wait_duration_sec + wait_duration_offset)
+                    actual_wait_duration = self._jitter_duration(self.wait_duration_sec)
 
                     wait_end_time = time.time() + actual_wait_duration
                     while self.is_searching and time.time() < wait_end_time:
