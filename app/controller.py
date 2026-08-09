@@ -1466,6 +1466,70 @@ class AppController:
                 return found
         return None
 
+    def _attempt_zone_click(self, step: dict, final_x: int, final_y: int, start_time: float, duration: float,
+                             main_start_time: float, cycle_target_duration: float, total_target_duration: float,
+                             attempt_label: str, bound_by_cycle: bool = True, click_before_search: bool = True):
+        """
+        구역의 클릭 좌표를 (필요하면) 클릭한 뒤 해당 구역의 영역들에서 색상을 탐색합니다.
+        반환값: (status, found_pos)
+          - status='stop': 화면 확인 실패 등으로 즉시 검색을 중단해야 함 (호출자는 False를 반환해야 함)
+          - status='break': 중지/시간 초과로 이번 구역 순환을 그만해야 함 (호출자는 루프를 빠져나가면 됨)
+          - status='ok': 정상적으로 시도했음. found_pos는 발견 위치 또는 None
+
+        bound_by_cycle=True(기본, 일반 시도용): 이번 탐색 사이클(탐색(초)) 예산 안에서만 진행합니다.
+        bound_by_cycle=False(발견 후 재탐색용): 사이클 예산이 아니라 총 탐색(초) 예산까지 진행합니다.
+        색상을 발견해 즉시클릭→재탐색을 반복하는 도중에 '탐색(초)' 타이머가 끝났다는 이유만으로
+        클릭 시퀀스가 중간에 끊기면 안 되기 때문입니다.
+
+        click_before_search=True(기본, 일반 시도용): 구역 클릭 좌표를 클릭한 뒤 탐색합니다.
+        click_before_search=False(발견 후 재탐색용): 구역 버튼을 다시 누르지 않고, 발견 시 이미
+        클릭(색상 위치 클릭 + 완료 클릭)한 상태 그대로 곧바로 다시 탐색만 합니다.
+        """
+        if bound_by_cycle:
+            time_up = (time.time() - start_time) >= duration
+        else:
+            time_up = (time.time() - main_start_time) >= total_target_duration
+
+        if not self.is_searching or time_up:
+            return 'break', None
+
+        self.tries_count += 1
+
+        if self.area_delay > 0:
+            # 기본 딜레이에 +-60ms(0.06초)의 랜덤 오차를 추가합니다.
+            random_offset = random.uniform(-0.06, 0.06)
+            final_delay = self.area_delay + random_offset
+            # 최종 딜레이가 음수가 되지 않도록 max(0, ...) 처리합니다.
+            time.sleep(max(0, final_delay))
+
+        if not self.is_searching:
+            return 'break', None
+
+        if click_before_search:
+            if (final_x, final_y) != (0, 0):
+                self.color_finder.click_action(final_x, final_y)
+            else:
+                # 클릭 좌표가 (0,0)인 경우 경고 메시지 출력
+                self.ui.queue_task(lambda: self.ui.update_status(f"경고: 구역 {step.get('area_number', 'N/A')} 클릭 좌표가 (0,0)이므로 건너뜁니다."))
+                print(f"경고: 구역 {step.get('area_number', 'N/A')} 클릭 좌표가 (0,0)이므로 건너뜁니다.")
+
+            time.sleep(0.1)
+        elapsed_time = int(time.time() - start_time)
+        if duration == float('inf'):
+            time_info = f"경과 시간 ({elapsed_time}s)"
+        else:
+            total_elapsed_time = int(time.time() - main_start_time)
+            time_info = f"({elapsed_time}s / {int(cycle_target_duration)}s) ({total_elapsed_time}s / {int(total_target_duration)}s)"
+        search_status_text = f"재탐색: 구역{step['area_number']} ({attempt_label}) | {time_info}"
+        self.ui.queue_task(lambda text=search_status_text: self.ui.update_status(text))
+
+        if not self._check_operation_status():
+            return 'stop', None
+
+        # 구역 내 영역들을 순서대로 탐색합니다. 앞 영역에서 못 찾으면 다음 영역으로 넘어갑니다.
+        found_pos = self._find_color_in_areas(step['sub_areas'], step['search_color'], self.color_tolerance)
+        return 'ok', found_pos
+
     def _perform_search_cycle(self, search_plan: list, start_time: float, main_start_time: float, duration: float, cycle_target_duration: float, total_target_duration: float):
         """주어진 시간(duration) 동안 탐색 로직을 수행합니다."""
         if self.use_sequence:
@@ -1508,43 +1572,34 @@ class AppController:
 
                 for i in range(step['num_retries']):
                     if not self.is_searching or (time.time() - start_time) >= duration: break
-                    
-                    self.tries_count += 1
 
-                    if self.area_delay > 0:
-                        # 기본 딜레이에 +-60ms(0.06초)의 랜덤 오차를 추가합니다.
-                        random_offset = random.uniform(-0.06, 0.06)
-                        final_delay = self.area_delay + random_offset
-                        # 최종 딜레이가 음수가 되지 않도록 max(0, ...) 처리합니다.
-                        time.sleep(max(0, final_delay))
-                    
-                    if not self.is_searching: break
-                    
-                    if (final_x, final_y) != (0, 0):
-                        self.color_finder.click_action(final_x, final_y)
-                    else:
-                        # 클릭 좌표가 (0,0)인 경우 경고 메시지 출력
-                        self.ui.queue_task(lambda: self.ui.update_status(f"경고: 구역 {step.get('area_number', 'N/A')} 클릭 좌표가 (0,0)이므로 건너뜁니다."))
-                        print(f"경고: 구역 {step.get('area_number', 'N/A')} 클릭 좌표가 (0,0)이므로 건너뜁니다.")
+                    status, found_pos = self._attempt_zone_click(
+                        step, final_x, final_y, start_time, duration,
+                        main_start_time, cycle_target_duration, total_target_duration,
+                        f"{i+1}/{step['num_retries']}"
+                    )
+                    if status == 'stop': return False
+                    if status == 'break': break
 
-                    time.sleep(0.1)
-                    elapsed_time = int(time.time() - start_time)
-                    if duration == float('inf'):
-                        time_info = f"경과 시간 ({elapsed_time}s)"
-                    else:
-                        total_elapsed_time = int(time.time() - main_start_time)
-                        time_info = f"({elapsed_time}s / {int(cycle_target_duration)}s) ({total_elapsed_time}s / {int(total_target_duration)}s)"
-                    search_status_text = f"재탐색: 구역{step['area_number']} ({i+1}/{step['num_retries']}) | {time_info}"
-                    self.ui.queue_task(lambda text=search_status_text: self.ui.update_status(text))
-
-                    if not self._check_operation_status(): return False
-
-                    # 구역 내 영역들을 순서대로 탐색합니다. 앞 영역에서 못 찾으면 다음 영역으로 넘어갑니다.
-                    found_pos = self._find_color_in_areas(step['sub_areas'], step['search_color'], self.color_tolerance)
                     if found_pos:
                         self._handle_found_color(found_pos, f"재시도 중 구역{step['area_number']}에서 색상 발견")
                         if not self.continuous_search: return True
-            
+
+                        # 연속 찾기 ON: 발견 → 클릭했다면, 설정된 횟수와 무관하게 같은 구역을
+                        # 계속 재탐색합니다. 구역 버튼은 다시 누르지 않고 탐색만 반복하며,
+                        # 더 이상 못 찾으면 그때 다음 구역으로 넘어갑니다.
+                        while True:
+                            status, found_pos = self._attempt_zone_click(
+                                step, final_x, final_y, start_time, duration,
+                                main_start_time, cycle_target_duration, total_target_duration,
+                                "재탐색", bound_by_cycle=False, click_before_search=False
+                            )
+                            if status == 'stop': return False
+                            if status == 'break' or not found_pos: break
+
+                            self._handle_found_color(found_pos, f"재시도 중 구역{step['area_number']}에서 색상 발견")
+                            if not self.continuous_search: return True
+
             if self.is_searching and duration != float('inf'):
                 # 한 탐색 사이클의 최대 시간 도달 시 소리 1번 재생
                 self.ui.queue_task(lambda: self.ui.play_sound(1))
