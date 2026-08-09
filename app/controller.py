@@ -144,6 +144,82 @@ class AppController:
                 self.ui.remove_area_from_ui(area_number)
             self.auto_save_settings() # 삭제 즉시 저장
 
+    def _sanitize_sub_area_order(self, area_number: int):
+        """지정된 구역의 sub_area_order 리스트와 sub_areas 데이터를 동기화합니다."""
+        area = self.areas[area_number]
+        sub_areas = area['sub_areas']
+        seen = set()
+        clean_order = []
+
+        for sid in area['sub_area_order']:
+            sid_int = int(sid)
+            if sid_int in sub_areas and sid_int not in seen:
+                clean_order.append(sid_int)
+                seen.add(sid_int)
+
+        for sid in sorted(sub_areas.keys()):
+            if sid not in seen:
+                clean_order.append(sid)
+
+        area['sub_area_order'] = clean_order
+
+    def _initialize_sub_area(self, area_number: int, sub_id: int):
+        """지정된 구역에 새 영역(sub-area)의 기본 설정값을 생성합니다."""
+        area = self.areas[area_number]
+        if sub_id not in area['sub_areas']:
+            area['sub_areas'][sub_id] = {
+                'p1': self.p1,
+                'p2': self.p2,
+                'direction': self.search_direction,
+                'search_area': (0, 0, 0, 0),
+            }
+
+    def add_sub_area(self, area_number: int):
+        """지정된 구역에 새로운 영역을 추가합니다."""
+        area = self.areas[area_number]
+        new_sub_id = 1
+        while new_sub_id in area['sub_areas']:
+            new_sub_id += 1
+
+        self._initialize_sub_area(area_number, new_sub_id)
+        area['sub_area_order'].append(new_sub_id)
+        if self.ui:
+            self.ui.add_subarea_to_ui(area_number)
+        self.auto_save_settings()
+        return new_sub_id
+
+    def remove_sub_area(self, area_number: int, sub_id: int):
+        """지정된 구역의 영역을 제거합니다. 구역에는 최소 1개의 영역이 남아야 합니다."""
+        area = self.areas[area_number]
+        if len(area['sub_area_order']) <= 1:
+            if self.ui:
+                self.ui.update_status("구역에는 최소 1개의 영역이 필요합니다.")
+            return
+
+        if sub_id in area['sub_areas']:
+            del area['sub_areas'][sub_id]
+            if sub_id in area['sub_area_order']:
+                area['sub_area_order'].remove(sub_id)
+            if self.ui:
+                self.ui.remove_subarea_from_ui(area_number, sub_id)
+            self.auto_save_settings()
+
+    def reorder_sub_area(self, area_number: int, sub_id: int, new_index: int):
+        """구역 내 영역의 탐색 순서를 새로운 위치로 변경합니다 (Drag & Drop)."""
+        sub_id = int(sub_id)
+        area = self.areas[area_number]
+        self._sanitize_sub_area_order(area_number)
+
+        if sub_id in area['sub_area_order']:
+            area['sub_area_order'].remove(sub_id)
+
+        target_idx = max(0, min(new_index, len(area['sub_area_order'])))
+        area['sub_area_order'].insert(target_idx, sub_id)
+
+        if self.ui:
+            self.ui.refresh_subarea_order(area_number)
+        self.auto_save_settings()
+
     def set_ui(self, ui: 'AppUI'):
         """
         컨트롤러에 UI 인스턴스를 연결합니다.
@@ -161,10 +237,8 @@ class AppController:
             default_click_coord = (0, 0)
             default_clicks = 6
             default_offset = 2
-            default_use_area_bounds = False 
             default_p1 = self.p1
             default_p2 = self.p2
-            default_use_direction = False   # '기본' 방향 사용 (UI 체크박스 True)
             default_direction = self.search_direction # 기본 탐색 방향으로 초기화
             default_name = f"구역{area_number}"
 
@@ -194,14 +268,18 @@ class AppController:
                 'click_coord': default_click_coord,
                 'clicks': default_clicks, # 구역 클릭 횟수
                 'offset': default_offset, # 구역 클릭 범위 오차
-                'use_area_bounds': default_use_area_bounds, 
-                'p1': default_p1,
-                'p2': default_p2,
                 'use_color': False, # '기본' 색상 사용 (UI 체크박스 True)
                 'color': (0, 0, 0),
-                'direction': default_direction,
-                'use_direction': default_use_direction, 
-                'search_area': (0, 0, 0, 0) # 계산된 탐색 영역
+                # 구역 내 영역(sub-area) 목록: 순서대로 탐색하며 못 찾으면 다음 영역으로 넘어갑니다.
+                'sub_areas': {
+                    1: {
+                        'p1': default_p1,
+                        'p2': default_p2,
+                        'direction': default_direction,
+                        'search_area': (0, 0, 0, 0), # 계산된 탐색 영역
+                    }
+                },
+                'sub_area_order': [1],
             }
 
     def _get_global_search_area(self):
@@ -285,18 +363,21 @@ class AppController:
                 area_settings['click_coord'] = ast.literal_eval(area_ui_vars['coord_var'].get())
                 area_settings['clicks'] = int(area_ui_vars['clicks_var'].get())
                 area_settings['offset'] = int(area_ui_vars['offset_var'].get())
-                area_settings['p1'] = ast.literal_eval(area_ui_vars['p1_var'].get())
-                area_settings['p2'] = ast.literal_eval(area_ui_vars['p2_var'].get())
                 area_settings['use_color'] = not area_ui_vars['use_color_var'].get() # UI와 논리 반대. '기본' 체크 해제 시 개별 색상 사용
-                area_settings['use_area_bounds'] = not area_ui_vars['use_area_bounds_var'].get() # UI와 논리 반대
-                area_settings['use_direction'] = not area_ui_vars['use_direction_var'].get() # '기본' 체크 해제 시 개별 방향 사용
                 area_settings['color'] = ast.literal_eval(area_ui_vars['color_var'].get())
-                area_settings['direction'] = direction_map.get(area_ui_vars['direction_var'].get(), self.search_direction)
 
-                # 구역별 탐색 영역 미리 계산
-                p1 = area_settings['p1']
-                p2 = area_settings['p2']
-                area_settings['search_area'] = (min(p1[0], p2[0]), min(p1[1], p2[1]), max(p1[0], p2[0]), max(p1[1], p2[1]))
+                # 구역 내 영역(sub-area)별 탐색 영역/방향을 UI 값으로 재계산합니다.
+                for sub_id, sub_ui_vars in area_ui_vars['sub_area_vars'].items():
+                    if sub_id not in area_settings['sub_areas']:
+                        self._initialize_sub_area(area_number, sub_id)
+                    sub_settings = area_settings['sub_areas'][sub_id]
+                    sub_settings['p1'] = ast.literal_eval(sub_ui_vars['p1_var'].get())
+                    sub_settings['p2'] = ast.literal_eval(sub_ui_vars['p2_var'].get())
+                    sub_settings['direction'] = direction_map.get(sub_ui_vars['direction_var'].get(), self.search_direction)
+
+                    p1 = sub_settings['p1']
+                    p2 = sub_settings['p2']
+                    sub_settings['search_area'] = (min(p1[0], p2[0]), min(p1[1], p2[1]), max(p1[0], p2[0]), max(p1[1], p2[1]))
 
 
             self.ui.update_status("설정이 적용되었습니다.")
@@ -347,17 +428,19 @@ class AppController:
                     marker_color = area_overlay_colors[(area_number - 1) % len(area_overlay_colors)]
                     
                     step_markers = []
-                    # 구역 탐색 영역
-                    if settings['use_area_bounds']:
-                        sx1, sy1, sx2, sy2 = settings['search_area']
+                    # 구역 내 영역(sub-area)들을 순서대로 모두 표시
+                    area_name = settings.get('name', f'구역{area_number}')
+                    for idx, sub_id in enumerate(settings['sub_area_order']):
+                        sub_settings = settings['sub_areas'][sub_id]
+                        sx1, sy1, sx2, sy2 = sub_settings['search_area']
                         step_markers.append({
                             'type': 'area',
                             'rect': (sx1, sy1, sx2 - sx1, sy2 - sy1),
                             'color': marker_color,
                             'alpha': 0.4,
-                            'text': settings.get('name', f'구역{area_number}')
+                            'text': f"{area_name} 영역{idx + 1}"
                         })
-                    
+
                     # 구역 클릭 좌표
                     step_markers.append({
                         'type': 'point',
@@ -368,6 +451,60 @@ class AppController:
                     visual_steps.append(step_markers)
 
         self.ui.display_visual_aids(visual_steps)
+
+    def _serialize_area(self, area_settings: dict) -> dict:
+        """구역 설정 하나를 JSON 직렬화 가능한 dict로 변환합니다."""
+        return {
+            'name': area_settings['name'],
+            'use': area_settings['use'],
+            'click_coord': area_settings['click_coord'],
+            'clicks': area_settings['clicks'],
+            'offset': area_settings['offset'],
+            'use_color': area_settings['use_color'],
+            'color': area_settings['color'],
+            'sub_areas': [
+                {
+                    'p1': area_settings['sub_areas'][sid]['p1'],
+                    'p2': area_settings['sub_areas'][sid]['p2'],
+                    'direction': area_settings['sub_areas'][sid]['direction'].value, # Enum을 문자열로 저장
+                }
+                for sid in area_settings['sub_area_order']
+            ],
+        }
+
+    def _deserialize_area(self, area_number: int, loaded: dict):
+        """JSON에서 불러온 구역 설정 하나를 컨트롤러 상태에 반영합니다 (구버전 형식 자동 변환 포함)."""
+        self._initialize_area_settings(area_number)
+        area = self.areas[area_number]
+        area['name'] = loaded.get('name', f"구역{area_number}")
+        area['use'] = bool(loaded.get('use', area['use']))
+        area['click_coord'] = tuple(loaded.get('click_coord', area['click_coord']))
+        area['clicks'] = int(loaded.get('clicks', area['clicks']))
+        area['offset'] = int(loaded.get('offset', area['offset']))
+        area['use_color'] = bool(loaded.get('use_color', area['use_color']))
+        area['color'] = tuple(loaded.get('color', area['color']))
+
+        loaded_sub_areas = loaded.get('sub_areas')
+        if loaded_sub_areas is None:
+            # 구버전 형식(구역당 영역이 1개뿐이고 p1/p2/direction이 구역에 직접 있던 형식)을
+            # 영역이 1개인 sub_areas 리스트로 변환합니다.
+            default_sub = area['sub_areas'][area['sub_area_order'][0]]
+            loaded_sub_areas = [{
+                'p1': loaded.get('p1', default_sub['p1']),
+                'p2': loaded.get('p2', default_sub['p2']),
+                'direction': loaded.get('direction', default_sub['direction'].value),
+            }]
+
+        area['sub_areas'] = {}
+        area['sub_area_order'] = []
+        for sub_id, sub_loaded in enumerate(loaded_sub_areas, start=1):
+            area['sub_areas'][sub_id] = {
+                'p1': tuple(sub_loaded.get('p1', self.p1)),
+                'p2': tuple(sub_loaded.get('p2', self.p2)),
+                'direction': SearchDirection(sub_loaded.get('direction', self.search_direction.value)),
+                'search_area': (0, 0, 0, 0),
+            }
+            area['sub_area_order'].append(sub_id)
 
     def save_settings(self):
         """현재 설정을 JSON 파일로 저장합니다."""
@@ -411,20 +548,7 @@ class AppController:
         }
 
         for area_number, area_settings in self.areas.items():
-            settings_data['areas'][area_number] = {
-                'name': area_settings.get('name', f"구역{area_number}"),
-                'use': area_settings['use'],
-                'click_coord': area_settings['click_coord'],
-                'clicks': area_settings['clicks'],
-                'offset': area_settings['offset'],
-                'use_area_bounds': area_settings['use_area_bounds'],
-                'p1': area_settings['p1'],
-                'p2': area_settings['p2'],
-                'use_color': area_settings['use_color'],
-                'color': area_settings['color'],
-                'direction': area_settings['direction'].value, # Enum을 문자열로 저장
-                'use_direction': area_settings['use_direction'],
-            }
+            settings_data['areas'][area_number] = self._serialize_area(area_settings)
 
         filepath = filedialog.asksaveasfilename(
             defaultextension=".json",
@@ -482,20 +606,7 @@ class AppController:
         }
 
         for area_number, area_settings in self.areas.items():
-            settings_data['areas'][area_number] = {
-                'name': area_settings.get('name', f"구역{area_number}"),
-                'use': area_settings['use'],
-                'click_coord': area_settings['click_coord'],
-                'clicks': area_settings['clicks'],
-                'offset': area_settings['offset'],
-                'use_area_bounds': area_settings['use_area_bounds'],
-                'p1': area_settings['p1'],
-                'p2': area_settings['p2'],
-                'use_color': area_settings['use_color'],
-                'color': area_settings['color'],
-                'direction': area_settings['direction'].value,
-                'use_direction': area_settings['use_direction'],
-            }
+            settings_data['areas'][area_number] = self._serialize_area(area_settings)
 
         try:
             with open(save_path, 'w', encoding='utf-8') as f:
@@ -554,23 +665,9 @@ class AppController:
             loaded_areas = settings_data.get('areas', {})
             for area_number_str, loaded in loaded_areas.items():
                 area_number = int(area_number_str)
-                # Ensure the area is initialized with defaults before loading specific values
-                # This prevents KeyError if 'loaded' is missing some keys or if 'area' was empty.
-                self._initialize_area_settings(area_number)
-                
-                area = self.areas[area_number]
-                area['name'] = loaded.get('name', f"구역{area_number}")
-                area['use'] = bool(loaded.get('use', area['use']))
-                area['click_coord'] = tuple(loaded.get('click_coord', area['click_coord']))
-                area['clicks'] = int(loaded.get('clicks', area['clicks']))
-                area['offset'] = int(loaded.get('offset', area['offset']))
-                area['use_area_bounds'] = bool(loaded.get('use_area_bounds', area['use_area_bounds']))
-                area['p1'] = tuple(loaded.get('p1', area['p1']))
-                area['p2'] = tuple(loaded.get('p2', area['p2']))
-                area['use_color'] = bool(loaded.get('use_color', area['use_color']))
-                area['color'] = tuple(loaded.get('color', area['color']))
-                area['direction'] = SearchDirection(loaded.get('direction', area['direction'].value))
-                area['use_direction'] = bool(loaded.get('use_direction', area['use_direction']))
+                # 'loaded'에 일부 키가 없거나 area가 비어 있어도 문제가 없도록,
+                # 기본값으로 초기화한 뒤 저장된 값을 덮어씁니다 (구버전 형식은 내부에서 자동 변환됩니다).
+                self._deserialize_area(area_number, loaded)
 
             self._sanitize_area_order()
 
@@ -638,23 +735,9 @@ class AppController:
             loaded_areas = settings_data.get('areas', {})
             for area_number_str, loaded in loaded_areas.items():
                 area_number = int(area_number_str)
-                # Ensure the area is initialized with defaults before loading specific values
-                # This prevents KeyError if 'loaded' is missing some keys or if 'area' was empty.
-                self._initialize_area_settings(area_number)
-                
-                area = self.areas[area_number]
-                area['name'] = loaded.get('name', f"구역{area_number}")
-                area['use'] = bool(loaded.get('use', area['use']))
-                area['click_coord'] = tuple(loaded.get('click_coord', area['click_coord']))
-                area['clicks'] = int(loaded.get('clicks', area['clicks']))
-                area['offset'] = int(loaded.get('offset', area['offset']))
-                area['use_area_bounds'] = bool(loaded.get('use_area_bounds', area['use_area_bounds']))
-                area['p1'] = tuple(loaded.get('p1', area['p1']))
-                area['p2'] = tuple(loaded.get('p2', area['p2']))
-                area['use_color'] = bool(loaded.get('use_color', area['use_color']))
-                area['color'] = tuple(loaded.get('color', area['color']))
-                area['direction'] = SearchDirection(loaded.get('direction', area['direction'].value))
-                area['use_direction'] = bool(loaded.get('use_direction', area['use_direction']))
+                # 'loaded'에 일부 키가 없거나 area가 비어 있어도 문제가 없도록,
+                # 기본값으로 초기화한 뒤 저장된 값을 덮어씁니다 (구버전 형식은 내부에서 자동 변환됩니다).
+                self._deserialize_area(area_number, loaded)
 
             self._sanitize_area_order()
 
@@ -683,6 +766,12 @@ class AppController:
         elif coord_key == 'complete': display_name = '완료'
         elif coord_key == 'empty_coord': display_name = '빈공간'
         elif coord_key == 'area_op_check_coord': display_name = '화면확인 좌표'
+        elif coord_key.startswith('area_') and '_sub_' in coord_key:
+            # 예: 'area_1_sub_2_p1' -> 구역1 영역2 ↖영역
+            parts = coord_key.split('_')
+            area_num, sub_id, type_key = parts[1], parts[3], parts[4]
+            type_map = {'p1': '↖영역', 'p2': '↘영역'}
+            display_name = f"구역{area_num} 영역{sub_id} {type_map.get(type_key, type_key)}"
         elif coord_key.startswith('area_'):
             parts = coord_key.split('_')
             area_num = parts[1]
@@ -718,17 +807,27 @@ class AppController:
         elif coord_key == 'area_op_check_coord':
             self.ui.op_check_coord_var.set(str(new_pos))
             self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
-        elif coord_key.startswith('area_'): # 예: 'area_1_p1', 'area_1_click_coord'
+        elif coord_key.startswith('area_') and '_sub_' in coord_key: # 예: 'area_1_sub_2_p1'
             try:
                 parts = coord_key.split('_')
                 area_number = int(parts[1])
-                key_type = '_'.join(parts[2:]) # 'p1', 'p2', 'click_coord'
-                var_key_map = {'p1': 'p1_var', 'p2': 'p2_var', 'click_coord': 'coord_var'}
+                sub_id = int(parts[3])
+                key_type = parts[4] # 'p1' or 'p2'
+                var_key_map = {'p1': 'p1_var', 'p2': 'p2_var'}
+                var_key = var_key_map[key_type]
+                self.ui.area_vars[area_number]['sub_area_vars'][sub_id][var_key].set(str(new_pos))
+                self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
+            except (IndexError, KeyError, ValueError) as e:
+                print(f"잘못된 영역 좌표 키입니다: {coord_key}, 오류: {e}")
+        elif coord_key.startswith('area_'): # 예: 'area_1_click_coord'
+            try:
+                parts = coord_key.split('_')
+                area_number = int(parts[1])
+                key_type = '_'.join(parts[2:]) # 'click_coord'
+                var_key_map = {'click_coord': 'coord_var'}
                 var_key = var_key_map[key_type]
                 self.ui.area_vars[area_number][var_key].set(str(new_pos))
-                # 구역의 '영역' 또는 '클릭' 좌표가 변경될 때 색상 플래시
-                if key_type in ['p1', 'p2', 'click_coord']:
-                    self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
+                self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
             except (IndexError, KeyError, ValueError) as e:
                 print(f"잘못된 구역 좌표 키입니다: {coord_key}, 오류: {e}")
 
@@ -875,17 +974,22 @@ class AppController:
             for area_number in self.area_order:
                 settings = self.areas[area_number]
                 if settings['use'] and settings['click_coord'] != (0, 0):
-                    # 이 재시도 단계에서 사용할 탐색 영역과 방향을 결정합니다.
-                    retry_search_area = settings['search_area'] if settings['use_area_bounds'] else self._get_global_search_area()
-                    retry_search_direction = settings['direction'] if settings['use_direction'] else self.search_direction
+                    # 이 재시도 단계에서 순서대로 시도할 영역(sub-area)들의 탐색 영역과 방향을 결정합니다.
+                    # 앞의 영역에서 색을 찾지 못하면 다음 영역으로 넘어가며 시도합니다.
+                    sub_area_plans = [
+                        {
+                            'search_area': settings['sub_areas'][sid]['search_area'],
+                            'search_direction': settings['sub_areas'][sid]['direction'],
+                        }
+                        for sid in settings['sub_area_order']
+                    ]
 
                     search_plan.append({
                         'type': 'retry',
                         'area_number': area_number,
                         # 재시도 시 찾을 색상을 이 시점에 고정합니다.
                         'search_color': settings['color'] if settings['use_color'] else self.color,
-                        'search_area': retry_search_area,
-                        'search_direction': retry_search_direction,
+                        'sub_areas': sub_area_plans,
                         'click_coord': settings['click_coord'],
                         'num_retries': settings['clicks'],
                         'offset': settings['offset'],
@@ -1258,12 +1362,17 @@ class AppController:
                     else:
                         total_elapsed_time = int(time.time() - main_start_time)
                         time_info = f"({elapsed_time}s / {int(cycle_target_duration)}s) ({total_elapsed_time}s / {int(total_target_duration)}s)"
-                    search_status_text = f"재탐색: 구역{step['area_number']} ({i+1}/{step['num_retries']}) | ({step['search_direction'].value}) | {time_info}"
+                    search_status_text = f"재탐색: 구역{step['area_number']} ({i+1}/{step['num_retries']}) | {time_info}"
                     self.ui.queue_task(lambda text=search_status_text: self.ui.update_status(text))
 
                     if not self._check_operation_status(): return False
 
-                    found_pos = self.color_finder.find_color_in_area(step['search_area'], step['search_color'], self.color_tolerance, step['search_direction'])
+                    # 구역 내 영역들을 순서대로 탐색합니다. 앞 영역에서 못 찾으면 다음 영역으로 넘어갑니다.
+                    found_pos = None
+                    for sub_area_plan in step['sub_areas']:
+                        found_pos = self.color_finder.find_color_in_area(sub_area_plan['search_area'], step['search_color'], self.color_tolerance, sub_area_plan['search_direction'])
+                        if found_pos:
+                            break
                     if found_pos:
                         self._handle_found_color(found_pos, f"재시도 중 구역{step['area_number']}에서 색상 발견")
                         if not self.continuous_search: return True

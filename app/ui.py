@@ -84,11 +84,8 @@ class AppUI:
         self.search_time_tolerance_var = tk.StringVar(value=str(c.search_time_tolerance_sec))
         self.status_var = tk.StringVar(value="대기 중...")
 
-        # 전역 변수 변경 시 구역 설정을 동기화하기 위한 트레이스 등록 (중복 방지를 위해 여기에서 한 번만 설정)
-        self.p1_var.trace_add('write', self._sync_global_to_areas)
-        self.p2_var.trace_add('write', self._sync_global_to_areas)
+        # 전역 색상 변경 시 '기본' 체크된 구역 색상을 동기화하기 위한 트레이스 등록 (중복 방지를 위해 여기에서 한 번만 설정)
         self.color_var.trace_add('write', self._sync_global_to_areas)
-        self.direction_var.trace_add('write', self._sync_global_to_areas)
 
         # --- 창 색상 관리 ---
         self.WINDOW_COLORS = {
@@ -115,14 +112,23 @@ class AppUI:
             'coord_var': tk.StringVar(value=str(area_defaults['click_coord'])),
             'clicks_var': tk.StringVar(value=str(area_defaults['clicks'])),
             'offset_var': tk.StringVar(value=str(area_defaults['offset'])),
-            'p1_var': tk.StringVar(value=str(area_defaults['p1'])),
-            'p2_var': tk.StringVar(value=str(area_defaults['p2'])),
             'color_var': tk.StringVar(value=str(area_defaults['color'])),
-            'direction_var': tk.StringVar(value=self.SEARCH_DIRECTION_MAP[area_defaults['direction']]),
-            # '기본' 체크박스들은 컨트롤러 값과 논리가 반대입니다. (UI 체크 True == 컨트롤러 use_... False)
-            'use_area_bounds_var': tk.BooleanVar(value=not area_defaults['use_area_bounds']),
+            # '기본' 체크박스는 컨트롤러 값과 논리가 반대입니다. (UI 체크 True == 컨트롤러 use_color False)
             'use_color_var': tk.BooleanVar(value=not area_defaults['use_color']),
-            'use_direction_var': tk.BooleanVar(value=not area_defaults['use_direction']),
+            'sub_area_vars': {},
+            'sub_area_widgets': {},
+        }
+        for sub_id in area_defaults['sub_area_order']:
+            self._initialize_subarea_vars(area_number, sub_id)
+
+    def _initialize_subarea_vars(self, area_number: int, sub_id: int):
+        """지정된 구역의 영역(sub-area) 하나에 대한 Tkinter 변수들을 초기화하고 저장합니다."""
+        sub_defaults = self.controller.areas[area_number]['sub_areas'][sub_id]
+        self.area_vars[area_number]['sub_area_vars'][sub_id] = {
+            'order_var': tk.StringVar(),
+            'p1_var': tk.StringVar(value=str(sub_defaults['p1'])),
+            'p2_var': tk.StringVar(value=str(sub_defaults['p2'])),
+            'direction_var': tk.StringVar(value=self.SEARCH_DIRECTION_MAP[sub_defaults['direction']]),
         }
 
     def _setup_ui(self):
@@ -509,50 +515,23 @@ class AppUI:
         clicks_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
         offset_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
 
-        # --- Row 2: 구역별 탐색 영역 설정 ---
-        row2_container, (left_frame2, right_frame2) = self._create_split_container(area_group, weights=[1, 1])
-        
-        p1_selector_frame, p1_label, p1_button = self._create_coordinate_selector(left_frame2, vars['p1_var'], "↖영역", command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_p1'))
-        p2_selector_frame, p2_label, p2_button = self._create_coordinate_selector(right_frame2, vars['p2_var'], "↘영역", command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_p2'))
+        # --- Row 2: 구역 내 영역(sub-area) 목록 ---
+        # 위에서부터 순서대로 탐색하며, 앞 영역에서 색을 못 찾으면 다음 영역으로 넘어갑니다.
+        subareas_frame = self._create_subarea_list(area_group, area_number)
 
-        def toggle_area_bounds_state():
-            """'기본' 체크박스 상태에 따라 영역 선택 위젯들을 활성화/비활성화하고 값을 동기화합니다."""
-            # 체크 시(True) 비활성화, 언체크 시(False) 활성화되도록 논리 반전
-            use_default_bounds = vars['use_area_bounds_var'].get()
-            is_enabled = not use_default_bounds
-            state = 'normal' if is_enabled else 'disabled'
-            label_bg = '#555555'
-            label_fg = 'white' if is_enabled else '#2e2e2e'
-            entry_bg = '#444444' if is_enabled else '#555555'
-            
-            p1_label.config(state=state, bg=label_bg, disabledbackground=entry_bg, fg=label_fg)
-            p1_button.config(state=state)
-            p2_label.config(state=state, bg=label_bg, disabledbackground=entry_bg, fg=label_fg)
-            p2_button.config(state=state)
+        # --- Row 3: 구역 색상 설정 ---
+        color_row = tk.Frame(area_group)
+        color_row.pack(fill=tk.X, expand=True, pady=(4, 0))
 
-            if use_default_bounds:
-                # '기본'이 체크되면, 전역 p1, p2 값을 해당 구역의 변수에 설정합니다.
-                vars['p1_var'].set(self.p1_var.get())
-                vars['p2_var'].set(self.p2_var.get())
-
-        use_bounds_checkbutton = tk.Checkbutton(left_frame2, text="기본", variable=vars['use_area_bounds_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_area_bounds_state)
-        use_bounds_checkbutton.pack(side=tk.LEFT)
-
-        p1_selector_frame.pack(expand=True, fill=tk.X)
-        p2_selector_frame.pack(expand=True, fill=tk.X)
-
-        # --- Row 3: 구역별 색상 및 탐색 방향 설정 ---
-        row3_container, (left_frame3, right_frame3) = self._create_split_container(area_group, weights=[1, 1])
-
-        # --- Row 3 왼쪽: 색상 사용, 색상 값, 색상 선택 버튼 ---
-        color_label = tk.Entry(left_frame3, 
+        # --- 색상 사용, 색상 값, 색상 선택 버튼 ---
+        color_label = tk.Entry(color_row,
                                textvariable=vars['color_var'], 
                                insertbackground='white', 
                                borderwidth=0, 
                                highlightthickness=0, 
                                validate="key",
                                validatecommand=self.tuple_vcmd)
-        color_button = tk.Button(left_frame3, text="색상", 
+        color_button = tk.Button(color_row, text="색상",
                                  activeforeground="white",
                                  activebackground="#555555",
                                  command=lambda: self.controller.start_color_picker(f'area_{area_number}_color'))
@@ -574,40 +553,19 @@ class AppUI:
                 # '기본'이 체크되면, 전역 색상 값을 해당 구역의 변수에 설정합니다.
                 vars['color_var'].set(self.color_var.get())
 
-        use_color_checkbutton = tk.Checkbutton(left_frame3, 
-                                               text="기본", 
-                                               variable=vars['use_color_var'], 
-                                               fg="white", 
-                                               selectcolor="#2e2e2e", 
-                                               activebackground="#2e2e2e", 
-                                               highlightthickness=0, 
+        use_color_checkbutton = tk.Checkbutton(color_row,
+                                               text="기본",
+                                               variable=vars['use_color_var'],
+                                               fg="white",
+                                               selectcolor="#2e2e2e",
+                                               activebackground="#2e2e2e",
+                                               highlightthickness=0,
                                                command=toggle_color_state)
         use_color_checkbutton.pack(side=tk.LEFT)
-        self._create_color_preview(left_frame3, vars['color_var']).pack(side=tk.LEFT, padx=(0, 5))
+        self._create_color_preview(color_row, vars['color_var']).pack(side=tk.LEFT, padx=(0, 5))
         color_button.pack(side=tk.RIGHT)
         color_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
 
-        # --- Row 3 오른쪽: 탐색 방향 ---
-        direction_menu = tk.OptionMenu(right_frame3, vars['direction_var'], *self.SEARCH_DIRECTION_MAP.values())
-        direction_menu.config(fg="white", bg="#555555", activebackground="#666666", activeforeground="white", highlightthickness=0, borderwidth=1)
-        direction_menu["menu"].config(bg="#555555", fg="white")
-
-        def toggle_direction_state():
-            """'기본' 체크박스 상태에 따라 탐색 방향 메뉴를 활성화/비활성화하고 값을 동기화합니다."""
-            use_default_direction = vars['use_direction_var'].get()
-            is_enabled = not use_default_direction
-            state = 'normal' if is_enabled else 'disabled'
-            
-            direction_menu.config(state=state)
-
-            if use_default_direction:
-                # '기본'이 체크되면, 전역 탐색 방향 값을 해당 구역의 변수에 설정합니다.
-                vars['direction_var'].set(self.direction_var.get())
-
-        use_direction_checkbutton = tk.Checkbutton(right_frame3, text="기본", variable=vars['use_direction_var'], fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0, command=toggle_direction_state)
-        use_direction_checkbutton.pack(side=tk.LEFT)
-        direction_menu.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=4)
-        
         # 나중에 전체 활성/비활성화를 위해 위젯들을 저장합니다.
         widgets['group'] = area_group
         widgets['use_search_check'] = use_search_checkbutton
@@ -619,67 +577,113 @@ class AppUI:
         widgets['coord_button'] = coord_button
         widgets['clicks_frame'] = clicks_frame
         widgets['offset_frame'] = offset_frame
-        widgets['use_bounds_check'] = use_bounds_checkbutton
-        widgets['p1_label'] = p1_label
-        widgets['p1_button'] = p1_button
-        widgets['p2_label'] = p2_label
-        widgets['p2_button'] = p2_button
+        widgets['subareas_frame'] = subareas_frame
         widgets['use_color_check'] = use_color_checkbutton
         widgets['color_label'] = color_label
         widgets['color_button'] = color_button
-        widgets['use_direction_check'] = use_direction_checkbutton
-        widgets['direction_menu'] = direction_menu
         self.area_widgets[area_number] = widgets
 
         # --- 전역 변수 변경 감지 및 동기화 ---
-        # 전역(기본) 설정이 변경될 때, '기본'이 체크된 구역의 값도 함께 업데이트합니다.
-        def update_area_p1_from_global(*args):
-            if vars['use_area_bounds_var'].get():
-                vars['p1_var'].set(self.p1_var.get())
-        def update_area_p2_from_global(*args):
-            if vars['use_area_bounds_var'].get():
-                vars['p2_var'].set(self.p2_var.get())
+        # 전역 색상이 변경될 때, '기본'이 체크된 구역의 색상도 함께 업데이트합니다.
         def update_area_color_from_global(*args):
             if vars['use_color_var'].get():
                 vars['color_var'].set(self.color_var.get())
-        def update_area_direction_from_global(*args):
-            if vars['use_direction_var'].get():
-                vars['direction_var'].set(self.direction_var.get())
 
-        self.p1_var.trace_add('write', update_area_p1_from_global)
-        self.p2_var.trace_add('write', update_area_p2_from_global)
         self.color_var.trace_add('write', update_area_color_from_global)
-        self.direction_var.trace_add('write', update_area_direction_from_global)
 
         # 토글 함수들을 나중에 UI 업데이트 시 사용하기 위해 저장합니다.
         self.area_toggles[area_number] = {
             'search': toggle_search_state,
-            'bounds': toggle_area_bounds_state,
             'color': toggle_color_state,
-            'direction': toggle_direction_state,
         }
 
         toggle_search_state() # 초기 상태 설정
         toggle_color_state() # 초기 상태 설정을 위해 호출
-        toggle_area_bounds_state() # 초기 상태 설정
-        toggle_direction_state() # 초기 상태 설정
 
+        return area_group
 
-        return area_group   
+    def _create_subarea_list(self, parent, area_number: int):
+        """
+        구역 내 영역(sub-area) 목록 UI를 생성합니다.
+        위에서부터 순서대로 탐색하며, 앞 영역에서 색을 못 찾으면 다음 영역으로 넘어갑니다.
+        """
+        outer = tk.Frame(parent, highlightbackground="#4a4a4a", highlightthickness=1)
+        outer.pack(fill=tk.X, expand=True, pady=(6, 0))
+
+        tk.Label(outer, text="영역 목록 (순서대로 탐색)", fg="#999999", font=(None, 8)).pack(anchor=tk.W, padx=4, pady=(2, 0))
+
+        rows_container = tk.Frame(outer)
+        rows_container.pack(fill=tk.X, expand=True, padx=2)
+
+        add_btn = tk.Button(outer, text="+ 영역 추가", font=(None, 8),
+                            command=lambda: self.controller.add_sub_area(area_number))
+        add_btn.pack(fill=tk.X, padx=4, pady=4)
+
+        self.area_vars[area_number]['subarea_rows_container'] = rows_container
+        self.area_vars[area_number]['add_subarea_btn'] = add_btn
+
+        for sub_id in self.controller.areas[area_number]['sub_area_order']:
+            self._create_subarea_row(rows_container, area_number, sub_id)
+
+        self.refresh_subarea_order(area_number)
+        return outer
+
+    def _create_subarea_row(self, parent, area_number: int, sub_id: int):
+        """구역 내 영역(sub-area) 하나를 나타내는 한 줄짜리 컴팩트 행을 생성합니다."""
+        sub_vars = self.area_vars[area_number]['sub_area_vars'][sub_id]
+
+        row = tk.Frame(parent)
+        row.pack(fill=tk.X, expand=True, pady=1)
+
+        drag_handle = tk.Label(row, text="☰", fg="white", font=(None, 8), cursor="fleur")
+        drag_handle.pack(side=tk.LEFT, padx=(0, 2))
+        drag_handle.bind("<Button-1>", lambda e: self._on_subarea_drag_start(e, area_number, sub_id))
+        drag_handle.bind("<B1-Motion>", lambda e: self._on_subarea_drag_motion(e, area_number, sub_id))
+        drag_handle.bind("<ButtonRelease-1>", lambda e: self._on_subarea_drag_release(e, area_number, sub_id))
+
+        order_label = tk.Label(row, textvariable=sub_vars['order_var'], fg="#999999", font=(None, 8), width=2)
+        order_label.pack(side=tk.LEFT)
+
+        p1_frame, _, _ = self._create_compact_coord_button(
+            row, sub_vars['p1_var'], "↖",
+            command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_sub_{sub_id}_p1'))
+        p1_frame.pack(side=tk.LEFT)
+
+        p2_frame, _, _ = self._create_compact_coord_button(
+            row, sub_vars['p2_var'], "↘",
+            command=lambda: self.controller.start_coordinate_picker(f'area_{area_number}_sub_{sub_id}_p2'))
+        p2_frame.pack(side=tk.LEFT, padx=(3, 0))
+
+        # 가변 공백: 방향 선택을 행의 오른쪽 끝으로 밀어줍니다.
+        tk.Frame(row).pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        direction_menu = tk.OptionMenu(row, sub_vars['direction_var'], *self.SEARCH_DIRECTION_MAP.values())
+        direction_menu.config(fg="white", bg="#555555", activebackground="#666666", activeforeground="white",
+                              highlightthickness=0, borderwidth=1, font=(None, 8), padx=2, pady=0)
+        direction_menu["menu"].config(bg="#555555", fg="white")
+        direction_menu.pack(side=tk.LEFT) # expand/fill 없이 글자 폭에 맞춰서만 배치
+
+        delete_button = tk.Button(row, text="×", fg="#f58585", activeforeground="red",
+                                  font=(None, 9), padx=3, pady=0,
+                                  command=lambda: self.controller.remove_sub_area(area_number, sub_id))
+        delete_button.pack(side=tk.LEFT, padx=(3, 0))
+
+        self.area_vars[area_number]['sub_area_widgets'][sub_id] = {
+            'row': row,
+            'drag_handle': drag_handle,
+            'order_label': order_label,
+            'delete_button': delete_button,
+        }
+        return row
     
     def _sync_global_to_areas(self, *args):
-        """전역 설정이 변경될 때, '기본'이 체크된 모든 구역의 값을 안전하게 동기화합니다."""
+        """전역 색상이 변경될 때, '기본'이 체크된 모든 구역의 색상 값을 안전하게 동기화합니다."""
         if not self.area_vars:
             return
         for area_num, v in self.area_vars.items():
             try:
-                if v['use_area_bounds_var'].get():
-                    v['p1_var'].set(self.p1_var.get())
-                    v['p2_var'].set(self.p2_var.get())
                 if v['use_color_var'].get():
                     v['color_var'].set(self.color_var.get())
-                if v['use_direction_var'].get():
-                    v['direction_var'].set(self.direction_var.get())
             except (tk.TclError, KeyError):
                 continue
 
@@ -798,6 +802,102 @@ class AppUI:
                 new_index += 1
         
         self.controller.reorder_area(area_num, new_index)
+
+    def add_subarea_to_ui(self, area_number: int):
+        """새로운 영역(sub-area) 위젯을 해당 구역의 영역 목록 끝에 추가합니다."""
+        area_vars = self.area_vars[area_number]
+        new_sub_ids = [sid for sid in self.controller.areas[area_number]['sub_area_order'] if sid not in area_vars['sub_area_vars']]
+        for sub_id in new_sub_ids:
+            self._initialize_subarea_vars(area_number, sub_id)
+
+        add_btn = area_vars['add_subarea_btn']
+        add_btn.pack_forget() # 버튼을 잠시 가리고 아래에 다시 추가
+        for sub_id in new_sub_ids:
+            self._create_subarea_row(area_vars['subarea_rows_container'], area_number, sub_id)
+        add_btn.pack(fill=tk.X, padx=4, pady=4)
+
+        self.refresh_subarea_order(area_number)
+        self._toggle_area_settings_active()
+
+    def refresh_subarea_order(self, area_number: int):
+        """컨트롤러의 sub_area_order에 맞춰 영역 행들의 배치와 순서 번호를 갱신합니다."""
+        area_vars = self.area_vars[area_number]
+        sub_widgets = area_vars['sub_area_widgets']
+        present_ids = [sid for sid in self.controller.areas[area_number]['sub_area_order'] if sid in sub_widgets]
+
+        for display_idx, sub_id in enumerate(present_ids, start=1):
+            area_vars['sub_area_vars'][sub_id]['order_var'].set(str(display_idx))
+            w_set = sub_widgets[sub_id]
+            w_set['drag_handle'].config(fg="white")
+            row = w_set['row']
+            row.pack_forget()
+            row.pack(fill=tk.X, expand=True, pady=1)
+
+    def _on_subarea_drag_start(self, event, area_number, sub_id):
+        """영역 행 드래그 시작 시 시각적 피드백 제공."""
+        sub_widgets = self.area_vars[area_number]['sub_area_widgets']
+        if sub_id in sub_widgets:
+            sub_widgets[sub_id]['drag_handle'].config(fg="#40E0D0")
+
+    def _on_subarea_drag_motion(self, event, area_number, sub_id):
+        """영역 행 드래그 중 마우스 위치를 추적하여 삽입 위치 가이드 라인을 표시합니다."""
+        rows_container = self.area_vars[area_number]['subarea_rows_container']
+        y_cursor = event.y_root
+
+        if not hasattr(self, 'subarea_drag_guide'):
+            self.subarea_drag_guide = tk.Frame(rows_container, height=2, bg="#40E0D0", bd=0)
+
+        sub_widgets = self.area_vars[area_number]['sub_area_widgets']
+        y_positions = []
+        for sid in self.controller.areas[area_number]['sub_area_order']:
+            if sid in sub_widgets:
+                row = sub_widgets[sid]['row']
+                y_top = row.winfo_rooty()
+                y_bottom = y_top + row.winfo_height()
+                y_positions.append((y_top, y_bottom))
+
+        if not y_positions: return
+
+        insert_y = y_positions[0][0] - rows_container.winfo_rooty()
+        for top, bottom in y_positions:
+            if y_cursor > (top + bottom) // 2:
+                insert_y = bottom - rows_container.winfo_rooty()
+
+        self.subarea_drag_guide.place(in_=rows_container, x=0, y=insert_y, relwidth=1)
+        self.subarea_drag_guide.lift()
+
+    def _on_subarea_drag_release(self, event, area_number, sub_id):
+        """영역 행 드래그 종료 시 가이드 라인을 숨기고 새로운 순서를 결정합니다."""
+        if hasattr(self, 'subarea_drag_guide'):
+            self.subarea_drag_guide.place_forget()
+
+        self.root.update_idletasks()
+
+        y_cursor = event.y_root
+        sub_widgets = self.area_vars[area_number]['sub_area_widgets']
+
+        centers = []
+        for sid in self.controller.areas[area_number]['sub_area_order']:
+            if sid != sub_id and sid in sub_widgets:
+                row = sub_widgets[sid]['row']
+                center_y = row.winfo_rooty() + (row.winfo_height() // 2)
+                centers.append(center_y)
+
+        new_index = 0
+        for c_y in centers:
+            if y_cursor > c_y:
+                new_index += 1
+
+        self.controller.reorder_sub_area(area_number, sub_id, new_index)
+
+    def remove_subarea_from_ui(self, area_number: int, sub_id: int):
+        """UI에서 특정 구역의 영역(sub-area) 행을 제거합니다."""
+        area_vars = self.area_vars[area_number]
+        if sub_id in area_vars['sub_area_widgets']:
+            area_vars['sub_area_widgets'][sub_id]['row'].destroy()
+            del area_vars['sub_area_widgets'][sub_id]
+            del area_vars['sub_area_vars'][sub_id]
+            self.refresh_subarea_order(area_number)
 
     def remove_area_from_ui(self, area_number: int):
         """UI에서 특정 구역 위젯을 제거합니다."""
@@ -1142,6 +1242,32 @@ class AppUI:
         label.pack(side=tk.LEFT, expand=True, fill=tk.X)
         return frame, label, button
 
+    def _create_compact_coord_button(self, parent, var, icon_text, command=None):
+        """아이콘 버튼 바로 오른쪽에 좁은 좌표 입력창을 붙인 컴팩트 위젯을 생성합니다.
+        (영역 목록처럼 한 행에 여러 항목을 촘촘히 배치할 때 사용)"""
+        frame = tk.Frame(parent)
+        button = tk.Button(frame,
+                           text=icon_text,
+                           font=(None, 8),
+                           padx=2, pady=0,
+                           activeforeground="white",
+                           activebackground="#555555",
+                           command=command)
+        entry = tk.Entry(frame,
+                         bg="#444444",
+                         fg="white",
+                         insertbackground='white',
+                         textvariable=var,
+                         borderwidth=0,
+                         highlightthickness=0,
+                         font=(None, 8),
+                         width=9,
+                         validate="key",
+                         validatecommand=self.tuple_vcmd)
+        button.pack(side=tk.LEFT)
+        entry.pack(side=tk.LEFT)
+        return frame, button, entry
+
     def _create_value_button_row(self, parent, var, button_text, command=None, show_preview=False):
         """값 표시 레이블과 선택 버튼으로 구성된 위젯 그룹을 생성합니다."""
         frame = tk.Frame(parent)
@@ -1291,19 +1417,15 @@ class AppUI:
         for area_number, widgets in self.area_widgets.items():
             widgets['group'].config(fg=group_fg)
             widgets['use_search_check'].config(state=state, fg=check_fg)
-            widgets['use_bounds_check'].config(state=state, fg=check_fg)
             widgets['use_color_check'].config(state=state, fg=check_fg)
-            widgets['use_direction_check'].config(state=state, fg=check_fg)
-            widgets['direction_menu'].config(state=state)
 
             # '탐색' 체크박스가 꺼져있으면 개별 위젯 상태는 그대로 두되,
             # '구역 탐색 사용'이 꺼져있으면 강제로 비활성화
             if not is_enabled:
                 for widget_key, widget in widgets.items():
                     if 'frame' in widget_key:
-                        for sub_widget in widget.winfo_children():
-                            if isinstance(sub_widget, tk.Entry): sub_widget.config(state='disabled', disabledbackground=entry_bg)
-                            else: sub_widget.config(state='disabled')
+                        # 영역 목록처럼 여러 단계로 중첩된 프레임도 안전하게 재귀적으로 비활성화합니다.
+                        set_state_recursive(widget, 'disabled', label_fg, entry_bg)
                     elif isinstance(widget, tk.Entry):
                         widget.config(state='disabled', bg=label_bg, fg=label_fg, disabledbackground=entry_bg)
                     elif isinstance(widget, (tk.Button, tk.OptionMenu)):
@@ -1316,7 +1438,6 @@ class AppUI:
                 widgets['order_menu'].config(state='normal')
                 widgets['drag_handle'].config(fg='white')
                 widgets['delete_button'].config(state='normal')
+                set_state_recursive(widgets['subareas_frame'], 'normal', group_fg, entry_bg)
                 self.area_toggles[area_number]['search']()
-                self.area_toggles[area_number]['bounds']()
                 self.area_toggles[area_number]['color']()
-                self.area_toggles[area_number]['direction']()
