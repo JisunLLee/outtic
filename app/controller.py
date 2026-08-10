@@ -1360,9 +1360,9 @@ class AppController:
 
     def _check_operation_status(self) -> bool:
         """탐색 화면이 정상인지 확인합니다. 정상이 아니면 False를 반환하고 검색을 중지합니다."""
-        # '구역 탐색(use_sequence)'이 꺼져있거나, 
         # '탐색 화면 정상 여부 확인(use_operation_check)' 옵션 자체가 꺼져있으면 체크를 건너뜁니다.
-        if not self.is_searching or not self.use_sequence or not self.use_operation_check:
+        # (구역 탐색/기본 탐색 여부와 무관하게 사용할 수 있습니다.)
+        if not self.is_searching or not self.use_operation_check:
             return True
             
         x, y = self.op_check_coord

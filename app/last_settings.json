@@ -2,58 +2,58 @@
     "initial_areas": [
         {
             "p1": [
-                67,
-                265
+                916,
+                552
             ],
             "p2": [
-                356,
-                412
+                930,
+                635
             ],
-            "direction": "←↓"
+            "direction": "→↓"
         },
         {
             "p1": [
-                241,
-                270
+                942,
+                552
             ],
             "p2": [
-                369,
-                409
+                956,
+                636
             ],
             "direction": "←↓"
         }
     ],
     "color": [
-        153,
         0,
-        201
+        204,
+        204
     ],
     "use_secondary_color": false,
     "secondary_color": [
-        13,
-        192,
-        192
+        85,
+        41,
+        221
     ],
     "complete_coord": [
-        942,
-        537
+        1299,
+        903
     ],
     "color_tolerance": 15,
     "color_area_tolerance": 5,
     "complete_click_delay": 0.1,
-    "use_sequence": true,
-    "continuous_search": true,
+    "use_sequence": false,
+    "continuous_search": false,
     "use_space_complete": true,
     "use_screen_activation": false,
     "use_operation_check": true,
     "op_check_coord": [
-        655,
-        116
+        1237,
+        608
     ],
     "op_check_color": [
-        126,
-        156,
-        184
+        0,
+        204,
+        204
     ],
     "op_check_max_retries": 3,
     "op_check_retry_interval": 0.5,
@@ -82,9 +82,9 @@
             "offset": 2,
             "use_color": false,
             "color": [
-                153,
                 0,
-                201
+                204,
+                204
             ],
             "sub_areas": [
                 {
@@ -122,9 +122,9 @@
             "offset": 2,
             "use_color": false,
             "color": [
-                153,
                 0,
-                201
+                204,
+                204
             ],
             "sub_areas": [
                 {
@@ -162,9 +162,9 @@
             "offset": 2,
             "use_color": false,
             "color": [
-                153,
                 0,
-                201
+                204,
+                204
             ],
             "sub_areas": [
                 {

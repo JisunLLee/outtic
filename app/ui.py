@@ -1251,8 +1251,8 @@ class AppUI:
 
     def _toggle_operation_check_state(self):
         """탐색 화면 정상 여부 확인 그룹 내의 위젯 상태를 체크박스에 따라 토글합니다."""
-        # 글로벌 '구역 탐색'과 로컬 '정상 여부 확인'이 모두 활성화되어야 내부 위젯 활성화
-        is_enabled = self.use_sequence_var.get() and self.use_operation_check_var.get()
+        # 구역 탐색 여부와 무관하게, '정상 여부 확인' 체크박스 자체로만 활성화 여부를 결정합니다.
+        is_enabled = self.use_operation_check_var.get()
         
         state = 'normal' if is_enabled else 'disabled'
         entry_bg = '#444444' if is_enabled else '#555555'
@@ -1592,10 +1592,11 @@ class AppUI:
         set_state_recursive(self.empty_coord_frame, state, group_fg, entry_bg)
         self.screen_activation_check.config(state=state, fg=check_fg)
         
-        # '탐색 화면 정상 여부 확인' 그룹 상태 변경
-        set_state_recursive(self.operation_check_group, state, group_fg, entry_bg)
-        self.op_check_cb.config(state=state)
-        self.op_check_label.config(fg=group_fg)
+        # '탐색 화면 정상 여부 확인'은 구역 탐색 여부와 무관하게 기본 탐색에서도 독립적으로
+        # 사용할 수 있어야 하므로, 여기서는 건드리지 않고 체크박스 자신의 상태만 반영합니다.
+        self.op_check_cb.config(state='normal')
+        self.op_check_label.config(fg='white')
+        self._toggle_operation_check_state()
         self.add_area_btn.config(state=state)
 
         # 각 구역의 모든 위젯 상태 변경
