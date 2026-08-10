@@ -1,7 +1,7 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
 
-last_setting.json
+last_settings.json
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
