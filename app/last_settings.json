@@ -6,8 +6,8 @@
                 233
             ],
             "p2": [
-                264,
-                461
+                683,
+                605
             ],
             "direction": "→↓"
         }
@@ -30,20 +30,20 @@
     "color_tolerance": 15,
     "color_area_tolerance": 5,
     "complete_click_delay": 0.1,
-    "use_sequence": true,
+    "use_sequence": false,
     "continuous_search": false,
     "use_space_complete": true,
     "use_screen_activation": false,
-    "use_operation_check_initial": false,
+    "use_operation_check_initial": true,
     "use_operation_check_sequence": true,
     "op_check_coord": [
-        568,
-        486
+        771,
+        245
     ],
     "op_check_color": [
-        18,
-        19,
-        20
+        153,
+        0,
+        201
     ],
     "op_check_max_retries": 3,
     "op_check_retry_interval": 0.5,
@@ -79,17 +79,6 @@
             "sub_areas": [
                 {
                     "p1": [
-                        224,
-                        232
-                    ],
-                    "p2": [
-                        315,
-                        259
-                    ],
-                    "direction": "←↓"
-                },
-                {
-                    "p1": [
                         151,
                         267
                     ],
@@ -98,6 +87,17 @@
                         334
                     ],
                     "direction": "↑←"
+                },
+                {
+                    "p1": [
+                        224,
+                        232
+                    ],
+                    "p2": [
+                        315,
+                        259
+                    ],
+                    "direction": "←↓"
                 }
             ]
         },
