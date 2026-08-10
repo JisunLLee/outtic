@@ -2,25 +2,14 @@
     "initial_areas": [
         {
             "p1": [
-                916,
-                552
+                99,
+                233
             ],
             "p2": [
-                930,
-                635
+                264,
+                461
             ],
             "direction": "→↓"
-        },
-        {
-            "p1": [
-                942,
-                552
-            ],
-            "p2": [
-                956,
-                636
-            ],
-            "direction": "←↓"
         }
     ],
     "color": [
@@ -35,25 +24,26 @@
         221
     ],
     "complete_coord": [
-        1299,
-        903
+        800,
+        714
     ],
     "color_tolerance": 15,
     "color_area_tolerance": 5,
     "complete_click_delay": 0.1,
-    "use_sequence": false,
+    "use_sequence": true,
     "continuous_search": false,
     "use_space_complete": true,
     "use_screen_activation": false,
-    "use_operation_check": true,
+    "use_operation_check_initial": false,
+    "use_operation_check_sequence": true,
     "op_check_coord": [
-        1237,
-        608
+        568,
+        486
     ],
     "op_check_color": [
-        0,
-        204,
-        204
+        18,
+        19,
+        20
     ],
     "op_check_max_retries": 3,
     "op_check_retry_interval": 0.5,
@@ -75,39 +65,39 @@
             "name": "구역1",
             "use": true,
             "click_coord": [
-                723,
-                301
+                811,
+                454
             ],
             "clicks": 1,
             "offset": 2,
-            "use_color": false,
+            "use_color": true,
             "color": [
+                153,
                 0,
-                204,
-                204
+                201
             ],
             "sub_areas": [
                 {
                     "p1": [
-                        69,
-                        179
+                        224,
+                        232
                     ],
                     "p2": [
-                        356,
-                        412
+                        315,
+                        259
                     ],
                     "direction": "←↓"
                 },
                 {
                     "p1": [
-                        218,
-                        208
+                        151,
+                        267
                     ],
                     "p2": [
-                        369,
-                        409
+                        215,
+                        334
                     ],
-                    "direction": "←↓"
+                    "direction": "↑←"
                 }
             ]
         },
@@ -153,7 +143,7 @@
         },
         "3": {
             "name": "구역3",
-            "use": true,
+            "use": false,
             "click_coord": [
                 716,
                 304

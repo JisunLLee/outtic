@@ -74,7 +74,8 @@ class AppController:
         self.use_space_complete = True # 스페이스 완료 사용 여부
         self.area_delay = 0.70 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
         self.use_screen_activation = False # 화면 활성화 사용 여부
-        self.use_operation_check = False # 탐색 화면 정상 여부 확인 사용 여부
+        self.use_operation_check_initial = False # 탐색 화면 정상 여부 확인 - 기본 탐색에서 확인
+        self.use_operation_check_sequence = False # 탐색 화면 정상 여부 확인 - 구역 탐색에서 확인
         self.op_check_coord = (486, 1885)
         self.op_check_color = (0, 0, 0)
         self.op_check_max_retries = 3
@@ -418,7 +419,8 @@ class AppController:
             self.use_space_complete = self.ui.use_space_complete_var.get()
             self.use_sequence = self.ui.use_sequence_var.get()
             self.use_screen_activation = self.ui.use_screen_activation_var.get()
-            self.use_operation_check = self.ui.use_operation_check_var.get()
+            self.use_operation_check_initial = self.ui.use_operation_check_initial_var.get()
+            self.use_operation_check_sequence = self.ui.use_operation_check_sequence_var.get()
             self.op_check_coord = ast.literal_eval(self.ui.op_check_coord_var.get())
             self.op_check_color = ast.literal_eval(self.ui.op_check_color_var.get())
             self.op_check_max_retries = int(self.ui.op_check_max_retries_var.get())
@@ -659,7 +661,8 @@ class AppController:
             'continuous_search': self.continuous_search,
             'use_space_complete': self.use_space_complete,
             'use_screen_activation': self.use_screen_activation,
-            'use_operation_check': self.use_operation_check,
+            'use_operation_check_initial': self.use_operation_check_initial,
+            'use_operation_check_sequence': self.use_operation_check_sequence,
             'op_check_coord': self.op_check_coord,
             'op_check_color': self.op_check_color,
             'op_check_max_retries': self.op_check_max_retries,
@@ -728,7 +731,8 @@ class AppController:
             'continuous_search': self.continuous_search,
             'use_space_complete': self.use_space_complete,
             'use_screen_activation': self.use_screen_activation,
-            'use_operation_check': self.use_operation_check,
+            'use_operation_check_initial': self.use_operation_check_initial,
+            'use_operation_check_sequence': self.use_operation_check_sequence,
             'op_check_coord': self.op_check_coord,
             'op_check_color': self.op_check_color,
             'op_check_max_retries': self.op_check_max_retries,
@@ -788,7 +792,10 @@ class AppController:
             self.continuous_search = bool(settings_data.get('continuous_search', not settings_data.get('exit_after_select', not self.continuous_search)))
             self.use_space_complete = bool(settings_data.get('use_space_complete', self.use_space_complete))
             self.use_screen_activation = bool(settings_data.get('use_screen_activation', self.use_screen_activation))
-            self.use_operation_check = bool(settings_data.get('use_operation_check', self.use_operation_check))
+            # 구버전 형식(단일 use_operation_check 플래그)을 두 개의 독립 플래그로 마이그레이션합니다.
+            legacy_op_check = settings_data.get('use_operation_check', False)
+            self.use_operation_check_initial = bool(settings_data.get('use_operation_check_initial', legacy_op_check))
+            self.use_operation_check_sequence = bool(settings_data.get('use_operation_check_sequence', legacy_op_check))
             self.op_check_coord = tuple(settings_data.get('op_check_coord', self.op_check_coord))
             self.op_check_color = tuple(settings_data.get('op_check_color', self.op_check_color))
             self.op_check_max_retries = int(settings_data.get('op_check_max_retries', self.op_check_max_retries))
@@ -859,7 +866,10 @@ class AppController:
             self.continuous_search = bool(settings_data.get('continuous_search', not settings_data.get('exit_after_select', not self.continuous_search)))
             self.use_space_complete = bool(settings_data.get('use_space_complete', self.use_space_complete))
             self.use_screen_activation = bool(settings_data.get('use_screen_activation', self.use_screen_activation))
-            self.use_operation_check = bool(settings_data.get('use_operation_check', self.use_operation_check))
+            # 구버전 형식(단일 use_operation_check 플래그)을 두 개의 독립 플래그로 마이그레이션합니다.
+            legacy_op_check = settings_data.get('use_operation_check', False)
+            self.use_operation_check_initial = bool(settings_data.get('use_operation_check_initial', legacy_op_check))
+            self.use_operation_check_sequence = bool(settings_data.get('use_operation_check_sequence', legacy_op_check))
             self.op_check_coord = tuple(settings_data.get('op_check_coord', self.op_check_coord))
             self.op_check_color = tuple(settings_data.get('op_check_color', self.op_check_color))
             self.op_check_max_retries = int(settings_data.get('op_check_max_retries', self.op_check_max_retries))
@@ -1358,11 +1368,15 @@ class AppController:
         self.up_press_count = 0
         self.up_press_timer = None
 
-    def _check_operation_status(self) -> bool:
-        """탐색 화면이 정상인지 확인합니다. 정상이 아니면 False를 반환하고 검색을 중지합니다."""
-        # '탐색 화면 정상 여부 확인(use_operation_check)' 옵션 자체가 꺼져있으면 체크를 건너뜁니다.
-        # (구역 탐색/기본 탐색 여부와 무관하게 사용할 수 있습니다.)
-        if not self.is_searching or not self.use_operation_check:
+    def _check_operation_status(self, context: str = 'sequence') -> bool:
+        """
+        탐색 화면이 정상인지 확인합니다. 정상이 아니면 False를 반환하고 검색을 중지합니다.
+
+        :param context: 'initial'이면 '기본탐색에서 확인' 설정을, 'sequence'면 '구역탐색에서 확인'
+            설정을 기준으로 이 체크를 건너뛸지 판단합니다. 좌표/색상/재시도 설정은 두 경우 공용입니다.
+        """
+        enabled = self.use_operation_check_initial if context == 'initial' else self.use_operation_check_sequence
+        if not self.is_searching or not enabled:
             return True
             
         x, y = self.op_check_coord
@@ -1529,7 +1543,7 @@ class AppController:
         search_status_text = f"재탐색: 구역{step['area_number']} ({attempt_label}) | {time_info}"
         self.ui.queue_task(lambda text=search_status_text: self.ui.update_status(text))
 
-        if not self._check_operation_status():
+        if not self._check_operation_status('sequence'):
             return 'stop', None
 
         # 구역 내 영역들을 순서대로 탐색합니다. 앞 영역에서 못 찾으면 다음 영역으로 넘어갑니다.
@@ -1547,7 +1561,7 @@ class AppController:
                 # 1. 1순위 색상 탐색 (기본 탐색 영역들을 순서대로, 못 찾으면 다음 영역으로)
                 status_text = "초기 탐색 (1순위): 기본 영역에서 탐색 중..."
                 self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
-                if not self._check_operation_status(): return False
+                if not self._check_operation_status('initial'): return False
                 found_pos = self._find_color_in_areas(initial_step['initial_areas'], initial_step['search_color'], self.color_tolerance)
                 if found_pos:
                     self._handle_found_color(found_pos, "초기 탐색 중 1순위 색상 발견")
@@ -1557,7 +1571,7 @@ class AppController:
                 if self.is_searching and self.use_secondary_color:
                     status_text = "초기 탐색 (2순위): 기본 영역에서 탐색 중..."
                     self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
-                    if not self._check_operation_status(): return False
+                    if not self._check_operation_status('initial'): return False
                     found_pos_secondary = self._find_color_in_areas(initial_step['initial_areas'], self.secondary_color, self.color_tolerance)
                     if found_pos_secondary:
                         self._handle_found_color(found_pos_secondary, "초기 탐색 중 2순위 색상 발견")
@@ -1617,7 +1631,7 @@ class AppController:
                 # 1. 1순위 색상 탐색 (기본 탐색 영역들을 순서대로, 못 찾으면 다음 영역으로)
                 status_text = "기본 영역 반복 탐색 (1순위)..."
                 self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
-                if not self._check_operation_status(): return False
+                if not self._check_operation_status('initial'): return False
                 found_pos = self._find_color_in_areas(initial_step['initial_areas'], initial_step['search_color'], self.color_tolerance)
                 if found_pos:
                     self._handle_found_color(found_pos, "기본 영역에서 1순위 색상 발견")
@@ -1627,7 +1641,7 @@ class AppController:
                 if self.is_searching and self.use_secondary_color:
                     status_text = "기본 영역 반복 탐색 (2순위)..."
                     self.ui.queue_task(lambda text=status_text: self.ui.update_status(text))
-                    if not self._check_operation_status(): return False
+                    if not self._check_operation_status('initial'): return False
                     found_pos_secondary = self._find_color_in_areas(initial_step['initial_areas'], self.secondary_color, self.color_tolerance)
                     if found_pos_secondary:
                         self._handle_found_color(found_pos_secondary, "기본 영역에서 2순위 색상 발견")

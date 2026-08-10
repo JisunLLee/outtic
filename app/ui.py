@@ -48,7 +48,8 @@ class AppUI:
         self.research_delay_var = tk.StringVar(value=str(int(c.research_delay * 1000)))
         self.use_space_complete_var = tk.BooleanVar(value=c.use_space_complete)
         self.use_screen_activation_var = tk.BooleanVar(value=c.use_screen_activation)
-        self.use_operation_check_var = tk.BooleanVar(value=c.use_operation_check)
+        self.use_operation_check_initial_var = tk.BooleanVar(value=c.use_operation_check_initial)
+        self.use_operation_check_sequence_var = tk.BooleanVar(value=c.use_operation_check_sequence)
         self.op_check_coord_var = tk.StringVar(value=str(c.op_check_coord))
         self.op_check_color_var = tk.StringVar(value=str(c.op_check_color))
         self.op_check_max_retries_var = tk.StringVar(value=str(c.op_check_max_retries))
@@ -208,18 +209,29 @@ class AppUI:
         # --- 탐색 화면 정상 여부 확인용 그룹 ---
         # (구역 탐색 여부와 무관하게 기본 탐색에서도 쓸 수 있도록 '구역 설정' 밖, 상단에 배치)
         op_check_header = tk.Frame(main_frame)
-        self.op_check_cb = tk.Checkbutton(op_check_header, variable=self.use_operation_check_var,
-                                          selectcolor="#2e2e2e",
-                                          activebackground="#2e2e2e", highlightthickness=0,
-                                          command=self._toggle_operation_check_state)
-        self.op_check_cb.pack(side=tk.LEFT)
         self.op_check_label = tk.Label(op_check_header, text="탐색 화면 정상 여부 확인", fg="white")
         self.op_check_label.pack(side=tk.LEFT)
 
         self.operation_check_group = tk.LabelFrame(main_frame, labelwidget=op_check_header, padx=10, pady=5)
         self.operation_check_group.pack(fill=tk.X, pady=(0, 10), ipady=5)
 
-        # Row 1: 화면 정상 여부 확인: 화면 확인 좌표, 화면 확인 색상
+        # Row 1: 어느 탐색 모드에서 확인할지 선택
+        op_check_mode_row = tk.Frame(self.operation_check_group)
+        op_check_mode_row.pack(fill=tk.X, expand=True)
+        self.op_check_initial_cb = tk.Checkbutton(op_check_mode_row, text="기본탐색에서 확인",
+                                                  variable=self.use_operation_check_initial_var,
+                                                  fg="white", selectcolor="#2e2e2e",
+                                                  activebackground="#2e2e2e", highlightthickness=0,
+                                                  command=self._toggle_operation_check_state)
+        self.op_check_initial_cb.pack(side=tk.LEFT)
+        self.op_check_sequence_cb = tk.Checkbutton(op_check_mode_row, text="구역탐색에서 확인",
+                                                    variable=self.use_operation_check_sequence_var,
+                                                    fg="white", selectcolor="#2e2e2e",
+                                                    activebackground="#2e2e2e", highlightthickness=0,
+                                                    command=self._toggle_operation_check_state)
+        self.op_check_sequence_cb.pack(side=tk.LEFT, padx=(10, 0))
+
+        # Row 2: 화면 정상 여부 확인: 화면 확인 좌표, 화면 확인 색상
         operation_check_container, (left_frame, right_frame) = self._create_split_container(self.operation_check_group, weights=[1, 1])
 
         # 좌표 입력창 (통합 버튼 사용을 위해 버튼 없는 Entry 배치)
@@ -238,7 +250,7 @@ class AppUI:
                                                command=lambda: self.controller.start_combined_picker('op_check'))
         self.op_check_combined_btn.pack(side=tk.LEFT, padx=(5,0))
 
-        # Row 2: 재시도 설정 (횟수, 간격)
+        # Row 3: 재시도 설정 (횟수, 간격)
         op_retry_container, (left_frame_r, right_frame_r) = self._create_split_container(self.operation_check_group, weights=[1, 1])
         self._create_labeled_entry(left_frame_r, "재시도 횟수:", self.op_check_max_retries_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
         self._create_labeled_entry(right_frame_r, "간격(10ms):", self.op_check_retry_interval_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
@@ -1211,7 +1223,8 @@ class AppUI:
         self.research_delay_var.set(str(int(c.research_delay * 1000)))
         self.use_space_complete_var.set(c.use_space_complete)
         self.use_screen_activation_var.set(c.use_screen_activation)
-        self.use_operation_check_var.set(c.use_operation_check)
+        self.use_operation_check_initial_var.set(c.use_operation_check_initial)
+        self.use_operation_check_sequence_var.set(c.use_operation_check_sequence)
         self.op_check_coord_var.set(str(c.op_check_coord))
         self.op_check_color_var.set(str(c.op_check_color))
         self.op_check_max_retries_var.set(str(c.op_check_max_retries))
@@ -1253,8 +1266,9 @@ class AppUI:
 
     def _toggle_operation_check_state(self):
         """탐색 화면 정상 여부 확인 그룹 내의 위젯 상태를 체크박스에 따라 토글합니다."""
-        # 구역 탐색 여부와 무관하게, '정상 여부 확인' 체크박스 자체로만 활성화 여부를 결정합니다.
-        is_enabled = self.use_operation_check_var.get()
+        # '기본탐색에서 확인' 또는 '구역탐색에서 확인' 중 하나라도 켜져 있으면 공용 좌표/색상/
+        # 재시도 설정을 활성화합니다.
+        is_enabled = self.use_operation_check_initial_var.get() or self.use_operation_check_sequence_var.get()
         
         state = 'normal' if is_enabled else 'disabled'
         entry_bg = '#444444' if is_enabled else '#555555'
@@ -1595,8 +1609,9 @@ class AppUI:
         self.screen_activation_check.config(state=state, fg=check_fg)
         
         # '탐색 화면 정상 여부 확인'은 구역 탐색 여부와 무관하게 기본 탐색에서도 독립적으로
-        # 사용할 수 있어야 하므로, 여기서는 건드리지 않고 체크박스 자신의 상태만 반영합니다.
-        self.op_check_cb.config(state='normal')
+        # 사용할 수 있어야 하므로, 여기서는 건드리지 않고 체크박스들 자신의 상태만 반영합니다.
+        self.op_check_initial_cb.config(state='normal')
+        self.op_check_sequence_cb.config(state='normal')
         self.op_check_label.config(fg='white')
         self._toggle_operation_check_state()
         self.add_area_btn.config(state=state)
