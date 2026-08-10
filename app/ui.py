@@ -147,7 +147,7 @@ class AppUI:
 
     def _setup_ui(self):
         """메인 UI를 생성하고 배치합니다."""
-        self.root.title("루오틱 For 유리지연 v.3.2.0")
+        self.root.title("루오틱 For 히기 v.3.2.4")
 
         window_width = 400
         # 4개의 구역이 모두 보이도록 창 높이 설정합니다.
@@ -191,10 +191,10 @@ class AppUI:
         self.global_toggles['secondary_color'] = toggle_func
         secondary_color_selector.pack(expand=True, fill=tk.X)
 
-        # Row 3: 색상오차, 색상영역 오차
-        row3_container, (_, _, right_frame) = self._create_split_container(basic_group, weights=[1, 1, 1])
-        self._create_labeled_entry(right_frame, "색영역오차:", self.color_area_tolerance_var).pack(side=tk.RIGHT)
-        self._create_labeled_entry(right_frame, "색상오차:", self.color_tolerance_var).pack(side=tk.RIGHT)
+        # Row 3: 색상오차, 색상영역 오차 (Row 2/Row 4와 동일하게 50/50 폭으로 정렬)
+        tolerance_grid = self._create_grid_group(basic_group)
+        self._add_grid_field(tolerance_grid, 0, 0, "색상오차:", self.color_tolerance_var, entry_width=4)
+        self._add_grid_field(tolerance_grid, 0, 1, "색영역오차:", self.color_area_tolerance_var, entry_width=4)
 
 
         # Row 4: 완료 좌표, 완료 딜레이, 탐색 방향
@@ -250,13 +250,13 @@ class AppUI:
                                                command=lambda: self.controller.start_combined_picker('op_check'))
         self.op_check_combined_btn.pack(side=tk.LEFT, padx=(5,0))
 
-        # Row 3: 재시도 설정 (횟수, 간격)
-        op_retry_container, (left_frame_r, right_frame_r) = self._create_split_container(self.operation_check_group, weights=[1, 1])
-        self._create_labeled_entry(left_frame_r, "재시도 횟수:", self.op_check_max_retries_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
-        self._create_labeled_entry(right_frame_r, "간격(10ms):", self.op_check_retry_interval_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        # Row 3: 재시도 설정 (횟수, 간격) - 두 필드를 한 grid로 묶어 라벨/입력창 열을 정렬
+        op_retry_grid = self._create_grid_group(self.operation_check_group)
+        retry_entry = self._add_grid_field(op_retry_grid, 0, 0, "재시도 횟수:", self.op_check_max_retries_var, entry_width=4)
+        interval_entry = self._add_grid_field(op_retry_grid, 0, 1, "간격(10ms):", self.op_check_retry_interval_var, entry_width=4)
 
         # 위젯 상태 관리를 위해 내부 프레임 저장
-        self.op_check_inner_widgets = [left_frame, right_frame, left_frame_r, right_frame_r]
+        self.op_check_inner_widgets = [left_frame, right_frame, op_retry_grid]
 
         # --- 상태 메시지 및 구역/기본 탐색 토글 ---
         status_and_toggle_container = tk.Frame(main_frame)
@@ -294,31 +294,38 @@ class AppUI:
         self.areas_container_group = tk.LabelFrame(main_frame, labelwidget=areas_header, padx=10, pady=5, relief=tk.SOLID, borderwidth=1, name="areas_container_group")
         self.areas_container_group.pack(fill=tk.BOTH, expand=True, pady=(10))
 
-        # 구역 세팅: 탐색/대기 시간
-        time_set_container, (frame1, frame2, frame3) = self._create_split_container(self.areas_container_group, weights=[1, 1, 1])
-        self.total_duration_frame = self._create_labeled_entry(frame1, "총 탐색(초):", self.total_duration_var)
-        self.total_duration_frame.pack(expand=True, fill=tk.X)
-        self.active_search_duration_frame = self._create_labeled_entry(frame2, "탐색(초):", self.active_search_duration_var)
-        self.active_search_duration_frame.pack(expand=True, fill=tk.X)
-        self.wait_duration_frame = self._create_labeled_entry(frame3, "대기(초):", self.wait_duration_var)
-        self.wait_duration_frame.pack(expand=True, fill=tk.X)
+        # 구역 세팅: 탐색/대기 시간 + 딜레이 (한 grid에 묶어 두 행의 열이 서로 맞도록 함)
+        duration_grid = self._create_grid_group(self.areas_container_group)
 
-        # 구역 세팅: 딜레이
-        delay_set_container, (frame1, frame2, frame3) = self._create_split_container(self.areas_container_group, weights=[1, 1, 1])
-        
-        # 시간 오차를 딜레이 설정 왼쪽에 추가
-        self.search_time_tolerance_frame = self._create_labeled_entry(frame1, "시간 오차(초):", self.search_time_tolerance_var)
-        self.search_time_tolerance_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
+        # Row 0: 총 탐색(초) / 탐색(초) / 대기(초)
+        total_entry = self._add_grid_field(duration_grid, 0, 0, "총 탐색(초):", self.total_duration_var, entry_width=5)
+        active_entry = self._add_grid_field(duration_grid, 0, 1, "탐색(초):", self.active_search_duration_var, entry_width=5)
+        wait_entry = self._add_grid_field(duration_grid, 0, 2, "대기(초):", self.wait_duration_var, entry_width=5)
+        self.total_duration_frame = (duration_grid.grid_slaves(row=0, column=0)[0], total_entry)
+        self.active_search_duration_frame = (duration_grid.grid_slaves(row=0, column=2)[0], active_entry)
+        self.wait_duration_frame = (duration_grid.grid_slaves(row=0, column=4)[0], wait_entry)
 
-        # 탐색 딜레이 사용 여부 체크박스
-        self.search_delay_check = tk.Checkbutton(frame2, variable=self.use_search_delay_var, 
-                                                 fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", 
+        # Row 1: 시간 오차(초) / [체크박스] 탐색 딜레이 / 구역선택 딜레이
+        tol_entry = self._add_grid_field(duration_grid, 1, 0, "시간 오차(초):", self.search_time_tolerance_var, entry_width=5)
+        self.search_time_tolerance_frame = (duration_grid.grid_slaves(row=1, column=0)[0], tol_entry)
+
+        # '탐색 딜레이'는 앞에 사용 여부 체크박스가 붙으므로, 체크박스+라벨을 하나의 프레임으로
+        # 묶어서 col=1의 '라벨 칸'에 배치합니다 (다른 행의 라벨 칸과 동일한 열 위치를 씀).
+        search_delay_label_frame = tk.Frame(duration_grid)
+        self.search_delay_check = tk.Checkbutton(search_delay_label_frame, variable=self.use_search_delay_var,
+                                                 fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e",
                                                  highlightthickness=0, command=self._toggle_search_delay_state)
         self.search_delay_check.pack(side=tk.LEFT)
-        self.search_delay_frame = self._create_labeled_entry(frame2, "탐색 딜레이:", self.search_delay_var)
-        self.search_delay_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
-        self.area_delay_frame = self._create_labeled_entry(frame3, "구역선택 딜레이:", self.area_delay_var)
-        self.area_delay_frame.pack(side=tk.RIGHT,expand=True, fill=tk.X)
+        search_delay_label = tk.Label(search_delay_label_frame, text="탐색 딜레이:", fg="white")
+        search_delay_label.pack(side=tk.LEFT)
+        search_delay_label_frame.grid(row=1, column=2, sticky='w', padx=(10, 4))
+        search_delay_entry = tk.Entry(duration_grid, textvariable=self.search_delay_var, width=5, bg="#444444",
+                                      fg="white", insertbackground='white', borderwidth=0, highlightthickness=0)
+        search_delay_entry.grid(row=1, column=3, sticky='ew')
+        self.search_delay_frame = (search_delay_label, search_delay_entry)
+
+        area_delay_entry = self._add_grid_field(duration_grid, 1, 2, "구역선택 딜레이:", self.area_delay_var, entry_width=5)
+        self.area_delay_frame = (duration_grid.grid_slaves(row=1, column=4)[0], area_delay_entry)
 
 
         # 색상 선택 전 화면 클릭
@@ -495,8 +502,11 @@ class AppUI:
 
         right_inner_frame = tk.Frame(right_frame)
         right_inner_frame.pack(padx=5)
-        clicks_frame = self._create_labeled_entry(right_inner_frame, "횟수:", vars['clicks_var'])
-        offset_frame = self._create_labeled_entry(right_inner_frame, "오차:", vars['offset_var'])
+        self._add_grid_field(right_inner_frame, 0, 0, "횟수:", vars['clicks_var'], entry_width=3)
+        self._add_grid_field(right_inner_frame, 0, 1, "오차:", vars['offset_var'], entry_width=3)
+        # 기존 'frame' 단위 활성/비활성화 로직과의 호환을 위해 두 필드를 담은 공용 프레임을 그대로 씀
+        clicks_frame = right_inner_frame
+        offset_frame = right_inner_frame
 
         def toggle_search_state():
             """'탐색' 체크박스 상태에 따라 관련 위젯들을 활성화/비활성화합니다."""
@@ -529,9 +539,7 @@ class AppUI:
         coord_label.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5, 0))
 
         # --- Row 1 오른쪽: 선택 횟수, 오차 설정 ---
-        right_inner_frame.pack(fill=tk.X)
-        clicks_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
-        offset_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
+        right_inner_frame.pack(fill=tk.X, expand=True)
 
         # --- Row 2: 구역 내 영역(sub-area) 목록 ---
         # 위에서부터 순서대로 탐색하며, 앞 영역에서 색을 못 찾으면 다음 영역으로 넘어갑니다.
@@ -1299,11 +1307,9 @@ class AppUI:
         fg_color = 'white' if is_active else '#666666'
 
         try:
-            for child in self.search_delay_frame.winfo_children():
-                if isinstance(child, tk.Entry):
-                    child.config(state=state, disabledbackground=entry_bg)
-                elif isinstance(child, tk.Label):
-                    child.config(fg=fg_color)
+            label, entry = self.search_delay_frame
+            entry.config(state=state, disabledbackground=entry_bg)
+            label.config(fg=fg_color)
         except tk.TclError:
             pass
 
@@ -1402,6 +1408,29 @@ class AppUI:
             frames.append(frame)
             
         return container, frames
+
+    def _create_grid_group(self, parent, **pack_options):
+        """
+        label:entry 여러 행을 하나의 grid에 묶기 위한 컨테이너를 생성합니다.
+        반환된 프레임에 _add_grid_field()를 여러 번 호출해 행을 추가하면,
+        각 열의 라벨 너비가 그 열에서 가장 긴 텍스트에 자동으로 맞춰집니다
+        (서로 다른 pack() 컨테이너로 나뉘어 있으면 이 정렬이 되지 않습니다).
+        """
+        container = tk.Frame(parent)
+        default_options = {'fill': tk.X, 'pady': 2}
+        default_options.update(pack_options)
+        container.pack(**default_options)
+        return container
+
+    def _add_grid_field(self, grid_parent, row, col, label_text, var, entry_width=6):
+        """grid_parent의 (row, col번째 필드) 위치에 라벨+입력창 한 쌍을 배치하고 Entry를 반환합니다."""
+        tk.Label(grid_parent, text=label_text, fg="white", anchor='w').grid(
+            row=row, column=col * 2, sticky='w', padx=(0 if col == 0 else 10, 4))
+        entry = tk.Entry(grid_parent, textvariable=var, width=entry_width, bg="#444444", fg="white",
+                         insertbackground='white', borderwidth=0, highlightthickness=0)
+        entry.grid(row=row, column=col * 2 + 1, sticky='ew')
+        grid_parent.grid_columnconfigure(col * 2 + 1, weight=1)
+        return entry
 
     def _create_labeled_entry(self, parent, label_text, var):
         """레이블과 입력창으로 구성된 위젯 그룹을 생성합니다. (횟수, 오차 등)"""
@@ -1594,17 +1623,26 @@ class AppUI:
             except tk.TclError:
                 pass # 위젯이 파괴된 경우 등 예외 처리
 
+        # grid로 정렬된 필드는 (라벨, 입력창) 튜플로 저장되어 있으므로, 프레임 하나가 아니라
+        # 각 위젯에 개별적으로 상태를 적용합니다.
+        def apply_state(target, state, fg_color, entry_bg_color):
+            if isinstance(target, (tuple, list)):
+                for w in target:
+                    set_state_recursive(w, state, fg_color, entry_bg_color)
+            else:
+                set_state_recursive(target, state, fg_color, entry_bg_color)
+
         self.areas_header_label.config(fg='white')
 
         # '구역 설정' 그룹 내의 공통 위젯들 상태 변경
-        set_state_recursive(self.total_duration_frame, state, group_fg, entry_bg)
-        set_state_recursive(self.active_search_duration_frame, state, group_fg, entry_bg)
-        set_state_recursive(self.wait_duration_frame, state, group_fg, entry_bg)
-        set_state_recursive(self.search_time_tolerance_frame, state, group_fg, entry_bg)
-        set_state_recursive(self.search_delay_frame, state, group_fg, entry_bg)
+        apply_state(self.total_duration_frame, state, group_fg, entry_bg)
+        apply_state(self.active_search_duration_frame, state, group_fg, entry_bg)
+        apply_state(self.wait_duration_frame, state, group_fg, entry_bg)
+        apply_state(self.search_time_tolerance_frame, state, group_fg, entry_bg)
+        apply_state(self.search_delay_frame, state, group_fg, entry_bg)
         self.search_delay_check.config(state=state)
         self._toggle_search_delay_state()
-        set_state_recursive(self.area_delay_frame, state, group_fg, entry_bg)
+        apply_state(self.area_delay_frame, state, group_fg, entry_bg)
         set_state_recursive(self.empty_coord_frame, state, group_fg, entry_bg)
         self.screen_activation_check.config(state=state, fg=check_fg)
         
