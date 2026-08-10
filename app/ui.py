@@ -205,6 +205,47 @@ class AppUI:
         # Part 2: 완료 선택 딜레이
         self._create_labeled_entry(right_frame, "완료 딜레이:", self.complete_delay_var).pack(expand=True, fill=tk.X, side=tk.LEFT)
 
+        # --- 탐색 화면 정상 여부 확인용 그룹 ---
+        # (구역 탐색 여부와 무관하게 기본 탐색에서도 쓸 수 있도록 '구역 설정' 밖, 상단에 배치)
+        op_check_header = tk.Frame(main_frame)
+        self.op_check_cb = tk.Checkbutton(op_check_header, variable=self.use_operation_check_var,
+                                          selectcolor="#2e2e2e",
+                                          activebackground="#2e2e2e", highlightthickness=0,
+                                          command=self._toggle_operation_check_state)
+        self.op_check_cb.pack(side=tk.LEFT)
+        self.op_check_label = tk.Label(op_check_header, text="탐색 화면 정상 여부 확인", fg="white")
+        self.op_check_label.pack(side=tk.LEFT)
+
+        self.operation_check_group = tk.LabelFrame(main_frame, labelwidget=op_check_header, padx=10, pady=5)
+        self.operation_check_group.pack(fill=tk.X, pady=(0, 10), ipady=5)
+
+        # Row 1: 화면 정상 여부 확인: 화면 확인 좌표, 화면 확인 색상
+        operation_check_container, (left_frame, right_frame) = self._create_split_container(self.operation_check_group, weights=[1, 1])
+
+        # 좌표 입력창 (통합 버튼 사용을 위해 버튼 없는 Entry 배치)
+        tk.Entry(left_frame, textvariable=self.op_check_coord_var, bg="#444444", fg="white",
+                 insertbackground='white', borderwidth=0, highlightthickness=0, width=12,
+                 validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        # 색상 입력창 + 통합 버튼
+        self._create_color_preview(right_frame, self.op_check_color_var).pack(side=tk.LEFT, padx=(0, 5))
+
+        tk.Entry(right_frame, textvariable=self.op_check_color_var, bg="#444444", fg="white",
+                 insertbackground='white', borderwidth=0, highlightthickness=0, width=12,
+                 validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        self.op_check_combined_btn = tk.Button(right_frame, text="좌표&색상",
+                                               activeforeground="white", activebackground="#555555",
+                                               command=lambda: self.controller.start_combined_picker('op_check'))
+        self.op_check_combined_btn.pack(side=tk.LEFT, padx=(5,0))
+
+        # Row 2: 재시도 설정 (횟수, 간격)
+        op_retry_container, (left_frame_r, right_frame_r) = self._create_split_container(self.operation_check_group, weights=[1, 1])
+        self._create_labeled_entry(left_frame_r, "재시도 횟수:", self.op_check_max_retries_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        self._create_labeled_entry(right_frame_r, "간격(10ms):", self.op_check_retry_interval_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        # 위젯 상태 관리를 위해 내부 프레임 저장
+        self.op_check_inner_widgets = [left_frame, right_frame, left_frame_r, right_frame_r]
+
         # --- 상태 메시지 및 구역/기본 탐색 토글 ---
         status_and_toggle_container = tk.Frame(main_frame)
         status_and_toggle_container.pack(fill=tk.X, pady=2)
@@ -275,46 +316,7 @@ class AppUI:
         self.screen_activation_check.pack(side=tk.LEFT)
         self.empty_coord_frame = self._create_value_button_row(left_frame, self.empty_coord_var, "빈공간", command=lambda: self.controller.start_coordinate_picker('empty_coord'))
         self.empty_coord_frame.pack(side=tk.LEFT)
-  
-        # --- 탐색 화면 정상 여부 확인용 그룹 ---
-        op_check_header = tk.Frame(self.areas_container_group)
-        self.op_check_cb = tk.Checkbutton(op_check_header, variable=self.use_operation_check_var, 
-                                          selectcolor="#2e2e2e", 
-                                          activebackground="#2e2e2e", highlightthickness=0,
-                                          command=self._toggle_operation_check_state)
-        self.op_check_cb.pack(side=tk.LEFT)
-        self.op_check_label = tk.Label(op_check_header, text="탐색 화면 정상 여부 확인", fg="white")
-        self.op_check_label.pack(side=tk.LEFT)
 
-        self.operation_check_group = tk.LabelFrame(self.areas_container_group, labelwidget=op_check_header, padx=10, pady=5)
-        self.operation_check_group.pack(fill=tk.X, pady=12, ipady=5)
-
-        # Row 1: 화면 정상 여부 확인: 화면 확인 좌표, 화면 확인 색상
-        operation_check_container, (left_frame, right_frame) = self._create_split_container(self.operation_check_group, weights=[1, 1])
-        
-        # 좌표 입력창 (통합 버튼 사용을 위해 버튼 없는 Entry 배치)
-        tk.Entry(left_frame, textvariable=self.op_check_coord_var, bg="#444444", fg="white", 
-                 insertbackground='white', borderwidth=0, highlightthickness=0, width=12,
-                 validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
-        
-        # 색상 입력창 + 통합 버튼
-        self._create_color_preview(right_frame, self.op_check_color_var).pack(side=tk.LEFT, padx=(0, 5))
-
-        tk.Entry(right_frame, textvariable=self.op_check_color_var, bg="#444444", fg="white", 
-                 insertbackground='white', borderwidth=0, highlightthickness=0, width=12,
-                 validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
-        self.op_check_combined_btn = tk.Button(right_frame, text="좌표&색상", 
-                                               activeforeground="white", activebackground="#555555",
-                                               command=lambda: self.controller.start_combined_picker('op_check'))
-        self.op_check_combined_btn.pack(side=tk.LEFT, padx=(5,0))
-
-        # Row 2: 재시도 설정 (횟수, 간격)
-        op_retry_container, (left_frame_r, right_frame_r) = self._create_split_container(self.operation_check_group, weights=[1, 1])
-        self._create_labeled_entry(left_frame_r, "재시도 횟수:", self.op_check_max_retries_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
-        self._create_labeled_entry(right_frame_r, "간격(10ms):", self.op_check_retry_interval_var).pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        # 위젯 상태 관리를 위해 내부 프레임 저장
-        self.op_check_inner_widgets = [left_frame, right_frame, left_frame_r, right_frame_r]
         scroll_container = tk.Frame(self.areas_container_group)
         scroll_container.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
 
