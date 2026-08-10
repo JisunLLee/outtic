@@ -2,12 +2,23 @@
     "initial_areas": [
         {
             "p1": [
-                281,
-                229
+                69,
+                179
             ],
             "p2": [
-                395,
-                451
+                356,
+                412
+            ],
+            "direction": "←↓"
+        },
+        {
+            "p1": [
+                218,
+                208
+            ],
+            "p2": [
+                369,
+                409
             ],
             "direction": "←↓"
         }
@@ -64,10 +75,10 @@
             "name": "구역1",
             "use": true,
             "click_coord": [
-                813,
-                454
+                723,
+                301
             ],
-            "clicks": 3,
+            "clicks": 1,
             "offset": 2,
             "use_color": false,
             "color": [
@@ -78,25 +89,25 @@
             "sub_areas": [
                 {
                     "p1": [
-                        290,
-                        244
+                        69,
+                        179
                     ],
                     "p2": [
-                        312,
-                        257
+                        356,
+                        412
                     ],
                     "direction": "←↓"
                 },
                 {
                     "p1": [
-                        178,
-                        291
+                        218,
+                        208
                     ],
                     "p2": [
-                        217,
-                        354
+                        369,
+                        409
                     ],
-                    "direction": "↑←"
+                    "direction": "←↓"
                 }
             ]
         },
@@ -104,105 +115,45 @@
             "name": "구역2",
             "use": false,
             "click_coord": [
-                803,
-                266
+                734,
+                320
             ],
-            "clicks": 2,
+            "clicks": 1,
             "offset": 2,
             "use_color": false,
             "color": [
-                153,
                 0,
-                201
+                0,
+                0
             ],
             "sub_areas": [
                 {
                     "p1": [
-                        107,
-                        233
+                        69,
+                        179
                     ],
                     "p2": [
-                        239,
-                        582
+                        356,
+                        412
                     ],
-                    "direction": "☉"
+                    "direction": "←↓"
                 },
                 {
                     "p1": [
-                        240,
-                        235
+                        218,
+                        208
                     ],
                     "p2": [
-                        426,
-                        582
+                        369,
+                        409
                     ],
-                    "direction": "☉"
-                }
-            ]
-        },
-        "3": {
-            "name": "구역3",
-            "use": false,
-            "click_coord": [
-                797,
-                266
-            ],
-            "clicks": 1,
-            "offset": 2,
-            "use_color": false,
-            "color": [
-                153,
-                0,
-                201
-            ],
-            "sub_areas": [
-                {
-                    "p1": [
-                        172,
-                        342
-                    ],
-                    "p2": [
-                        524,
-                        686
-                    ],
-                    "direction": "☉"
-                }
-            ]
-        },
-        "4": {
-            "name": "구역4",
-            "use": false,
-            "click_coord": [
-                738,
-                346
-            ],
-            "clicks": 1,
-            "offset": 2,
-            "use_color": false,
-            "color": [
-                153,
-                0,
-                201
-            ],
-            "sub_areas": [
-                {
-                    "p1": [
-                        172,
-                        342
-                    ],
-                    "p2": [
-                        524,
-                        686
-                    ],
-                    "direction": "☉"
+                    "direction": "←↓"
                 }
             ]
         }
     },
     "area_order": [
         1,
-        2,
-        3,
-        4
+        2
     ]
 }

@@ -115,11 +115,15 @@ class AppController:
 
     def add_area(self):
         """새로운 구역을 데이터 모델과 UI에 추가합니다."""
+        # UI에 방금 입력했지만 아직 적용되지 않은 값(기본 탐색 영역 목록 등)이 새 구역의
+        # 시드값으로 쓰이도록, 먼저 현재 UI 상태를 반영합니다.
+        self.apply_settings()
+
         # 비어있는 번호 중 가장 작은 번호를 찾아 새 구역 번호로 사용합니다 (번호 점프 방지).
         new_area_num = 1
         while new_area_num in self.areas:
             new_area_num += 1
-            
+
         self._initialize_area_settings(new_area_num)
         self.area_order.append(new_area_num)
         if self.ui:
@@ -187,6 +191,10 @@ class AppController:
 
     def add_sub_area(self, area_number: int):
         """지정된 구역에 새로운 영역을 추가합니다."""
+        # UI에 방금 입력했지만 아직 적용되지 않은 값(기본 탐색 영역 목록 등)이 새 영역의
+        # 시드값으로 쓰이도록, 먼저 현재 UI 상태를 반영합니다.
+        self.apply_settings()
+
         area = self.areas[area_number]
         new_sub_id = 1
         while new_sub_id in area['sub_areas']:
@@ -261,6 +269,10 @@ class AppController:
 
     def add_initial_area(self):
         """기본 탐색 영역 목록에 새로운 영역을 추가합니다."""
+        # UI에 방금 입력했지만 아직 적용되지 않은 값이 새 영역의 시드값으로 쓰이도록,
+        # 먼저 현재 UI 상태를 반영합니다.
+        self.apply_settings()
+
         new_area_id = 1
         while new_area_id in self.initial_areas:
             new_area_id += 1
@@ -319,32 +331,34 @@ class AppController:
             default_click_coord = (0, 0)
             default_clicks = 6
             default_offset = 2
-            # 기본 탐색 영역 목록의 첫 번째 영역 값을 시드로 사용합니다.
-            seed = self.initial_areas[self.initial_area_order[0]]
-            default_p1 = seed['p1']
-            default_p2 = seed['p2']
-            default_direction = seed['direction'] # 기본 탐색 방향으로 초기화
             default_name = f"구역{area_number}"
-
 
             if area_number == 1:
                 default_click_coord = (723, 301)
                 default_clicks = 1
-                default_direction = SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT
             if area_number == 2:
                 default_click_coord = (734, 320)
                 default_clicks = 1
             if area_number == 3:
                 default_click_coord = (716, 304)
                 default_clicks = 2
-                default_direction = SearchDirection.BOTTOM_RIGHT_TO_TOP_LEFT
             if area_number == 4:
                 default_click_coord = (737, 321)
                 default_clicks = 1
-                default_p1 = (98, 229)
-                default_p2 = (225, 450)
-                default_direction = SearchDirection.BOTTOM_LEFT_TO_TOP_RIGHT
 
+            # 구역 내 영역(sub-area) 목록: 기본 탐색 영역 목록을 순서 그대로 복사해서 시작합니다.
+            # 순서대로 탐색하며 못 찾으면 다음 영역으로 넘어갑니다.
+            sub_areas = {}
+            sub_area_order = []
+            for sub_id, initial_id in enumerate(self.initial_area_order, start=1):
+                seed = self.initial_areas[initial_id]
+                sub_areas[sub_id] = {
+                    'p1': seed['p1'],
+                    'p2': seed['p2'],
+                    'direction': seed['direction'],
+                    'search_area': (0, 0, 0, 0), # 계산된 탐색 영역
+                }
+                sub_area_order.append(sub_id)
 
             self.areas[area_number] = {
                 'name': default_name,
@@ -354,16 +368,8 @@ class AppController:
                 'offset': default_offset, # 구역 클릭 범위 오차
                 'use_color': False, # '기본' 색상 사용 (UI 체크박스 True)
                 'color': (0, 0, 0),
-                # 구역 내 영역(sub-area) 목록: 순서대로 탐색하며 못 찾으면 다음 영역으로 넘어갑니다.
-                'sub_areas': {
-                    1: {
-                        'p1': default_p1,
-                        'p2': default_p2,
-                        'direction': default_direction,
-                        'search_area': (0, 0, 0, 0), # 계산된 탐색 영역
-                    }
-                },
-                'sub_area_order': [1],
+                'sub_areas': sub_areas,
+                'sub_area_order': sub_area_order,
             }
 
     def on_closing(self):
