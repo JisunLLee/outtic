@@ -150,7 +150,7 @@ class AppUI:
 
     def _setup_ui(self):
         """메인 UI를 생성하고 배치합니다."""
-        self.root.title("루오틱 For 히기 v.3.3.0")
+        self.root.title("루오틱 For 히기 v.3.3.3")
 
         window_width = 400
         # 4개의 구역이 모두 보이도록 창 높이 설정합니다.
@@ -239,8 +239,27 @@ class AppUI:
                                                     command=self._toggle_operation_check_state)
         self.op_check_sequence_cb.pack(side=tk.LEFT, padx=(10, 0))
 
-        # Row 2: 화면 정상 여부 확인: 화면 확인 좌표, 화면 확인 색상
-        operation_check_container, (left_frame, right_frame) = self._create_split_container(self.operation_check_group, weights=[1, 1])
+        # Row 2: 화면 정상 여부 확인: 화면 확인 좌표, 화면 확인 색상 (1순위)
+        op_check1_row = tk.Frame(self.operation_check_group)
+        op_check1_row.pack(fill=tk.X, expand=True)
+
+        # 아래 '2순위' 체크박스의 네모 표시(인디케이터)만큼 여백을 줘서, 텍스트("1순위"/"2순위")의
+        # 시작 x좌표가 서로 맞도록 만듭니다. 체크박스 전체 폭에서 같은 글자의 순수 라벨 폭을 뺀
+        # 값이 인디케이터+내부 여백이 텍스트를 밀어내는 정확한 픽셀 수입니다.
+        probe_cb = tk.Checkbutton(op_check1_row, text="2순위")
+        probe_lbl = tk.Label(op_check1_row, text="2순위")
+        probe_cb.update_idletasks()
+        probe_lbl.update_idletasks()
+        indicator_width = probe_cb.winfo_reqwidth() - probe_lbl.winfo_reqwidth()
+        probe_cb.destroy()
+        probe_lbl.destroy()
+        tk.Frame(op_check1_row, width=indicator_width, height=1).pack(side=tk.LEFT)
+
+        tk.Label(op_check1_row, text="1순위", fg="white").pack(side=tk.LEFT)
+
+        op_check1_fields = tk.Frame(op_check1_row)
+        op_check1_fields.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5, 0))
+        operation_check_container, (left_frame, right_frame) = self._create_split_container(op_check1_fields, weights=[1, 1])
 
         # 좌표 입력창 (통합 버튼 사용을 위해 버튼 없는 Entry 배치)
         tk.Entry(left_frame, textvariable=self.op_check_coord_var, bg="#444444", fg="white",
@@ -292,7 +311,7 @@ class AppUI:
         interval_entry = self._add_grid_field(op_retry_grid, 0, 1, "간격(10ms):", self.op_check_retry_interval_var, entry_width=4)
 
         # 위젯 상태 관리를 위해 내부 프레임 저장
-        self.op_check_inner_widgets = [left_frame, right_frame, op_check2_row, op_retry_grid]
+        self.op_check_inner_widgets = [op_check1_row, op_check2_row, op_retry_grid]
 
         # --- 상태 메시지 및 구역/기본 탐색 토글 ---
         status_and_toggle_container = tk.Frame(main_frame)
