@@ -97,7 +97,9 @@ class ColorFinder:
         # 안티앨리어싱 등으로 생기는 고립된 잡음 픽셀(예: 버튼 위 작은 하이라이트 잔상)이
         # 실제 버튼보다 먼저 발견되어 잘못 클릭되는 것을 막기 위한 최소 크기 기준입니다.
         # 이보다 작은 덩어리는 무시하고 탐색을 계속합니다.
-        MIN_BLOB_PIXELS = 3
+        # 단, "화면 정상 여부 확인"처럼 1x1 영역만 캡처하는 호출은 애초에 3픽셀을 채울 수
+        # 없으므로, 캡처된 이미지 전체 픽셀 수를 넘지 않도록 기준을 낮춥니다.
+        MIN_BLOB_PIXELS = min(3, width * height)
         noise_mask = np.zeros((height, width), dtype=bool)
 
         def check_and_resolve(px, py):

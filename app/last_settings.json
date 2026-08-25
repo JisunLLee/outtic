@@ -48,13 +48,13 @@
     "use_operation_check_initial": false,
     "use_operation_check_sequence": true,
     "op_check_coord": [
-        418,
-        187
+        633,
+        337
     ],
     "op_check_color": [
-        213,
-        213,
-        213
+        202,
+        207,
+        218
     ],
     "op_check_max_retries": 5,
     "op_check_retry_interval": 0.5,
@@ -63,7 +63,7 @@
         183
     ],
     "use_search_delay": false,
-    "use_initial_search": true,
+    "use_initial_search": false,
     "research_delay": 0.225,
     "area_delay": 0.6,
     "search_delay": 0.0,
@@ -76,8 +76,37 @@
             "name": "구역1",
             "use": true,
             "click_coord": [
-                648,
-                669
+                1024,
+                476
+            ],
+            "clicks": 1,
+            "offset": 2,
+            "use_color": false,
+            "color": [
+                209,
+                202,
+                249
+            ],
+            "sub_areas": [
+                {
+                    "p1": [
+                        307,
+                        415
+                    ],
+                    "p2": [
+                        720,
+                        577
+                    ],
+                    "direction": "↓↔"
+                }
+            ]
+        },
+        "2": {
+            "name": "구역2",
+            "use": true,
+            "click_coord": [
+                734,
+                320
             ],
             "clicks": 1,
             "offset": 2,
@@ -98,11 +127,23 @@
                         689
                     ],
                     "direction": "↓↔"
+                },
+                {
+                    "p1": [
+                        326,
+                        425
+                    ],
+                    "p2": [
+                        743,
+                        718
+                    ],
+                    "direction": "↓↔"
                 }
             ]
         }
     },
     "area_order": [
-        1
+        1,
+        2
     ]
 }
