@@ -20,6 +20,17 @@
                 584,
                 506
             ],
+            "direction": "↔↓"
+        },
+        {
+            "p1": [
+                381,
+                427
+            ],
+            "p2": [
+                634,
+                564
+            ],
             "direction": "↓↔"
         },
         {
@@ -28,8 +39,30 @@
                 427
             ],
             "p2": [
-                712,
-                692
+                711,
+                566
+            ],
+            "direction": "↓↔"
+        },
+        {
+            "p1": [
+                424,
+                592
+            ],
+            "p2": [
+                603,
+                650
+            ],
+            "direction": "↔↓"
+        },
+        {
+            "p1": [
+                316,
+                595
+            ],
+            "p2": [
+                711,
+                693
             ],
             "direction": "↓↔"
         }
@@ -52,7 +85,7 @@
     "color_tolerance": 15,
     "color_area_tolerance": 5,
     "complete_click_delay": 0.1,
-    "use_sequence": false,
+    "use_sequence": true,
     "continuous_search": true,
     "use_space_complete": true,
     "use_screen_activation": false,

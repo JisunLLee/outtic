@@ -349,7 +349,10 @@ class AppUI:
         self.areas_header_label.pack(side=tk.LEFT)
 
         self.areas_container_group = tk.LabelFrame(main_frame, labelwidget=areas_header, padx=10, pady=5, relief=tk.SOLID, borderwidth=1, name="areas_container_group")
-        self.areas_container_group.pack(fill=tk.BOTH, expand=True, pady=(10))
+        # expand=True를 주지 않아, 구역이 적을 때 창의 남는 공간을 억지로 채우지 않고
+        # 내용물(구역 카드들)만큼만 크기를 차지합니다. 구역이 많아지면 내부 스크롤 캔버스가
+        # 자체적으로 최대 높이까지 커진 뒤 스크롤로 전환됩니다.
+        self.areas_container_group.pack(fill=tk.X, pady=(10))
 
         # 구역 세팅: 탐색/대기 시간 + 딜레이 (한 grid에 묶어 두 행의 열이 서로 맞도록 함)
         duration_grid = self._create_grid_group(self.areas_container_group)
@@ -394,9 +397,12 @@ class AppUI:
         self.empty_coord_frame.pack(side=tk.LEFT)
 
         scroll_container = tk.Frame(self.areas_container_group)
-        scroll_container.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
+        scroll_container.pack(fill=tk.X, pady=(5, 0))
 
-        self.scrollable_canvas = tk.Canvas(scroll_container, borderwidth=0, highlightthickness=0)
+        # 구역 카드가 없거나 적을 때는 그 내용물 높이만큼만 차지하고, 카드가 많아져
+        # 이 값을 넘으면 그때부터 스크롤로 전환됩니다.
+        MAX_AREAS_CANVAS_HEIGHT = 400
+        self.scrollable_canvas = tk.Canvas(scroll_container, borderwidth=0, highlightthickness=0, height=1)
         scrollbar = ttk.Scrollbar(scroll_container, orient="vertical", command=self.scrollable_canvas.yview)
         self.scrollable_canvas.configure(yscrollcommand=scrollbar.set)
 
@@ -415,6 +421,8 @@ class AppUI:
 
         def on_frame_configure(event):
             self.scrollable_canvas.configure(scrollregion=self.scrollable_canvas.bbox("all"))
+            content_height = self.scrollable_content_frame.winfo_reqheight()
+            self.scrollable_canvas.configure(height=min(content_height, MAX_AREAS_CANVAS_HEIGHT))
 
         self.scrollable_content_frame.bind("<Configure>", on_frame_configure)
 
@@ -442,8 +450,10 @@ class AppUI:
         self.add_area_btn.pack(fill=tk.X, pady=10, padx=50)
 
         # --- 액션 버튼 ---
+        # side=BOTTOM으로 창의 맨 아래에 고정합니다. 구역 목록 등 위쪽 내용이 얼마나
+        # 많든 상관없이 항상 창 하단에 보입니다.
         action_frame = tk.Frame(main_frame)
-        action_frame.pack(fill=tk.X)
+        action_frame.pack(side=tk.BOTTOM, fill=tk.X)
         action_frame.grid_columnconfigure(0, weight=1)
         action_frame.grid_columnconfigure(1, weight=1)
         action_frame.grid_columnconfigure(2, weight=1)
@@ -474,6 +484,15 @@ class AppUI:
         # 모든 위젯이 생성된 뒤에 배경색을 적용해야 전체 화면이 처음부터 어둡게 표시됩니다.
         # (위젯 생성 전에 호출하면 그 시점에 존재하는 위젯이 없어 아무 효과가 없습니다.)
         self.update_window_bg('default')
+
+        # 창을 너무 작게 줄이면 구역 목록 외의 다른 설정들이 가려지므로, "탐색 구역이
+        # 하나도 없을 때"에 해당하는 크기를 최소 창 크기로 고정합니다. 지금은 기본 구역
+        # 5개가 만들어진 상태라 그대로 재면 그 크기가 잡히므로, 현재 캔버스 높이 대신
+        # '+ 구역 추가' 버튼만 있을 때의 높이(구역 0개 상태)로 바꿔서 계산합니다.
+        self.root.update_idletasks()
+        zero_zone_canvas_height = self.add_area_btn.winfo_reqheight() + 20  # 버튼의 pady(10+10)
+        zero_zone_root_height = self.root.winfo_reqheight() - self.scrollable_canvas.winfo_height() + zero_zone_canvas_height
+        self.root.minsize(self.root.winfo_reqwidth(), zero_zone_root_height)
 
     def _create_area_group(self, parent, area_number: int):
         """
