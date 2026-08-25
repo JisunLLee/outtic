@@ -2,189 +2,107 @@
     "initial_areas": [
         {
             "p1": [
-                99,
-                233
+                453,
+                423
             ],
             "p2": [
-                683,
-                605
+                605,
+                689
             ],
-            "direction": "→↓"
+            "direction": "↓↔"
+        },
+        {
+            "p1": [
+                326,
+                425
+            ],
+            "p2": [
+                743,
+                718
+            ],
+            "direction": "↓↔"
         }
     ],
     "color": [
-        0,
-        204,
-        204
+        209,
+        202,
+        249
     ],
     "use_secondary_color": false,
     "secondary_color": [
-        85,
-        41,
-        221
+        110,
+        133,
+        133
     ],
     "complete_coord": [
-        800,
-        714
+        1308,
+        1026
     ],
     "color_tolerance": 15,
     "color_area_tolerance": 5,
     "complete_click_delay": 0.1,
-    "use_sequence": false,
-    "continuous_search": false,
+    "use_sequence": true,
+    "continuous_search": true,
     "use_space_complete": true,
     "use_screen_activation": false,
-    "use_operation_check_initial": true,
+    "use_operation_check_initial": false,
     "use_operation_check_sequence": true,
     "op_check_coord": [
-        771,
-        245
+        418,
+        187
     ],
     "op_check_color": [
-        153,
-        0,
-        201
+        213,
+        213,
+        213
     ],
-    "op_check_max_retries": 3,
+    "op_check_max_retries": 5,
     "op_check_retry_interval": 0.5,
     "empty_coord": [
-        569,
-        179
+        582,
+        183
     ],
     "use_search_delay": false,
     "use_initial_search": true,
-    "research_delay": 0.7,
-    "area_delay": 0.4,
+    "research_delay": 0.225,
+    "area_delay": 0.6,
     "search_delay": 0.0,
-    "total_duration_sec": 1800,
-    "active_search_duration_sec": 20,
-    "wait_duration_sec": 2,
+    "total_duration_sec": 300,
+    "active_search_duration_sec": 187,
+    "wait_duration_sec": 100,
     "search_time_tolerance_sec": 5,
     "areas": {
         "1": {
             "name": "구역1",
             "use": true,
             "click_coord": [
-                811,
-                454
-            ],
-            "clicks": 1,
-            "offset": 2,
-            "use_color": true,
-            "color": [
-                153,
-                0,
-                201
-            ],
-            "sub_areas": [
-                {
-                    "p1": [
-                        151,
-                        267
-                    ],
-                    "p2": [
-                        215,
-                        334
-                    ],
-                    "direction": "↑←"
-                },
-                {
-                    "p1": [
-                        224,
-                        232
-                    ],
-                    "p2": [
-                        315,
-                        259
-                    ],
-                    "direction": "←↓"
-                }
-            ]
-        },
-        "2": {
-            "name": "구역2",
-            "use": false,
-            "click_coord": [
-                734,
-                320
+                648,
+                669
             ],
             "clicks": 1,
             "offset": 2,
             "use_color": false,
             "color": [
-                0,
-                204,
-                204
+                209,
+                202,
+                249
             ],
             "sub_areas": [
                 {
                     "p1": [
-                        67,
-                        265
+                        453,
+                        423
                     ],
                     "p2": [
-                        356,
-                        412
+                        605,
+                        689
                     ],
-                    "direction": "←↓"
-                },
-                {
-                    "p1": [
-                        218,
-                        208
-                    ],
-                    "p2": [
-                        369,
-                        409
-                    ],
-                    "direction": "←↓"
-                }
-            ]
-        },
-        "3": {
-            "name": "구역3",
-            "use": false,
-            "click_coord": [
-                716,
-                304
-            ],
-            "clicks": 2,
-            "offset": 2,
-            "use_color": false,
-            "color": [
-                0,
-                204,
-                204
-            ],
-            "sub_areas": [
-                {
-                    "p1": [
-                        67,
-                        265
-                    ],
-                    "p2": [
-                        356,
-                        412
-                    ],
-                    "direction": "←↓"
-                },
-                {
-                    "p1": [
-                        241,
-                        270
-                    ],
-                    "p2": [
-                        369,
-                        409
-                    ],
-                    "direction": "←↓"
+                    "direction": "↓↔"
                 }
             ]
         }
     },
     "area_order": [
-        1,
-        2,
-        3
+        1
     ]
 }
