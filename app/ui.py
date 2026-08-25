@@ -78,6 +78,8 @@ class AppUI:
             SearchDirection.CENTER_BOTTOM_TO_TOP: "↑↔ (x)",
             SearchDirection.CENTER_LEFT_TO_RIGHT: "→↕ (c)",
             SearchDirection.CENTER_RIGHT_TO_LEFT: "←↕ (v)",
+            SearchDirection.CENTER_COLUMN_TOP_TO_BOTTOM: "↔↓ (t)",
+            SearchDirection.CENTER_COLUMN_BOTTOM_TO_TOP: "↔↑ (y)",
             SearchDirection.CENTER_TO_CENTER: "중앙 ☉ (g)",
         }
         self.total_duration_var = tk.StringVar(value=str(c.total_duration_sec))

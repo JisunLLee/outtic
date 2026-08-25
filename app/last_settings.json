@@ -2,20 +2,42 @@
     "initial_areas": [
         {
             "p1": [
-                102,
-                229
+                466,
+                445
             ],
             "p2": [
-                430,
-                342
+                562,
+                479
             ],
-            "direction": "←↓"
+            "direction": "↔↓"
+        },
+        {
+            "p1": [
+                443,
+                427
+            ],
+            "p2": [
+                584,
+                506
+            ],
+            "direction": "↓↔"
+        },
+        {
+            "p1": [
+                318,
+                427
+            ],
+            "p2": [
+                712,
+                692
+            ],
+            "direction": "↓↔"
         }
     ],
     "color": [
-        153,
-        0,
-        201
+        209,
+        202,
+        249
     ],
     "use_secondary_color": false,
     "secondary_color": [
@@ -24,38 +46,38 @@
         133
     ],
     "complete_coord": [
-        800,
-        714
+        1308,
+        1026
     ],
     "color_tolerance": 15,
     "color_area_tolerance": 5,
     "complete_click_delay": 0.1,
-    "use_sequence": true,
+    "use_sequence": false,
     "continuous_search": true,
     "use_space_complete": true,
     "use_screen_activation": false,
     "use_operation_check_initial": false,
     "use_operation_check_sequence": true,
     "op_check_coord": [
-        394,
-        189
+        418,
+        187
     ],
     "op_check_color": [
-        182,
-        181,
-        181
+        213,
+        213,
+        213
     ],
     "op_check_max_retries": 5,
     "op_check_retry_interval": 0.5,
     "use_op_check_secondary": true,
     "op_check_coord2": [
-        727,
-        498
+        413,
+        191
     ],
     "op_check_color2": [
-        255,
-        255,
-        255
+        181,
+        180,
+        181
     ],
     "empty_coord": [
         582,
@@ -63,195 +85,13 @@
     ],
     "use_search_delay": false,
     "use_initial_search": true,
-    "research_delay": 0.225,
+    "research_delay": 0.5,
     "area_delay": 0.6,
     "search_delay": 0.0,
     "total_duration_sec": 300,
     "active_search_duration_sec": 187,
     "wait_duration_sec": 100,
     "search_time_tolerance_sec": 5,
-    "areas": {
-        "1": {
-            "name": "103",
-            "use": true,
-            "click_coord": [
-                816,
-                302
-            ],
-            "clicks": 2,
-            "offset": 2,
-            "use_color": false,
-            "color": [
-                153,
-                0,
-                201
-            ],
-            "sub_areas": [
-                {
-                    "p1": [
-                        231,
-                        229
-                    ],
-                    "p2": [
-                        433,
-                        344
-                    ],
-                    "direction": "↑←"
-                }
-            ]
-        },
-        "2": {
-            "name": "R",
-            "use": true,
-            "click_coord": [
-                842,
-                340
-            ],
-            "clicks": 1,
-            "offset": 2,
-            "use_color": false,
-            "color": [
-                153,
-                0,
-                201
-            ],
-            "sub_areas": [
-                {
-                    "p1": [
-                        505,
-                        640
-                    ],
-                    "p2": [
-                        572,
-                        733
-                    ],
-                    "direction": "←↓"
-                }
-            ]
-        },
-        "3": {
-            "name": "14",
-            "use": true,
-            "click_coord": [
-                804,
-                354
-            ],
-            "clicks": 2,
-            "offset": 2,
-            "use_color": true,
-            "color": [
-                0,
-                204,
-                204
-            ],
-            "sub_areas": [
-                {
-                    "p1": [
-                        103,
-                        228
-                    ],
-                    "p2": [
-                        336,
-                        400
-                    ],
-                    "direction": "←↓"
-                }
-            ]
-        },
-        "4": {
-            "name": "14_2",
-            "use": true,
-            "click_coord": [
-                802,
-                354
-            ],
-            "clicks": 1,
-            "offset": 2,
-            "use_color": true,
-            "color": [
-                0,
-                204,
-                204
-            ],
-            "sub_areas": [
-                {
-                    "p1": [
-                        104,
-                        228
-                    ],
-                    "p2": [
-                        336,
-                        401
-                    ],
-                    "direction": "←↓"
-                }
-            ]
-        },
-        "5": {
-            "name": "VIP",
-            "use": true,
-            "click_coord": [
-                822,
-                242
-            ],
-            "clicks": 1,
-            "offset": 2,
-            "use_color": false,
-            "color": [
-                153,
-                0,
-                201
-            ],
-            "sub_areas": [
-                {
-                    "p1": [
-                        574,
-                        612
-                    ],
-                    "p2": [
-                        696,
-                        698
-                    ],
-                    "direction": "←↓"
-                }
-            ]
-        },
-        "6": {
-            "name": "103",
-            "use": true,
-            "click_coord": [
-                804,
-                300
-            ],
-            "clicks": 6,
-            "offset": 2,
-            "use_color": false,
-            "color": [
-                153,
-                0,
-                201
-            ],
-            "sub_areas": [
-                {
-                    "p1": [
-                        231,
-                        228
-                    ],
-                    "p2": [
-                        432,
-                        342
-                    ],
-                    "direction": "↑←"
-                }
-            ]
-        }
-    },
-    "area_order": [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-    ]
+    "areas": {},
+    "area_order": []
 }

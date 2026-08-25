@@ -415,6 +415,8 @@ class AppController:
                 "↑↔ (x)": SearchDirection.CENTER_BOTTOM_TO_TOP,
                 "→↕ (c)": SearchDirection.CENTER_LEFT_TO_RIGHT,
                 "←↕ (v)": SearchDirection.CENTER_RIGHT_TO_LEFT,
+                "↔↓ (t)": SearchDirection.CENTER_COLUMN_TOP_TO_BOTTOM,
+                "↔↑ (y)": SearchDirection.CENTER_COLUMN_BOTTOM_TO_TOP,
                 "중앙 ☉ (g)": SearchDirection.CENTER_TO_CENTER,
             }
             self.use_initial_search = self.ui.use_initial_search_var.get()
@@ -1382,6 +1384,8 @@ class AppController:
                 'x': SearchDirection.CENTER_BOTTOM_TO_TOP, 'ㅌ': SearchDirection.CENTER_BOTTOM_TO_TOP,
                 'c': SearchDirection.CENTER_LEFT_TO_RIGHT, 'ㅊ': SearchDirection.CENTER_LEFT_TO_RIGHT,
                 'v': SearchDirection.CENTER_RIGHT_TO_LEFT, 'ㅍ': SearchDirection.CENTER_RIGHT_TO_LEFT,
+                't': SearchDirection.CENTER_COLUMN_TOP_TO_BOTTOM, 'ㅅ': SearchDirection.CENTER_COLUMN_TOP_TO_BOTTOM,
+                'y': SearchDirection.CENTER_COLUMN_BOTTOM_TO_TOP, 'ㅛ': SearchDirection.CENTER_COLUMN_BOTTOM_TO_TOP,
                 'g': SearchDirection.CENTER_TO_CENTER, 'ㅎ': SearchDirection.CENTER_TO_CENTER,
             }
 

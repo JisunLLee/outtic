@@ -19,6 +19,8 @@ class SearchDirection(Enum):
     CENTER_BOTTOM_TO_TOP = "↑↔"
     CENTER_LEFT_TO_RIGHT = "→↕"
     CENTER_RIGHT_TO_LEFT = "←↕"
+    CENTER_COLUMN_TOP_TO_BOTTOM = "↔↓"
+    CENTER_COLUMN_BOTTOM_TO_TOP = "↔↑"
     CENTER_TO_CENTER = "☉"
 
 class ColorFinder:
@@ -182,6 +184,27 @@ class ColorFinder:
                         y_down = center_y + offset
                         if y_down < height:
                             found, result = check_and_resolve(x, y_down)
+                            if found:
+                                return result
+        # 열(column) 중앙 우선 탐색: 중앙 열부터 좌우로 확장하며 열을 고르고,
+        # 고른 열 안에서는 위→아래(또는 아래→위)로 순차 탐색합니다.
+        elif direction in [SearchDirection.CENTER_COLUMN_TOP_TO_BOTTOM, SearchDirection.CENTER_COLUMN_BOTTOM_TO_TOP]:
+            y_range = range(height) if direction == SearchDirection.CENTER_COLUMN_TOP_TO_BOTTOM else range(height - 1, -1, -1)
+            center_x = width // 2
+            for offset in range(max(center_x, width - center_x)):
+                # 중앙 -> 좌
+                x_left = center_x - offset
+                if 0 <= x_left < width:
+                    for y in y_range:
+                        found, result = check_and_resolve(x_left, y)
+                        if found:
+                            return result
+                # 중앙 -> 우 (offset이 0일때 중복 방지)
+                if offset > 0:
+                    x_right = center_x + offset
+                    if x_right < width:
+                        for y in y_range:
+                            found, result = check_and_resolve(x_right, y)
                             if found:
                                 return result
         # 중앙에서 외곽으로 확장 탐색
