@@ -485,8 +485,52 @@ class AppController:
             print(error_msg) 
             return False
 
+    def _build_initial_area_markers(self) -> list:
+        """기본 탐색 영역 목록(순서대로 탐색)을 시각화 마커 목록으로 만듭니다."""
+        markers = []
+        for idx, area_id in enumerate(self.initial_area_order):
+            x1, y1, x2, y2 = self.initial_areas[area_id]['search_area']
+            markers.append({
+                'type': 'area',
+                'rect': (x1, y1, x2 - x1, y2 - y1),
+                'color': 'red',
+                'alpha': 0.3,
+                'text': f'기본 영역{idx + 1}'
+            })
+        return markers
+
+    def _build_zone_markers(self, area_number: int) -> list:
+        """지정된 구역 하나의 영역(sub-area)들과 클릭 좌표를 시각화 마커 목록으로 만듭니다."""
+        settings = self.areas.get(area_number)
+        if not settings or not settings['use'] or settings['click_coord'] == (0, 0):
+            return []
+
+        area_overlay_colors = ['cyan', 'magenta', 'yellow', 'lime', 'orange', 'purple']
+        marker_color = area_overlay_colors[(area_number - 1) % len(area_overlay_colors)]
+
+        markers = []
+        area_name = settings.get('name', f'구역{area_number}')
+        for idx, sub_id in enumerate(settings['sub_area_order']):
+            sub_settings = settings['sub_areas'][sub_id]
+            sx1, sy1, sx2, sy2 = sub_settings['search_area']
+            markers.append({
+                'type': 'area',
+                'rect': (sx1, sy1, sx2 - sx1, sy2 - sy1),
+                'color': marker_color,
+                'alpha': 0.4,
+                'text': f"{area_name} 영역{idx + 1}"
+            })
+
+        markers.append({
+            'type': 'point',
+            'text': settings.get('name', str(area_number)),
+            'pos': settings['click_coord'],
+            'color': marker_color
+        })
+        return markers
+
     def show_area(self):
-        """UI에 현재 설정된 탐색 영역과 주요 좌표를 표시하도록 요청합니다."""
+        """UI에 현재 설정된 모든 탐색 영역과 주요 좌표를 표시하도록 요청합니다."""
         if not self.ui: return
 
         if not self.apply_settings():
@@ -495,17 +539,7 @@ class AppController:
         visual_steps = []
 
         # 1. 기본 탐색 영역들 (순서대로 탐색하는 영역 목록을 한꺼번에 표시)
-        initial_area_markers = []
-        for idx, area_id in enumerate(self.initial_area_order):
-            x1, y1, x2, y2 = self.initial_areas[area_id]['search_area']
-            initial_area_markers.append({
-                'type': 'area',
-                'rect': (x1, y1, x2 - x1, y2 - y1),
-                'color': 'red',
-                'alpha': 0.3,
-                'text': f'기본 영역{idx + 1}'
-            })
-        visual_steps.append(initial_area_markers)
+        visual_steps.append(self._build_initial_area_markers())
 
         # 2. 완료 좌표
         visual_steps.append([{
@@ -517,36 +551,44 @@ class AppController:
 
         # 3. 구역별 설정 (켜져 있을 때만)
         if self.use_sequence:
-            area_overlay_colors = ['cyan', 'magenta', 'yellow', 'lime', 'orange', 'purple']
             for area_number in self.area_order:
-                settings = self.areas.get(area_number)
-                if settings and settings['use'] and settings['click_coord'] != (0, 0):
-                    marker_color = area_overlay_colors[(area_number - 1) % len(area_overlay_colors)]
-                    
-                    step_markers = []
-                    # 구역 내 영역(sub-area)들을 순서대로 모두 표시
-                    area_name = settings.get('name', f'구역{area_number}')
-                    for idx, sub_id in enumerate(settings['sub_area_order']):
-                        sub_settings = settings['sub_areas'][sub_id]
-                        sx1, sy1, sx2, sy2 = sub_settings['search_area']
-                        step_markers.append({
-                            'type': 'area',
-                            'rect': (sx1, sy1, sx2 - sx1, sy2 - sy1),
-                            'color': marker_color,
-                            'alpha': 0.4,
-                            'text': f"{area_name} 영역{idx + 1}"
-                        })
-
-                    # 구역 클릭 좌표
-                    step_markers.append({
-                        'type': 'point',
-                        'text': settings.get('name', str(area_number)),
-                        'pos': settings['click_coord'],
-                        'color': marker_color
-                    })
-                    visual_steps.append(step_markers)
+                zone_markers = self._build_zone_markers(area_number)
+                if zone_markers:
+                    visual_steps.append(zone_markers)
 
         self.ui.display_visual_aids(visual_steps)
+
+    def show_initial_area(self):
+        """'기본' 섹션의 탐색 영역들과 완료 좌표만 표시하도록 요청합니다."""
+        if not self.ui: return
+
+        if not self.apply_settings():
+            return
+
+        visual_steps = [
+            self._build_initial_area_markers(),
+            [{
+                'type': 'point',
+                'text': '완료',
+                'pos': self.complete_coord,
+                'color': '#50E3C2'
+            }]
+        ]
+        self.ui.display_visual_aids(visual_steps)
+
+    def show_zone_area(self, area_number: int):
+        """지정된 구역 하나의 영역들과 클릭 좌표만 표시하도록 요청합니다."""
+        if not self.ui: return
+
+        if not self.apply_settings():
+            return
+
+        zone_markers = self._build_zone_markers(area_number)
+        if not zone_markers:
+            self.ui.update_status("이 구역은 탐색이 꺼져있거나 클릭 좌표가 설정되지 않았습니다.")
+            return
+
+        self.ui.display_visual_aids([zone_markers])
 
     def _serialize_initial_areas(self) -> list:
         """기본 탐색 영역 목록을 JSON 직렬화 가능한 리스트로 변환합니다."""

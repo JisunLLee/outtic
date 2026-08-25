@@ -203,7 +203,12 @@ class AppUI:
         # Part 1: 완료 좌표
         self._create_value_button_row(left_frame, self.complete_coord_var, "완료", command=lambda: self.controller.start_coordinate_picker('complete')).pack(side=tk.LEFT)
       
-        # Part 2: 완료 선택 딜레이
+        # Part 2: 완료 선택 딜레이, 영역확인
+        initial_check_area_button = tk.Button(right_frame, text="영역확인",
+                                              activeforeground="white",
+                                              activebackground="#555555",
+                                              command=self.controller.show_initial_area)
+        initial_check_area_button.pack(side=tk.RIGHT)
         self._create_labeled_entry(right_frame, "완료 딜레이:", self.complete_delay_var).pack(expand=True, fill=tk.X, side=tk.LEFT)
 
         # --- 탐색 화면 정상 여부 확인용 그룹 ---
@@ -561,6 +566,10 @@ class AppUI:
                                  activeforeground="white",
                                  activebackground="#555555",
                                  command=lambda: self.controller.start_color_picker(f'area_{area_number}_color'))
+        zone_check_area_button = tk.Button(color_row, text="영역확인",
+                                           activeforeground="white",
+                                           activebackground="#555555",
+                                           command=lambda: self.controller.show_zone_area(area_number))
 
         def toggle_color_state():
             """'기본' 체크박스 상태에 따라 색상 위젯들을 활성화/비활성화하고 값을 동기화합니다."""
@@ -589,6 +598,7 @@ class AppUI:
                                                command=toggle_color_state)
         use_color_checkbutton.pack(side=tk.LEFT)
         self._create_color_preview(color_row, vars['color_var']).pack(side=tk.LEFT, padx=(0, 5))
+        zone_check_area_button.pack(side=tk.RIGHT)
         color_button.pack(side=tk.RIGHT)
         color_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
 

@@ -2,31 +2,20 @@
     "initial_areas": [
         {
             "p1": [
-                453,
-                423
+                102,
+                229
             ],
             "p2": [
-                605,
-                689
+                430,
+                342
             ],
-            "direction": "↓↔"
-        },
-        {
-            "p1": [
-                326,
-                425
-            ],
-            "p2": [
-                743,
-                718
-            ],
-            "direction": "↓↔"
+            "direction": "←↓"
         }
     ],
     "color": [
-        209,
-        202,
-        249
+        153,
+        0,
+        201
     ],
     "use_secondary_color": false,
     "secondary_color": [
@@ -35,8 +24,8 @@
         133
     ],
     "complete_coord": [
-        1308,
-        1026
+        800,
+        714
     ],
     "color_tolerance": 15,
     "color_area_tolerance": 5,
@@ -48,13 +37,13 @@
     "use_operation_check_initial": false,
     "use_operation_check_sequence": true,
     "op_check_coord": [
-        633,
-        337
+        394,
+        189
     ],
     "op_check_color": [
-        202,
-        207,
-        218
+        182,
+        181,
+        181
     ],
     "op_check_max_retries": 5,
     "op_check_retry_interval": 0.5,
@@ -63,7 +52,7 @@
         183
     ],
     "use_search_delay": false,
-    "use_initial_search": false,
+    "use_initial_search": true,
     "research_delay": 0.225,
     "area_delay": 0.6,
     "search_delay": 0.0,
@@ -73,77 +62,186 @@
     "search_time_tolerance_sec": 5,
     "areas": {
         "1": {
-            "name": "구역1",
+            "name": "103",
             "use": true,
             "click_coord": [
-                1024,
-                476
+                816,
+                302
             ],
-            "clicks": 1,
+            "clicks": 2,
             "offset": 2,
             "use_color": false,
             "color": [
-                209,
-                202,
-                249
+                153,
+                0,
+                201
             ],
             "sub_areas": [
                 {
                     "p1": [
-                        307,
-                        415
+                        231,
+                        229
                     ],
                     "p2": [
-                        720,
-                        577
+                        433,
+                        344
                     ],
-                    "direction": "↓↔"
+                    "direction": "↑←"
                 }
             ]
         },
         "2": {
-            "name": "구역2",
+            "name": "R",
             "use": true,
             "click_coord": [
-                734,
-                320
+                842,
+                340
             ],
             "clicks": 1,
             "offset": 2,
             "use_color": false,
             "color": [
-                209,
-                202,
-                249
+                153,
+                0,
+                201
             ],
             "sub_areas": [
                 {
                     "p1": [
-                        453,
-                        423
+                        505,
+                        640
                     ],
                     "p2": [
-                        605,
-                        689
+                        572,
+                        733
                     ],
-                    "direction": "↓↔"
-                },
+                    "direction": "←↓"
+                }
+            ]
+        },
+        "3": {
+            "name": "14",
+            "use": true,
+            "click_coord": [
+                804,
+                354
+            ],
+            "clicks": 2,
+            "offset": 2,
+            "use_color": true,
+            "color": [
+                0,
+                204,
+                204
+            ],
+            "sub_areas": [
                 {
                     "p1": [
-                        326,
-                        425
+                        103,
+                        228
                     ],
                     "p2": [
-                        743,
-                        718
+                        336,
+                        400
                     ],
-                    "direction": "↓↔"
+                    "direction": "←↓"
+                }
+            ]
+        },
+        "4": {
+            "name": "14_2",
+            "use": true,
+            "click_coord": [
+                802,
+                354
+            ],
+            "clicks": 1,
+            "offset": 2,
+            "use_color": true,
+            "color": [
+                0,
+                204,
+                204
+            ],
+            "sub_areas": [
+                {
+                    "p1": [
+                        104,
+                        228
+                    ],
+                    "p2": [
+                        336,
+                        401
+                    ],
+                    "direction": "←↓"
+                }
+            ]
+        },
+        "5": {
+            "name": "VIP",
+            "use": true,
+            "click_coord": [
+                822,
+                242
+            ],
+            "clicks": 1,
+            "offset": 2,
+            "use_color": false,
+            "color": [
+                153,
+                0,
+                201
+            ],
+            "sub_areas": [
+                {
+                    "p1": [
+                        574,
+                        612
+                    ],
+                    "p2": [
+                        696,
+                        698
+                    ],
+                    "direction": "←↓"
+                }
+            ]
+        },
+        "6": {
+            "name": "103",
+            "use": true,
+            "click_coord": [
+                804,
+                300
+            ],
+            "clicks": 6,
+            "offset": 2,
+            "use_color": false,
+            "color": [
+                153,
+                0,
+                201
+            ],
+            "sub_areas": [
+                {
+                    "p1": [
+                        231,
+                        228
+                    ],
+                    "p2": [
+                        432,
+                        342
+                    ],
+                    "direction": "↑←"
                 }
             ]
         }
     },
     "area_order": [
         1,
-        2
+        2,
+        3,
+        4,
+        5,
+        6
     ]
 }
