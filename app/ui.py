@@ -54,6 +54,9 @@ class AppUI:
         self.op_check_color_var = tk.StringVar(value=str(c.op_check_color))
         self.op_check_max_retries_var = tk.StringVar(value=str(c.op_check_max_retries))
         self.op_check_retry_interval_var = tk.StringVar(value=str(int(c.op_check_retry_interval * 100)))
+        self.use_op_check_secondary_var = tk.BooleanVar(value=c.use_op_check_secondary)
+        self.op_check_coord2_var = tk.StringVar(value=str(c.op_check_coord2))
+        self.op_check_color2_var = tk.StringVar(value=str(c.op_check_color2))
         self.empty_coord_var = tk.StringVar(value=str(c.empty_coord))
 
         self.use_sequence_var = tk.BooleanVar(value=c.use_sequence)
@@ -255,13 +258,41 @@ class AppUI:
                                                command=lambda: self.controller.start_combined_picker('op_check'))
         self.op_check_combined_btn.pack(side=tk.LEFT, padx=(5,0))
 
+        # Row 2b: 2순위 화면 확인 좌표/색상 (1순위 좌표/색상이 불일치할 때 추가로 확인)
+        op_check2_row = tk.Frame(self.operation_check_group)
+        op_check2_row.pack(fill=tk.X, expand=True, pady=(4, 0))
+        self.op_check_secondary_cb = tk.Checkbutton(op_check2_row, text="2순위",
+                                                    variable=self.use_op_check_secondary_var,
+                                                    fg="white", selectcolor="#2e2e2e",
+                                                    activebackground="#2e2e2e", highlightthickness=0,
+                                                    command=self._toggle_operation_check_state)
+        self.op_check_secondary_cb.pack(side=tk.LEFT)
+
+        self.op_check2_fields = tk.Frame(op_check2_row)
+        self.op_check2_fields.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5, 0))
+        _, (left_frame2, right_frame2) = self._create_split_container(self.op_check2_fields, weights=[1, 1])
+
+        tk.Entry(left_frame2, textvariable=self.op_check_coord2_var, bg="#444444", fg="white",
+                 insertbackground='white', borderwidth=0, highlightthickness=0, width=12,
+                 validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        self._create_color_preview(right_frame2, self.op_check_color2_var).pack(side=tk.LEFT, padx=(0, 5))
+
+        tk.Entry(right_frame2, textvariable=self.op_check_color2_var, bg="#444444", fg="white",
+                 insertbackground='white', borderwidth=0, highlightthickness=0, width=12,
+                 validate="key", validatecommand=self.tuple_vcmd).pack(side=tk.LEFT, expand=True, fill=tk.X)
+        self.op_check_combined_btn2 = tk.Button(right_frame2, text="좌표&색상",
+                                                activeforeground="white", activebackground="#555555",
+                                                command=lambda: self.controller.start_combined_picker('op_check2'))
+        self.op_check_combined_btn2.pack(side=tk.LEFT, padx=(5,0))
+
         # Row 3: 재시도 설정 (횟수, 간격) - 두 필드를 한 grid로 묶어 라벨/입력창 열을 정렬
         op_retry_grid = self._create_grid_group(self.operation_check_group)
         retry_entry = self._add_grid_field(op_retry_grid, 0, 0, "재시도 횟수:", self.op_check_max_retries_var, entry_width=4)
         interval_entry = self._add_grid_field(op_retry_grid, 0, 1, "간격(10ms):", self.op_check_retry_interval_var, entry_width=4)
 
         # 위젯 상태 관리를 위해 내부 프레임 저장
-        self.op_check_inner_widgets = [left_frame, right_frame, op_retry_grid]
+        self.op_check_inner_widgets = [left_frame, right_frame, op_check2_row, op_retry_grid]
 
         # --- 상태 메시지 및 구역/기본 탐색 토글 ---
         status_and_toggle_container = tk.Frame(main_frame)
@@ -1247,6 +1278,9 @@ class AppUI:
         self.op_check_color_var.set(str(c.op_check_color))
         self.op_check_max_retries_var.set(str(c.op_check_max_retries))
         self.op_check_retry_interval_var.set(str(int(c.op_check_retry_interval * 100)))
+        self.use_op_check_secondary_var.set(c.use_op_check_secondary)
+        self.op_check_coord2_var.set(str(c.op_check_coord2))
+        self.op_check_color2_var.set(str(c.op_check_color2))
         self.empty_coord_var.set(str(c.empty_coord))
         self.use_search_delay_var.set(c.use_search_delay)
         self.use_sequence_var.set(c.use_sequence)
@@ -1308,6 +1342,26 @@ class AppUI:
 
         for parent in self.op_check_inner_widgets:
             set_state_inner(parent)
+
+        # 2순위 좌표/색상 입력 필드(체크박스 제외)는 전체 그룹이 켜져 있고,
+        # '2순위' 체크박스도 켜져 있을 때만 활성화합니다. 체크박스 자체는 위의
+        # 재귀 토글로 이미 전체 그룹 상태를 반영했으므로 여기서는 건드리지 않습니다.
+        secondary_enabled = is_enabled and self.use_op_check_secondary_var.get()
+        secondary_state = 'normal' if secondary_enabled else 'disabled'
+        secondary_entry_bg = '#444444' if secondary_enabled else '#555555'
+
+        def set_state_fields(w):
+            try:
+                if isinstance(w, (tk.Entry, tk.Button)):
+                    w.config(state=secondary_state)
+                if isinstance(w, tk.Entry):
+                    w.config(disabledbackground=secondary_entry_bg)
+                for child in w.winfo_children():
+                    set_state_fields(child)
+            except tk.TclError:
+                pass
+
+        set_state_fields(self.op_check2_fields)
 
     def _toggle_search_delay_state(self):
         """탐색 딜레이 체크박스 상태에 따라 입력창의 활성화 여부를 토글합니다."""

@@ -47,6 +47,16 @@
     ],
     "op_check_max_retries": 5,
     "op_check_retry_interval": 0.5,
+    "use_op_check_secondary": true,
+    "op_check_coord2": [
+        727,
+        498
+    ],
+    "op_check_color2": [
+        255,
+        255,
+        255
+    ],
     "empty_coord": [
         582,
         183

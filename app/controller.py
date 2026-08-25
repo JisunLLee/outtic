@@ -80,6 +80,9 @@ class AppController:
         self.op_check_color = (0, 0, 0)
         self.op_check_max_retries = 3
         self.op_check_retry_interval = 0.5
+        self.use_op_check_secondary = False # 탐색 화면 정상 여부 확인 - 2순위 좌표/색상 사용 여부
+        self.op_check_coord2 = (0, 0)
+        self.op_check_color2 = (0, 0, 0)
         self.empty_coord = (0, 0) # 빈 공간 좌표
         self.use_search_delay = False # 탐색 딜레이 사용 여부
         self.search_delay = 0.20 # 탐색 대기 (초)
@@ -425,6 +428,9 @@ class AppController:
             self.op_check_color = ast.literal_eval(self.ui.op_check_color_var.get())
             self.op_check_max_retries = int(self.ui.op_check_max_retries_var.get())
             self.op_check_retry_interval = int(self.ui.op_check_retry_interval_var.get()) / 100.0
+            self.use_op_check_secondary = self.ui.use_op_check_secondary_var.get()
+            self.op_check_coord2 = ast.literal_eval(self.ui.op_check_coord2_var.get())
+            self.op_check_color2 = ast.literal_eval(self.ui.op_check_color2_var.get())
             self.empty_coord = ast.literal_eval(self.ui.empty_coord_var.get())
             self.total_duration_sec = int(self.ui.total_duration_var.get())
             self.active_search_duration_sec = int(self.ui.active_search_duration_var.get())
@@ -709,6 +715,9 @@ class AppController:
             'op_check_color': self.op_check_color,
             'op_check_max_retries': self.op_check_max_retries,
             'op_check_retry_interval': self.op_check_retry_interval,
+            'use_op_check_secondary': self.use_op_check_secondary,
+            'op_check_coord2': self.op_check_coord2,
+            'op_check_color2': self.op_check_color2,
             'empty_coord': self.empty_coord,
             'use_search_delay': self.use_search_delay,
             'use_initial_search': self.use_initial_search,
@@ -779,6 +788,9 @@ class AppController:
             'op_check_color': self.op_check_color,
             'op_check_max_retries': self.op_check_max_retries,
             'op_check_retry_interval': self.op_check_retry_interval,
+            'use_op_check_secondary': self.use_op_check_secondary,
+            'op_check_coord2': self.op_check_coord2,
+            'op_check_color2': self.op_check_color2,
             'empty_coord': self.empty_coord,
             'use_search_delay': self.use_search_delay,
             'use_initial_search': self.use_initial_search,
@@ -842,6 +854,9 @@ class AppController:
             self.op_check_color = tuple(settings_data.get('op_check_color', self.op_check_color))
             self.op_check_max_retries = int(settings_data.get('op_check_max_retries', self.op_check_max_retries))
             self.op_check_retry_interval = float(settings_data.get('op_check_retry_interval', self.op_check_retry_interval))
+            self.use_op_check_secondary = bool(settings_data.get('use_op_check_secondary', self.use_op_check_secondary))
+            self.op_check_coord2 = tuple(settings_data.get('op_check_coord2', self.op_check_coord2))
+            self.op_check_color2 = tuple(settings_data.get('op_check_color2', self.op_check_color2))
             self.empty_coord = tuple(settings_data.get('empty_coord', self.empty_coord))
             self.use_search_delay = bool(settings_data.get('use_search_delay', self.use_search_delay))
             self.research_delay = float(settings_data.get('research_delay', self.research_delay))
@@ -916,6 +931,9 @@ class AppController:
             self.op_check_color = tuple(settings_data.get('op_check_color', self.op_check_color))
             self.op_check_max_retries = int(settings_data.get('op_check_max_retries', self.op_check_max_retries))
             self.op_check_retry_interval = float(settings_data.get('op_check_retry_interval', self.op_check_retry_interval))
+            self.use_op_check_secondary = bool(settings_data.get('use_op_check_secondary', self.use_op_check_secondary))
+            self.op_check_coord2 = tuple(settings_data.get('op_check_coord2', self.op_check_coord2))
+            self.op_check_color2 = tuple(settings_data.get('op_check_color2', self.op_check_color2))
             self.empty_coord = tuple(settings_data.get('empty_coord', self.empty_coord))
             self.use_search_delay = bool(settings_data.get('use_search_delay', self.use_search_delay))
             self.research_delay = float(settings_data.get('research_delay', self.research_delay))
@@ -960,6 +978,7 @@ class AppController:
         if coord_key == 'complete': display_name = '완료'
         elif coord_key == 'empty_coord': display_name = '빈공간'
         elif coord_key == 'area_op_check_coord': display_name = '화면확인 좌표'
+        elif coord_key == 'area_op_check_coord2': display_name = '화면확인 2순위 좌표'
         elif coord_key.startswith('initial_'):
             # 예: 'initial_1_p1' -> 기본 영역1 ↖영역
             parts = coord_key.split('_')
@@ -1012,6 +1031,9 @@ class AppController:
         elif coord_key == 'area_op_check_coord':
             self.ui.op_check_coord_var.set(str(new_pos))
             self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
+        elif coord_key == 'area_op_check_coord2':
+            self.ui.op_check_coord2_var.set(str(new_pos))
+            self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
         elif coord_key.startswith('area_') and '_sub_' in coord_key: # 예: 'area_1_sub_2_p1'
             try:
                 parts = coord_key.split('_')
@@ -1056,6 +1078,7 @@ class AppController:
         if color_key == 'main_color': display_name = '기본 색상'
         elif color_key == 'secondary_color': display_name = '2순위 색상'
         elif color_key == 'area_op_check_color': display_name = '화면확인 색상'
+        elif color_key == 'area_op_check_color2': display_name = '화면확인 2순위 색상'
         elif color_key.startswith('area_'): # 예: 'area_1_color'
             area_num = color_key.split('_')[1] # '1'
             display_name = f'구역{area_num} 색상'
@@ -1085,6 +1108,9 @@ class AppController:
             self.ui.queue_task(lambda: self.ui.flash_setting_change('global_setting_change'))
         elif color_key == 'area_op_check_color':
             self.ui.op_check_color_var.set(str(new_color))
+            self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
+        elif color_key == 'area_op_check_color2':
+            self.ui.op_check_color2_var.set(str(new_color))
             self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
         elif color_key.startswith('area_'): # 예: 'area_1_color'
             try:
@@ -1122,6 +1148,10 @@ class AppController:
         if prefix == 'op_check':
             self.ui.op_check_coord_var.set(str(pos))
             self.ui.op_check_color_var.set(str(color))
+            self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
+        elif prefix == 'op_check2':
+            self.ui.op_check_coord2_var.set(str(pos))
+            self.ui.op_check_color2_var.set(str(color))
             self.ui.queue_task(lambda: self.ui.flash_setting_change('area_setting_change'))
 
         self.ui.update_status(f"'{display_name}' 저장 완료: 좌표{pos}, 색상{color}")
@@ -1428,15 +1458,27 @@ class AppController:
         for i in range(max_retries):
             # 1x1 영역을 탐색하여 색상이 일치하는지 확인 (Retina 스케일링이 적용된 ColorFinder 로직 재사용)
             found = self.color_finder.find_color_in_area(
-                (x, y, x + 1, y + 1), 
-                self.op_check_color, 
-                self.color_tolerance, 
+                (x, y, x + 1, y + 1),
+                self.op_check_color,
+                self.color_tolerance,
                 SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
             )
-            
+
             if found is not None:
                 return True
-            
+
+            # 1순위가 실패했을 때, 2순위 좌표/색상이 켜져 있으면 이어서 확인합니다.
+            if self.use_op_check_secondary:
+                x2, y2 = self.op_check_coord2
+                found2 = self.color_finder.find_color_in_area(
+                    (x2, y2, x2 + 1, y2 + 1),
+                    self.op_check_color2,
+                    self.color_tolerance,
+                    SearchDirection.TOP_LEFT_TO_BOTTOM_RIGHT
+                )
+                if found2 is not None:
+                    return True
+
             # 콘솔 로그 출력
             print(f"--- [화면 확인 실패] ({i+1}/{max_retries}) {retry_delay}초 후 재시도... ---")
 
