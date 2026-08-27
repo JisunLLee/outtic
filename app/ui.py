@@ -152,7 +152,7 @@ class AppUI:
 
     def _setup_ui(self):
         """메인 UI를 생성하고 배치합니다."""
-        self.root.title("루오틱 For 히기 v.3.3.3")
+        self.root.title("루오틱 For 히기 v.3.3.4")
 
         window_width = 400
         # 4개의 구역이 모두 보이도록 창 높이 설정합니다.
@@ -171,6 +171,37 @@ class AppUI:
 
         main_frame = tk.Frame(self.root, padx=10, pady=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # --- 액션 버튼 ---
+        # side=BOTTOM으로 창의 맨 아래에 고정합니다. pack()은 호출된 "순서"대로 공간을
+        # 나눠주기 때문에, 다른 위젯들보다 먼저 이 프레임을 pack해야 나머지 내용이 아무리
+        # 많아도 이 자리가 먼저 확보됩니다. (나중에 pack하면 위쪽 내용이 이미 전체 공간을
+        # 다 차지해버려서 이 프레임이 밀려나 안 보이게 됩니다.)
+        action_frame = tk.Frame(main_frame)
+        action_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        action_frame.grid_columnconfigure(0, weight=1)
+        action_frame.grid_columnconfigure(1, weight=1)
+        action_frame.grid_columnconfigure(2, weight=1)
+        action_frame.grid_columnconfigure(3, weight=1)
+
+        self.load_button = tk.Button(action_frame, text="불러오기",
+                                     activeforeground="white", activebackground="#555555",
+                                     command=self.controller.load_settings)
+        self.load_button.grid(row=0, column=0, sticky=tk.EW, padx=(0, 5))
+        self.save_button = tk.Button(action_frame, text="저장하기",
+                                     activeforeground="white", activebackground="#555555",
+                                     command=self.controller.save_settings)
+        self.save_button.grid(row=0, column=1, sticky=tk.EW, padx=(0, 5))
+
+        self.area_button = tk.Button(action_frame, text="영역확인",
+                                     activeforeground="white", activebackground="#555555",
+                                     command=self.controller.show_area)
+        self.area_button.grid(row=0, column=2, sticky=tk.EW, padx=(0, 5))
+
+        self.find_button = tk.Button(action_frame, text="찾기(Shift x2 / ESC)",
+                                     activeforeground="white", activebackground="#555555",
+                                     command=self.controller.toggle_search)
+        self.find_button.grid(row=0, column=3, sticky=tk.EW)
 
         # --- 기본 설정 그룹 ---
         basic_group = self._create_labeled_frame(main_frame, "기본", name="basic_group")
@@ -448,35 +479,6 @@ class AppUI:
         # 구역 추가 버튼 생성 (상태 변경 메서드 호출 전에 생성되어야 함)
         self.add_area_btn = tk.Button(self.scrollable_content_frame, text="+ 구역 추가", command=self.controller.add_area)
         self.add_area_btn.pack(fill=tk.X, pady=10, padx=50)
-
-        # --- 액션 버튼 ---
-        # side=BOTTOM으로 창의 맨 아래에 고정합니다. 구역 목록 등 위쪽 내용이 얼마나
-        # 많든 상관없이 항상 창 하단에 보입니다.
-        action_frame = tk.Frame(main_frame)
-        action_frame.pack(side=tk.BOTTOM, fill=tk.X)
-        action_frame.grid_columnconfigure(0, weight=1)
-        action_frame.grid_columnconfigure(1, weight=1)
-        action_frame.grid_columnconfigure(2, weight=1)
-        action_frame.grid_columnconfigure(3, weight=1)
-
-        self.load_button = tk.Button(action_frame, text="불러오기", 
-                                     activeforeground="white", activebackground="#555555",
-                                     command=self.controller.load_settings)
-        self.load_button.grid(row=0, column=0, sticky=tk.EW, padx=(0, 5))
-        self.save_button = tk.Button(action_frame, text="저장하기", 
-                                     activeforeground="white", activebackground="#555555",
-                                     command=self.controller.save_settings)
-        self.save_button.grid(row=0, column=1, sticky=tk.EW, padx=(0, 5))
-
-        self.area_button = tk.Button(action_frame, text="영역확인", 
-                                     activeforeground="white", activebackground="#555555",
-                                     command=self.controller.show_area)
-        self.area_button.grid(row=0, column=2, sticky=tk.EW, padx=(0, 5))
-        
-        self.find_button = tk.Button(action_frame, text="찾기(Shift x2 / ESC)", 
-                                     activeforeground="white", activebackground="#555555",
-                                     command=self.controller.toggle_search)
-        self.find_button.grid(row=0, column=3, sticky=tk.EW)
 
         # UI가 모두 생성된 후, 오버레이의 초기 상태를 설정합니다.
         self.refresh_area_order()
