@@ -152,7 +152,7 @@ class AppUI:
 
     def _setup_ui(self):
         """메인 UI를 생성하고 배치합니다."""
-        self.root.title("루오틱 For 히기 v.3.3.4")
+        self.root.title("루오틱 For 유리지현 v.3.3.5")
 
         window_width = 400
         # 4개의 구역이 모두 보이도록 창 높이 설정합니다.
