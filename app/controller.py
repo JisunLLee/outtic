@@ -62,6 +62,7 @@ class AppController:
         self.complete_coord = (1314,905)
         self.use_auto_complete = True # 기본 탐색 후 완료 자동 클릭
         self.use_complete_micro_move = False # 완료 클릭 전 미세 이동
+        self.complete_micro_move_width = 2 # 미세 이동의 가로 최대 폭(px)
         self.color_tolerance = 15
         self.color_area_tolerance = 5
         self.complete_click_delay = 0.1 # 완료 클릭 전 딜레이 (초), UI 기본값 10 -> 100ms
@@ -76,6 +77,7 @@ class AppController:
         self.research_delay = 0.7 # 재탐색 대기 (초), UI 기본값 700ms
         self.use_sequence = False # 구역 사용 여부 (UI 체크박스 기본값)
         self.use_space_complete = True # 스페이스 완료 사용 여부
+        self.use_space_complete_click = True # 스페이스 완료 시 버튼 클릭 여부
         self.area_delay = 0.70 # 구역 클릭 전 딜레이 (초), UI 기본값 30 -> 300ms
         self.use_screen_activation = False # 화면 활성화 사용 여부
         self.use_operation_check_initial = False # 탐색 화면 정상 여부 확인 - 기본 탐색에서 확인
@@ -397,6 +399,9 @@ class AppController:
             self.complete_coord = ast.literal_eval(self.ui.complete_coord_var.get())
             self.use_auto_complete = self.ui.use_auto_complete_var.get()
             self.use_complete_micro_move = self.ui.use_complete_micro_move_var.get()
+            self.complete_micro_move_width = int(self.ui.complete_micro_move_width_var.get())
+            if self.complete_micro_move_width < 0:
+                raise ValueError("미세 이동 폭은 0 이상의 정수여야 합니다.")
             self.color = ast.literal_eval(self.ui.color_var.get())
             self.use_secondary_color = self.ui.use_secondary_color_var.get()
             self.secondary_color = ast.literal_eval(self.ui.secondary_color_var.get())
@@ -428,6 +433,7 @@ class AppController:
             self.use_initial_search = self.ui.use_initial_search_var.get()
             self.continuous_search = self.ui.continuous_search_var.get()
             self.use_space_complete = self.ui.use_space_complete_var.get()
+            self.use_space_complete_click = self.ui.use_space_complete_click_var.get()
             self.use_sequence = self.ui.use_sequence_var.get()
             self.use_screen_activation = self.ui.use_screen_activation_var.get()
             self.use_operation_check_initial = self.ui.use_operation_check_initial_var.get()
@@ -712,12 +718,14 @@ class AppController:
             'complete_coord': self.complete_coord,
             'use_auto_complete': self.use_auto_complete,
             'use_complete_micro_move': self.use_complete_micro_move,
+            'complete_micro_move_width': self.complete_micro_move_width,
             'color_tolerance': self.color_tolerance,
             'color_area_tolerance': self.color_area_tolerance,
             'complete_click_delay': self.complete_click_delay,
             'use_sequence': self.use_sequence,
             'continuous_search': self.continuous_search,
             'use_space_complete': self.use_space_complete,
+            'use_space_complete_click': self.use_space_complete_click,
             'use_screen_activation': self.use_screen_activation,
             'use_operation_check_initial': self.use_operation_check_initial,
             'use_operation_check_sequence': self.use_operation_check_sequence,
@@ -787,12 +795,14 @@ class AppController:
             'complete_coord': self.complete_coord,
             'use_auto_complete': self.use_auto_complete,
             'use_complete_micro_move': self.use_complete_micro_move,
+            'complete_micro_move_width': self.complete_micro_move_width,
             'color_tolerance': self.color_tolerance,
             'color_area_tolerance': self.color_area_tolerance,
             'complete_click_delay': self.complete_click_delay,
             'use_sequence': self.use_sequence,
             'continuous_search': self.continuous_search,
             'use_space_complete': self.use_space_complete,
+            'use_space_complete_click': self.use_space_complete_click,
             'use_screen_activation': self.use_screen_activation,
             'use_operation_check_initial': self.use_operation_check_initial,
             'use_operation_check_sequence': self.use_operation_check_sequence,
@@ -853,12 +863,14 @@ class AppController:
             self.complete_coord = tuple(settings_data.get('complete_coord', self.complete_coord))
             self.use_auto_complete = bool(settings_data.get('use_auto_complete', True))
             self.use_complete_micro_move = bool(settings_data.get('use_complete_micro_move', False))
+            self.complete_micro_move_width = max(0, int(settings_data.get('complete_micro_move_width', 2)))
             self.color_tolerance = int(settings_data.get('color_tolerance', self.color_tolerance))
             self.color_area_tolerance = int(settings_data.get('color_area_tolerance', self.color_area_tolerance))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
             self.use_initial_search = bool(settings_data.get('use_initial_search', self.use_initial_search))
             self.continuous_search = bool(settings_data.get('continuous_search', not settings_data.get('exit_after_select', not self.continuous_search)))
             self.use_space_complete = bool(settings_data.get('use_space_complete', self.use_space_complete))
+            self.use_space_complete_click = bool(settings_data.get('use_space_complete_click', True))
             self.use_screen_activation = bool(settings_data.get('use_screen_activation', self.use_screen_activation))
             # 구버전 형식(단일 use_operation_check 플래그)을 두 개의 독립 플래그로 마이그레이션합니다.
             legacy_op_check = settings_data.get('use_operation_check', False)
@@ -932,12 +944,14 @@ class AppController:
             self.complete_coord = tuple(settings_data.get('complete_coord', self.complete_coord))
             self.use_auto_complete = bool(settings_data.get('use_auto_complete', True))
             self.use_complete_micro_move = bool(settings_data.get('use_complete_micro_move', False))
+            self.complete_micro_move_width = max(0, int(settings_data.get('complete_micro_move_width', 2)))
             self.color_tolerance = int(settings_data.get('color_tolerance', self.color_tolerance))
             self.color_area_tolerance = int(settings_data.get('color_area_tolerance', self.color_area_tolerance))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
             self.use_initial_search = bool(settings_data.get('use_initial_search', self.use_initial_search))
             self.continuous_search = bool(settings_data.get('continuous_search', not settings_data.get('exit_after_select', not self.continuous_search)))
             self.use_space_complete = bool(settings_data.get('use_space_complete', self.use_space_complete))
+            self.use_space_complete_click = bool(settings_data.get('use_space_complete_click', True))
             self.use_screen_activation = bool(settings_data.get('use_screen_activation', self.use_screen_activation))
             # 구버전 형식(단일 use_operation_check 플래그)을 두 개의 독립 플래그로 마이그레이션합니다.
             legacy_op_check = settings_data.get('use_operation_check', False)
@@ -1320,7 +1334,8 @@ class AppController:
                 status_message = f"{success_message} 후 완료 위치로 이동 (수동 클릭 대기)"
             else:
                 self.color_finder.click_action(
-                    final_x, final_y, micro_move=self.use_complete_micro_move)
+                    final_x, final_y, micro_move=self.use_complete_micro_move,
+                    micro_move_width=self.complete_micro_move_width)
                 if self.ui:
                     self.ui.queue_task(lambda: self.ui.play_sound(3))
                 status_message = f"{success_message} 후 완료 클릭 ({final_x},{final_y})"
@@ -1368,18 +1383,29 @@ class AppController:
             x += random.randint(-self.color_area_tolerance, self.color_area_tolerance)
             y += random.randint(-self.color_area_tolerance, self.color_area_tolerance)
         
-        if not self.color_finder.click_action(
-                x, y, blocking=False, micro_move=self.use_complete_micro_move):
-            return
-        
-        if self.ui:
-            self.ui.queue_task(lambda: self.ui.play_sound(3))
+        if self.use_space_complete_click:
+            if not self.color_finder.click_action(
+                    x, y, blocking=False, micro_move=self.use_complete_micro_move,
+                    micro_move_width=self.complete_micro_move_width):
+                return
+            if self.ui:
+                self.ui.queue_task(lambda: self.ui.play_sound(3))
+            status_message = f"스페이스바 입력으로 완료 ({x}, {y})"
+        else:
+            # 다른 클릭이 진행 중이면 입력을 쌓지 않고 건너뜁니다.
+            if not self.color_finder.click_lock.acquire(blocking=False):
+                return
+            try:
+                self.color_finder.mouse_controller.position = self.complete_coord
+            finally:
+                self.color_finder.click_lock.release()
+            status_message = f"스페이스바 입력으로 완료 위치로 이동 {self.complete_coord} (수동 클릭 대기)"
 
         if self.continuous_search:
             if self.ui:
-                self.ui.queue_task(lambda: self.ui.update_status(f"스페이스바 입력으로 완료 ({x}, {y}) (계속 탐색 중)"))
+                self.ui.queue_task(lambda msg=status_message: self.ui.update_status(f"{msg} (계속 탐색 중)"))
         else:
-            self.stop_search(message=f"스페이스바 입력으로 완료 ({x}, {y})")
+            self.stop_search(message=status_message)
 
     def on_key_release(self, key):
         if key == keyboard.Key.space:

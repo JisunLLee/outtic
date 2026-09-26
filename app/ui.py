@@ -45,10 +45,12 @@ class AppUI:
         self.complete_coord_var = tk.StringVar(value=str(c.complete_coord))
         self.use_auto_complete_var = tk.BooleanVar(value=c.use_auto_complete)
         self.use_complete_micro_move_var = tk.BooleanVar(value=c.use_complete_micro_move)
+        self.complete_micro_move_width_var = tk.StringVar(value=str(c.complete_micro_move_width))
         self.use_initial_search_var = tk.BooleanVar(value=c.use_initial_search)
         self.continuous_search_var = tk.BooleanVar(value=c.continuous_search)
         self.research_delay_var = tk.StringVar(value=str(int(c.research_delay * 1000)))
         self.use_space_complete_var = tk.BooleanVar(value=c.use_space_complete)
+        self.use_space_complete_click_var = tk.BooleanVar(value=c.use_space_complete_click)
         self.use_screen_activation_var = tk.BooleanVar(value=c.use_screen_activation)
         self.use_operation_check_initial_var = tk.BooleanVar(value=c.use_operation_check_initial)
         self.use_operation_check_sequence_var = tk.BooleanVar(value=c.use_operation_check_sequence)
@@ -252,10 +254,15 @@ class AppUI:
         initial_check_area_button.pack(side=tk.RIGHT)
         self._create_labeled_entry(right_frame, "완료 딜레이:", self.complete_delay_var).pack(expand=True, fill=tk.X, side=tk.LEFT)
 
-        tk.Checkbutton(basic_group, text="클릭 전 미세 이동",
+        micro_move_row = tk.Frame(basic_group)
+        micro_move_row.pack(anchor="w")
+        tk.Checkbutton(micro_move_row, text="클릭 전 미세 이동",
                        variable=self.use_complete_micro_move_var,
                        fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e",
-                       highlightthickness=0).pack(anchor="w")
+                       highlightthickness=0).pack(side=tk.LEFT)
+        tk.Entry(micro_move_row, textvariable=self.complete_micro_move_width_var,
+                 width=4, justify="center").pack(side=tk.LEFT, padx=(4, 2))
+        tk.Label(micro_move_row, text="px", fg="gray").pack(side=tk.LEFT)
 
         # --- 탐색 화면 정상 여부 확인용 그룹 ---
         # (구역 탐색 여부와 무관하게 기본 탐색에서도 쓸 수 있도록 '구역 설정' 밖, 상단에 배치)
@@ -368,6 +375,7 @@ class AppUI:
         toggle_row1.pack(fill=tk.X)
         tk.Checkbutton(toggle_row1, text="기본 탐색 사용", variable=self.use_initial_search_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT)
         tk.Checkbutton(toggle_row1, text="스페이스완료", variable=self.use_space_complete_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT, padx=(10,0))
+        tk.Checkbutton(toggle_row1, text="스페이스완료버튼클릭", variable=self.use_space_complete_click_var, fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e", highlightthickness=0).pack(side=tk.LEFT, padx=(10,0))
 
         toggle_row2 = tk.Frame(toggle_frame)
         toggle_row2.pack(fill=tk.X, pady=(2,0))
@@ -1321,10 +1329,12 @@ class AppUI:
         self.complete_coord_var.set(str(c.complete_coord))
         self.use_auto_complete_var.set(c.use_auto_complete)
         self.use_complete_micro_move_var.set(c.use_complete_micro_move)
+        self.complete_micro_move_width_var.set(str(c.complete_micro_move_width))
         self.use_initial_search_var.set(c.use_initial_search)
         self.continuous_search_var.set(c.continuous_search)
         self.research_delay_var.set(str(int(c.research_delay * 1000)))
         self.use_space_complete_var.set(c.use_space_complete)
+        self.use_space_complete_click_var.set(c.use_space_complete_click)
         self.use_screen_activation_var.set(c.use_screen_activation)
         self.use_operation_check_initial_var.set(c.use_operation_check_initial)
         self.use_operation_check_sequence_var.set(c.use_operation_check_sequence)
