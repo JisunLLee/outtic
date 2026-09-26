@@ -28,10 +28,8 @@ class ColorFinder:
     def __init__(self):
         self.mouse_controller = mouse.Controller()
 
-    # release 시 press 위치에서 벗어나는 픽셀 범위 (최소, 최대)
-    # x는 좌/우 방향 무작위로 이 범위만큼, y는 항상 아래쪽(+)으로 이 범위만큼 차이납니다.
-    RELEASE_JITTER_MIN_PX = 2
-    RELEASE_JITTER_MAX_PX = 4
+    # release 시 press 위치에서 벗어나는 최대 픽셀 수 (x, y 각각 ±이 값 범위의 랜덤)
+    RELEASE_JITTER_PX = 1
 
     def _is_color_match(self, c1_rgb: tuple, c2_rgb: tuple, tolerance_sq: int) -> bool:
         """두 색상이 허용 오차 내에 있는지 확인합니다."""
@@ -247,8 +245,10 @@ class ColorFinder:
         self.mouse_controller.press(mouse.Button.left)
         time.sleep(0.05)
         # press 위치는 그대로 두고, release 직전에 마우스를 랜덤으로 미세하게 옮깁니다.
-        # x: ±(최소~최대)px, y: +(최소~최대)px
-        dx = random.choice((-1, 1)) * random.randint(self.RELEASE_JITTER_MIN_PX, self.RELEASE_JITTER_MAX_PX)
-        dy = random.randint(self.RELEASE_JITTER_MIN_PX, self.RELEASE_JITTER_MAX_PX)
+        # (dx, dy)가 둘 다 0이 되면 위치가 같아지므로 그 경우는 제외합니다.
+        dx, dy = 0, 0
+        while dx == 0 and dy == 0:
+            dx = random.randint(-self.RELEASE_JITTER_PX, self.RELEASE_JITTER_PX)
+            dy = random.randint(-self.RELEASE_JITTER_PX, self.RELEASE_JITTER_PX)
         self.mouse_controller.position = (int(x) + dx, int(y) + dy)
         self.mouse_controller.release(mouse.Button.left)
