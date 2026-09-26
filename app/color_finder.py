@@ -3,7 +3,6 @@ from pynput import mouse
 from PIL import ImageGrab
 import time
 import numpy as np
-import platform
 
 class SearchDirection(Enum):
     """탐색 방향을 정의합니다."""
@@ -27,7 +26,6 @@ class ColorFinder:
     """화면에서 특정 색상을 찾고 관련 동작을 수행하는 클래스"""
     def __init__(self):
         self.mouse_controller = mouse.Controller()
-        self.is_mac = platform.system() == "Darwin"
 
     def _is_color_match(self, c1_rgb: tuple, c2_rgb: tuple, tolerance_sq: int) -> bool:
         """두 색상이 허용 오차 내에 있는지 확인합니다."""
@@ -238,12 +236,9 @@ class ColorFinder:
             
         self.mouse_controller.position = (int(x), int(y))
         
-        if self.is_mac:
-            # macOS에서는 이동 후 즉시 클릭하면 무시되는 경우가 많아 지연 시간을 늘리고 press/release를 분리합니다.
-            time.sleep(0.1)
-            self.mouse_controller.press(mouse.Button.left)
-            time.sleep(0.05)
-            self.mouse_controller.release(mouse.Button.left)
-        else:
-            time.sleep(0.05)
-            self.mouse_controller.click(mouse.Button.left, 1)
+        # 이동 후 즉시 클릭하면 무시되는 경우가 많아(특히 macOS) 지연 시간을 두고
+        # press/release를 분리합니다. 모든 OS에서 동일하게 동작합니다.
+        time.sleep(0.1)
+        self.mouse_controller.press(mouse.Button.left)
+        time.sleep(0.05)
+        self.mouse_controller.release(mouse.Button.left)
