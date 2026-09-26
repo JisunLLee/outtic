@@ -61,6 +61,7 @@ class AppController:
         self.color = (190, 168, 134)
         self.complete_coord = (1314,905)
         self.use_auto_complete = True # 기본 탐색 후 완료 자동 클릭
+        self.use_complete_micro_move = False # 완료 클릭 전 미세 이동
         self.color_tolerance = 15
         self.color_area_tolerance = 5
         self.complete_click_delay = 0.1 # 완료 클릭 전 딜레이 (초), UI 기본값 10 -> 100ms
@@ -395,6 +396,7 @@ class AppController:
         try:
             self.complete_coord = ast.literal_eval(self.ui.complete_coord_var.get())
             self.use_auto_complete = self.ui.use_auto_complete_var.get()
+            self.use_complete_micro_move = self.ui.use_complete_micro_move_var.get()
             self.color = ast.literal_eval(self.ui.color_var.get())
             self.use_secondary_color = self.ui.use_secondary_color_var.get()
             self.secondary_color = ast.literal_eval(self.ui.secondary_color_var.get())
@@ -709,6 +711,7 @@ class AppController:
             'secondary_color': self.secondary_color,
             'complete_coord': self.complete_coord,
             'use_auto_complete': self.use_auto_complete,
+            'use_complete_micro_move': self.use_complete_micro_move,
             'color_tolerance': self.color_tolerance,
             'color_area_tolerance': self.color_area_tolerance,
             'complete_click_delay': self.complete_click_delay,
@@ -783,6 +786,7 @@ class AppController:
             'secondary_color': self.secondary_color,
             'complete_coord': self.complete_coord,
             'use_auto_complete': self.use_auto_complete,
+            'use_complete_micro_move': self.use_complete_micro_move,
             'color_tolerance': self.color_tolerance,
             'color_area_tolerance': self.color_area_tolerance,
             'complete_click_delay': self.complete_click_delay,
@@ -848,6 +852,7 @@ class AppController:
             self.secondary_color = tuple(settings_data.get('secondary_color', self.secondary_color))
             self.complete_coord = tuple(settings_data.get('complete_coord', self.complete_coord))
             self.use_auto_complete = bool(settings_data.get('use_auto_complete', True))
+            self.use_complete_micro_move = bool(settings_data.get('use_complete_micro_move', False))
             self.color_tolerance = int(settings_data.get('color_tolerance', self.color_tolerance))
             self.color_area_tolerance = int(settings_data.get('color_area_tolerance', self.color_area_tolerance))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
@@ -926,6 +931,7 @@ class AppController:
             self.secondary_color = tuple(settings_data.get('secondary_color', self.secondary_color))
             self.complete_coord = tuple(settings_data.get('complete_coord', self.complete_coord))
             self.use_auto_complete = bool(settings_data.get('use_auto_complete', True))
+            self.use_complete_micro_move = bool(settings_data.get('use_complete_micro_move', False))
             self.color_tolerance = int(settings_data.get('color_tolerance', self.color_tolerance))
             self.color_area_tolerance = int(settings_data.get('color_area_tolerance', self.color_area_tolerance))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
@@ -1313,7 +1319,8 @@ class AppController:
                     self.color_finder.mouse_controller.position = self.complete_coord
                 status_message = f"{success_message} 후 완료 위치로 이동 (수동 클릭 대기)"
             else:
-                self.color_finder.click_action(final_x, final_y)
+                self.color_finder.click_action(
+                    final_x, final_y, micro_move=self.use_complete_micro_move)
                 if self.ui:
                     self.ui.queue_task(lambda: self.ui.play_sound(3))
                 status_message = f"{success_message} 후 완료 클릭 ({final_x},{final_y})"
@@ -1361,7 +1368,8 @@ class AppController:
             x += random.randint(-self.color_area_tolerance, self.color_area_tolerance)
             y += random.randint(-self.color_area_tolerance, self.color_area_tolerance)
         
-        if not self.color_finder.click_action(x, y, blocking=False):
+        if not self.color_finder.click_action(
+                x, y, blocking=False, micro_move=self.use_complete_micro_move):
             return
         
         if self.ui:

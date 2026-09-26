@@ -231,7 +231,7 @@ class ColorFinder:
 
         return None
 
-    def click_action(self, x: int, y: int, *, blocking: bool = True) -> bool:
+    def click_action(self, x: int, y: int, *, blocking: bool = True, micro_move: bool = False) -> bool:
         """한 번에 하나씩 클릭합니다. blocking=False이면 진행 중인 클릭을 기다리지 않습니다."""
         x, y = int(x), int(y)
         if (x, y) == (0, 0):
@@ -241,6 +241,12 @@ class ColorFinder:
         try:
             self.mouse_controller.position = (x, y)
             time.sleep(0.1)
+            if micro_move:
+                # 완료 클릭 실험용: 최대 2px의 일정한 경로를 거쳐 목표에 복귀합니다.
+                # 전체 이동과 클릭은 동일한 잠금 안에서 실행합니다.
+                for dx, dy in ((-1, 0), (-2, -1), (-1, -1), (0, 0)):
+                    self.mouse_controller.position = (x + dx, y + dy)
+                    time.sleep(0.02)
             try:
                 self.mouse_controller.press(mouse.Button.left)
                 time.sleep(0.1)

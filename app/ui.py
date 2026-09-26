@@ -44,6 +44,7 @@ class AppUI:
         self.search_delay_var = tk.StringVar(value=str(int(c.search_delay * 100)))
         self.complete_coord_var = tk.StringVar(value=str(c.complete_coord))
         self.use_auto_complete_var = tk.BooleanVar(value=c.use_auto_complete)
+        self.use_complete_micro_move_var = tk.BooleanVar(value=c.use_complete_micro_move)
         self.use_initial_search_var = tk.BooleanVar(value=c.use_initial_search)
         self.continuous_search_var = tk.BooleanVar(value=c.continuous_search)
         self.research_delay_var = tk.StringVar(value=str(int(c.research_delay * 1000)))
@@ -153,7 +154,7 @@ class AppUI:
 
     def _setup_ui(self):
         """메인 UI를 생성하고 배치합니다."""
-        self.root.title("루오틱 For 히기 v.3.3.13")
+        self.root.title("루오틱 For 히기 v.3.3.14")
 
         window_width = 400
         # 4개의 구역이 모두 보이도록 창 높이 설정합니다.
@@ -250,6 +251,11 @@ class AppUI:
                                               command=self.controller.show_initial_area)
         initial_check_area_button.pack(side=tk.RIGHT)
         self._create_labeled_entry(right_frame, "완료 딜레이:", self.complete_delay_var).pack(expand=True, fill=tk.X, side=tk.LEFT)
+
+        tk.Checkbutton(basic_group, text="클릭 전 미세 이동",
+                       variable=self.use_complete_micro_move_var,
+                       fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e",
+                       highlightthickness=0).pack(anchor="w")
 
         # --- 탐색 화면 정상 여부 확인용 그룹 ---
         # (구역 탐색 여부와 무관하게 기본 탐색에서도 쓸 수 있도록 '구역 설정' 밖, 상단에 배치)
@@ -1314,6 +1320,7 @@ class AppUI:
         self.search_delay_var.set(str(int(c.search_delay * 100)))
         self.complete_coord_var.set(str(c.complete_coord))
         self.use_auto_complete_var.set(c.use_auto_complete)
+        self.use_complete_micro_move_var.set(c.use_complete_micro_move)
         self.use_initial_search_var.set(c.use_initial_search)
         self.continuous_search_var.set(c.continuous_search)
         self.research_delay_var.set(str(int(c.research_delay * 1000)))
