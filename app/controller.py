@@ -39,8 +39,10 @@ class AppController:
         self.direction_change_pending = False
 
         # --- 전역 단축키 설정 ---
-        # on_press 이벤트만 사용하여 Shift 연속 입력을 감지합니다.
-        self.keyboard_listener = keyboard.Listener(on_press=self.on_key_press)
+        self._space_pressed = False
+        self._space_action_lock = threading.Lock()
+        self.keyboard_listener = keyboard.Listener(
+            on_press=self.on_key_press, on_release=self.on_key_release)
         self.keyboard_listener.start()
 
         # --- 기본값 설정 ---
@@ -1319,10 +1321,25 @@ class AppController:
         """스페이스 완료 모드에서 스페이스바 입력 시 수행할 동작"""
         if not self.is_searching: return
         
-        # 별도 스레드에서 클릭 동작 수행 (키보드 리스너 블로킹 방지)
-        threading.Thread(target=self._space_complete_worker, daemon=True).start()
+        # 진행 중인 클릭/완료 작업에 입력을 쌓아 두지 않습니다.
+        if self.color_finder.click_lock.locked():
+            return
+        if not self._space_action_lock.acquire(blocking=False):
+            return
+        try:
+            threading.Thread(target=self._space_complete_worker, daemon=True).start()
+        except BaseException:
+            self._space_action_lock.release()
+            raise
 
     def _space_complete_worker(self):
+        try:
+            if self.is_searching:
+                self._run_space_complete_action()
+        finally:
+            self._space_action_lock.release()
+
+    def _run_space_complete_action(self):
         if not self.complete_coord or self.complete_coord == (0, 0):
             self.ui.queue_task(lambda: self.ui.update_status("오류: 완료 좌표가 설정되지 않았습니다."))
             return
@@ -1333,7 +1350,8 @@ class AppController:
             x += random.randint(-self.color_area_tolerance, self.color_area_tolerance)
             y += random.randint(-self.color_area_tolerance, self.color_area_tolerance)
         
-        self.color_finder.click_action(x, y)
+        if not self.color_finder.click_action(x, y, blocking=False):
+            return
         
         if self.ui:
             self.ui.queue_task(lambda: self.ui.play_sound(3))
@@ -1341,15 +1359,20 @@ class AppController:
         if self.continuous_search:
             if self.ui:
                 self.ui.queue_task(lambda: self.ui.update_status(f"스페이스바 입력으로 완료 ({x}, {y}) (계속 탐색 중)"))
-            if self.research_delay > 0:
-                time.sleep(self.research_delay)
         else:
             self.stop_search(message=f"스페이스바 입력으로 완료 ({x}, {y})")
+
+    def on_key_release(self, key):
+        if key == keyboard.Key.space:
+            self._space_pressed = False
 
     def on_key_press(self, key):
         """전역 키 입력을 감지하여 단축키 조합을 처리합니다."""
         # 스페이스 완료 모드 동작 (검색 중일 때 스페이스바로 완료 표시)
         if key == keyboard.Key.space:
+            if self._space_pressed:
+                return
+            self._space_pressed = True
             if self.is_searching and self.use_space_complete:
                 self._perform_space_complete_action()
             return

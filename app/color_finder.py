@@ -2,7 +2,7 @@ from enum import Enum
 from pynput import mouse
 from PIL import ImageGrab
 import time
-import random
+import threading
 import numpy as np
 
 class SearchDirection(Enum):
@@ -28,8 +28,7 @@ class ColorFinder:
     def __init__(self):
         self.mouse_controller = mouse.Controller()
 
-    # release 시 press 위치에서 이동할 픽셀 수 (x, y 각각 -값 또는 +값)
-    RELEASE_JITTER_PX = 1
+        self.click_lock = threading.Lock()
 
     def _is_color_match(self, c1_rgb: tuple, c2_rgb: tuple, tolerance_sq: int) -> bool:
         """두 색상이 허용 오차 내에 있는지 확인합니다."""
@@ -232,21 +231,21 @@ class ColorFinder:
 
         return None
 
-    def click_action(self, x: int, y: int):
-        """지정된 좌표로 마우스를 이동하고 클릭합니다."""
-        # 좌표가 (0, 0)이면 오동작 방지를 위해 무시합니다.
-        if int(x) == 0 and int(y) == 0:
-            return
-            
-        self.mouse_controller.position = (int(x), int(y))
-        
-        # press/release를 분리합니다. 모든 OS에서 동일하게 동작합니다.
-        time.sleep(0.1)
-        self.mouse_controller.press(mouse.Button.left)
-        time.sleep(0.1)
-        # press 위치는 그대로 두고, release 직전에 마우스를 랜덤으로 미세하게 옮깁니다.
-        # 각 축에서 0을 제외하고 -1 또는 +1 픽셀만 선택합니다.
-        dx = random.choice((-self.RELEASE_JITTER_PX, self.RELEASE_JITTER_PX))
-        dy = random.choice((-self.RELEASE_JITTER_PX, self.RELEASE_JITTER_PX))
-        self.mouse_controller.position = (int(x) + dx, int(y) + dy)
-        self.mouse_controller.release(mouse.Button.left)
+    def click_action(self, x: int, y: int, *, blocking: bool = True) -> bool:
+        """한 번에 하나씩 클릭합니다. blocking=False이면 진행 중인 클릭을 기다리지 않습니다."""
+        x, y = int(x), int(y)
+        if (x, y) == (0, 0):
+            return False
+        if not self.click_lock.acquire(blocking=blocking):
+            return False
+        try:
+            self.mouse_controller.position = (x, y)
+            time.sleep(0.1)
+            try:
+                self.mouse_controller.press(mouse.Button.left)
+                time.sleep(0.1)
+            finally:
+                self.mouse_controller.release(mouse.Button.left)
+            return True
+        finally:
+            self.click_lock.release()
