@@ -27,10 +27,16 @@ jobs:
         poetry config virtualenvs.create false
         poetry install --no-interaction --no-ansi
 
+    - name: Get app version
+      id: ver
+      shell: bash
+      run: |
+        echo "실행파일 이름: 루오틱3"
+
     - name: Build EXE with PyInstaller
       run: |
         # poetry run 대신 직접 pyinstaller 실행
-        pyinstaller --onefile --noconsole --hidden-import=pynput.keyboard --hidden-import=pynput.mouse --clean run_auttic.py
+        pyinstaller --onefile --noconsole --name "루오틱3" --hidden-import=pynput.keyboard --hidden-import=pynput.mouse --clean run_auttic.py
 
     - name: Check Build Output
       run: |
@@ -39,5 +45,5 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Windows-Executable
+        name: 루오틱3 
         path: dist/*.exe

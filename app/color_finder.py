@@ -243,7 +243,7 @@ class ColorFinder:
         # press/release를 분리합니다. 모든 OS에서 동일하게 동작합니다.
         time.sleep(0.1)
         self.mouse_controller.press(mouse.Button.left)
-        time.sleep(0.05)
+        time.sleep(0.1)
         # press 위치는 그대로 두고, release 직전에 마우스를 랜덤으로 미세하게 옮깁니다.
         # (dx, dy)가 둘 다 0이 되면 위치가 같아지므로 그 경우는 제외합니다.
         dx, dy = 0, 0
