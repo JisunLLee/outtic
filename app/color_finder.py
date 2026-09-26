@@ -2,6 +2,7 @@ from enum import Enum
 from pynput import mouse
 from PIL import ImageGrab
 import time
+import random
 import numpy as np
 
 class SearchDirection(Enum):
@@ -26,6 +27,9 @@ class ColorFinder:
     """화면에서 특정 색상을 찾고 관련 동작을 수행하는 클래스"""
     def __init__(self):
         self.mouse_controller = mouse.Controller()
+
+    # release 시 press 위치에서 벗어나는 최대 픽셀 수 (x, y 각각 ±이 값 범위의 랜덤)
+    RELEASE_JITTER_PX = 2
 
     def _is_color_match(self, c1_rgb: tuple, c2_rgb: tuple, tolerance_sq: int) -> bool:
         """두 색상이 허용 오차 내에 있는지 확인합니다."""
@@ -236,9 +240,15 @@ class ColorFinder:
             
         self.mouse_controller.position = (int(x), int(y))
         
-        # 이동 후 즉시 클릭하면 무시되는 경우가 많아(특히 macOS) 지연 시간을 두고
         # press/release를 분리합니다. 모든 OS에서 동일하게 동작합니다.
         time.sleep(0.1)
         self.mouse_controller.press(mouse.Button.left)
         time.sleep(0.05)
+        # press 위치는 그대로 두고, release 직전에 마우스를 랜덤으로 미세하게 옮깁니다.
+        # (dx, dy)가 둘 다 0이 되면 위치가 같아지므로 그 경우는 제외합니다.
+        dx, dy = 0, 0
+        while dx == 0 and dy == 0:
+            dx = random.randint(-self.RELEASE_JITTER_PX, self.RELEASE_JITTER_PX)
+            dy = random.randint(-self.RELEASE_JITTER_PX, self.RELEASE_JITTER_PX)
+        self.mouse_controller.position = (int(x) + dx, int(y) + dy)
         self.mouse_controller.release(mouse.Button.left)
