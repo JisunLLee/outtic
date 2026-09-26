@@ -231,7 +231,7 @@ class ColorFinder:
 
         return None
 
-    def click_action(self, x: int, y: int, *, blocking: bool = True, micro_move: bool = False, micro_move_width: int = 2) -> bool:
+    def click_action(self, x: int, y: int, *, blocking: bool = True, micro_move: bool = False, micro_move_width: int = 10) -> bool:
         """한 번에 하나씩 클릭합니다. blocking=False이면 진행 중인 클릭을 기다리지 않습니다."""
         x, y = int(x), int(y)
         if (x, y) == (0, 0):

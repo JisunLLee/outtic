@@ -156,7 +156,7 @@ class AppUI:
 
     def _setup_ui(self):
         """메인 UI를 생성하고 배치합니다."""
-        self.root.title("루오틱 For 히기 v.3.3.15")
+        self.root.title("루오틱 For 히기 v.3.3.16")
 
         window_width = 400
         # 4개의 구역이 모두 보이도록 창 높이 설정합니다.
@@ -261,7 +261,8 @@ class AppUI:
                        fg="white", selectcolor="#2e2e2e", activebackground="#2e2e2e",
                        highlightthickness=0).pack(side=tk.LEFT)
         tk.Entry(micro_move_row, textvariable=self.complete_micro_move_width_var,
-                 width=4, justify="center").pack(side=tk.LEFT, padx=(4, 2))
+                 width=4, bg="#444444", fg="white", insertbackground="white",
+                 borderwidth=0, highlightthickness=0).pack(side=tk.LEFT, padx=(4, 2))
         tk.Label(micro_move_row, text="px", fg="gray").pack(side=tk.LEFT)
 
         # --- 탐색 화면 정상 여부 확인용 그룹 ---

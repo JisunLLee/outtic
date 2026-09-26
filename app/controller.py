@@ -62,7 +62,7 @@ class AppController:
         self.complete_coord = (1314,905)
         self.use_auto_complete = True # 기본 탐색 후 완료 자동 클릭
         self.use_complete_micro_move = False # 완료 클릭 전 미세 이동
-        self.complete_micro_move_width = 2 # 미세 이동의 가로 최대 폭(px)
+        self.complete_micro_move_width = 10 # 미세 이동의 가로 최대 폭(px)
         self.color_tolerance = 15
         self.color_area_tolerance = 5
         self.complete_click_delay = 0.1 # 완료 클릭 전 딜레이 (초), UI 기본값 10 -> 100ms
@@ -863,7 +863,7 @@ class AppController:
             self.complete_coord = tuple(settings_data.get('complete_coord', self.complete_coord))
             self.use_auto_complete = bool(settings_data.get('use_auto_complete', True))
             self.use_complete_micro_move = bool(settings_data.get('use_complete_micro_move', False))
-            self.complete_micro_move_width = max(0, int(settings_data.get('complete_micro_move_width', 2)))
+            self.complete_micro_move_width = max(0, int(settings_data.get('complete_micro_move_width', 10)))
             self.color_tolerance = int(settings_data.get('color_tolerance', self.color_tolerance))
             self.color_area_tolerance = int(settings_data.get('color_area_tolerance', self.color_area_tolerance))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
@@ -944,7 +944,7 @@ class AppController:
             self.complete_coord = tuple(settings_data.get('complete_coord', self.complete_coord))
             self.use_auto_complete = bool(settings_data.get('use_auto_complete', True))
             self.use_complete_micro_move = bool(settings_data.get('use_complete_micro_move', False))
-            self.complete_micro_move_width = max(0, int(settings_data.get('complete_micro_move_width', 2)))
+            self.complete_micro_move_width = max(0, int(settings_data.get('complete_micro_move_width', 10)))
             self.color_tolerance = int(settings_data.get('color_tolerance', self.color_tolerance))
             self.color_area_tolerance = int(settings_data.get('color_area_tolerance', self.color_area_tolerance))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
