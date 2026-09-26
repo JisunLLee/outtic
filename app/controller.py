@@ -60,6 +60,7 @@ class AppController:
         self.initial_area_order = [1]
         self.color = (190, 168, 134)
         self.complete_coord = (1314,905)
+        self.use_auto_complete = True # 기본 탐색 후 완료 자동 클릭
         self.color_tolerance = 15
         self.color_area_tolerance = 5
         self.complete_click_delay = 0.1 # 완료 클릭 전 딜레이 (초), UI 기본값 10 -> 100ms
@@ -393,6 +394,7 @@ class AppController:
         if not self.ui: return False
         try:
             self.complete_coord = ast.literal_eval(self.ui.complete_coord_var.get())
+            self.use_auto_complete = self.ui.use_auto_complete_var.get()
             self.color = ast.literal_eval(self.ui.color_var.get())
             self.use_secondary_color = self.ui.use_secondary_color_var.get()
             self.secondary_color = ast.literal_eval(self.ui.secondary_color_var.get())
@@ -706,6 +708,7 @@ class AppController:
             'use_secondary_color': self.use_secondary_color,
             'secondary_color': self.secondary_color,
             'complete_coord': self.complete_coord,
+            'use_auto_complete': self.use_auto_complete,
             'color_tolerance': self.color_tolerance,
             'color_area_tolerance': self.color_area_tolerance,
             'complete_click_delay': self.complete_click_delay,
@@ -779,6 +782,7 @@ class AppController:
             'use_secondary_color': self.use_secondary_color,
             'secondary_color': self.secondary_color,
             'complete_coord': self.complete_coord,
+            'use_auto_complete': self.use_auto_complete,
             'color_tolerance': self.color_tolerance,
             'color_area_tolerance': self.color_area_tolerance,
             'complete_click_delay': self.complete_click_delay,
@@ -843,6 +847,7 @@ class AppController:
             self.use_secondary_color = bool(settings_data.get('use_secondary_color', self.use_secondary_color))
             self.secondary_color = tuple(settings_data.get('secondary_color', self.secondary_color))
             self.complete_coord = tuple(settings_data.get('complete_coord', self.complete_coord))
+            self.use_auto_complete = bool(settings_data.get('use_auto_complete', True))
             self.color_tolerance = int(settings_data.get('color_tolerance', self.color_tolerance))
             self.color_area_tolerance = int(settings_data.get('color_area_tolerance', self.color_area_tolerance))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
@@ -920,6 +925,7 @@ class AppController:
             self.use_secondary_color = bool(settings_data.get('use_secondary_color', self.use_secondary_color))
             self.secondary_color = tuple(settings_data.get('secondary_color', self.secondary_color))
             self.complete_coord = tuple(settings_data.get('complete_coord', self.complete_coord))
+            self.use_auto_complete = bool(settings_data.get('use_auto_complete', True))
             self.color_tolerance = int(settings_data.get('color_tolerance', self.color_tolerance))
             self.color_area_tolerance = int(settings_data.get('color_area_tolerance', self.color_area_tolerance))
             self.complete_click_delay = float(settings_data.get('complete_click_delay', self.complete_click_delay))
@@ -1274,7 +1280,7 @@ class AppController:
         self.ui.queue_task(lambda: self.ui.update_button_text("찾기 (Shift x2 / ESC)"))
         print(f"--- {message} ---")
 
-    def _handle_found_color(self, found_pos: tuple, success_message: str):
+    def _handle_found_color(self, found_pos: tuple, success_message: str, *, initial_search: bool = False):
         """색상을 찾았을 때의 공통 처리 로직입니다."""
         if not self.is_searching: return
 
@@ -1301,11 +1307,16 @@ class AppController:
             if self.complete_click_delay > 0:
                 time.sleep(self.complete_click_delay)
             
-            self.color_finder.click_action(final_x, final_y)
-            # 완료 클릭 성공 시 '삐삐삐' 소리를 내도록 UI에 요청합니다.
-            if self.ui:
-                self.ui.queue_task(lambda: self.ui.play_sound(3))
-            status_message = f"{success_message} 후 완료 클릭 ({final_x},{final_y})"
+            if initial_search and not self.use_auto_complete:
+                # 수동 완료를 위해 클릭 없이 등록된 완료 좌표로 이동합니다.
+                with self.color_finder.click_lock:
+                    self.color_finder.mouse_controller.position = self.complete_coord
+                status_message = f"{success_message} 후 완료 위치로 이동 (수동 클릭 대기)"
+            else:
+                self.color_finder.click_action(final_x, final_y)
+                if self.ui:
+                    self.ui.queue_task(lambda: self.ui.play_sound(3))
+                status_message = f"{success_message} 후 완료 클릭 ({final_x},{final_y})"
         else:
             status_message = f"{success_message}"
 
@@ -1675,7 +1686,7 @@ class AppController:
                 if not self._check_operation_status('initial'): return False
                 found_pos = self._find_color_in_areas(initial_step['initial_areas'], initial_step['search_color'], self.color_tolerance)
                 if found_pos:
-                    self._handle_found_color(found_pos, "초기 탐색 중 1순위 색상 발견")
+                    self._handle_found_color(found_pos, "초기 탐색 중 1순위 색상 발견", initial_search=True)
                     if not self.continuous_search: return True
 
                 # 2. 2순위 색상 탐색 (조건부)
@@ -1685,7 +1696,7 @@ class AppController:
                     if not self._check_operation_status('initial'): return False
                     found_pos_secondary = self._find_color_in_areas(initial_step['initial_areas'], self.secondary_color, self.color_tolerance)
                     if found_pos_secondary:
-                        self._handle_found_color(found_pos_secondary, "초기 탐색 중 2순위 색상 발견")
+                        self._handle_found_color(found_pos_secondary, "초기 탐색 중 2순위 색상 발견", initial_search=True)
                         if not self.continuous_search: return True
 
             retry_steps = [step for step in search_plan if step['type'] == 'retry']
@@ -1745,7 +1756,7 @@ class AppController:
                 if not self._check_operation_status('initial'): return False
                 found_pos = self._find_color_in_areas(initial_step['initial_areas'], initial_step['search_color'], self.color_tolerance)
                 if found_pos:
-                    self._handle_found_color(found_pos, "기본 영역에서 1순위 색상 발견")
+                    self._handle_found_color(found_pos, "기본 영역에서 1순위 색상 발견", initial_search=True)
                     if not self.continuous_search: return True
 
                 # 2. 2순위 색상 탐색 (조건부)
@@ -1755,7 +1766,7 @@ class AppController:
                     if not self._check_operation_status('initial'): return False
                     found_pos_secondary = self._find_color_in_areas(initial_step['initial_areas'], self.secondary_color, self.color_tolerance)
                     if found_pos_secondary:
-                        self._handle_found_color(found_pos_secondary, "기본 영역에서 2순위 색상 발견")
+                        self._handle_found_color(found_pos_secondary, "기본 영역에서 2순위 색상 발견", initial_search=True)
                         if not self.continuous_search: return True
 
                 if self.use_search_delay and self.search_delay > 0:
