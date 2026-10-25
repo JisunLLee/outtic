@@ -165,6 +165,8 @@ class AppUI:
         # 화면의 너비를 가져옵니다.
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
+        window_width = min(window_width, max(260, screen_width - 40))
+        window_height = min(window_height, max(200, screen_height - 80))
 
         # 창을 모니터 오른쪽 상단에 위치시킵니다.
         x_pos = screen_width - window_width
@@ -172,6 +174,7 @@ class AppUI:
 
         self.root.geometry(f"{window_width}x{window_height}+{x_pos}+{y_pos}")
         self.root.resizable(True, True)
+        self.root.minsize(260, 200)
 
         main_frame = tk.Frame(self.root, padx=10, pady=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
@@ -183,29 +186,34 @@ class AppUI:
         # 다 차지해버려서 이 프레임이 밀려나 안 보이게 됩니다.)
         action_frame = tk.Frame(main_frame)
         action_frame.pack(side=tk.BOTTOM, fill=tk.X)
-        action_frame.grid_columnconfigure(0, weight=1)
         action_frame.grid_columnconfigure(1, weight=1)
         action_frame.grid_columnconfigure(2, weight=1)
         action_frame.grid_columnconfigure(3, weight=1)
+        action_frame.grid_columnconfigure(4, weight=1)
+
+        ttk.Sizegrip(action_frame).grid(row=0, column=0, sticky=tk.SW, padx=(0, 5))
 
         self.load_button = tk.Button(action_frame, text="불러오기",
                                      activeforeground="white", activebackground="#555555",
                                      command=self.controller.load_settings)
-        self.load_button.grid(row=0, column=0, sticky=tk.EW, padx=(0, 5))
+        self.load_button.grid(row=0, column=1, sticky=tk.EW, padx=(0, 5))
         self.save_button = tk.Button(action_frame, text="저장하기",
                                      activeforeground="white", activebackground="#555555",
                                      command=self.controller.save_settings)
-        self.save_button.grid(row=0, column=1, sticky=tk.EW, padx=(0, 5))
+        self.save_button.grid(row=0, column=2, sticky=tk.EW, padx=(0, 5))
 
         self.area_button = tk.Button(action_frame, text="영역확인",
                                      activeforeground="white", activebackground="#555555",
                                      command=self.controller.show_area)
-        self.area_button.grid(row=0, column=2, sticky=tk.EW, padx=(0, 5))
+        self.area_button.grid(row=0, column=3, sticky=tk.EW, padx=(0, 5))
 
         self.find_button = tk.Button(action_frame, text="찾기(Shift x2 / ESC)",
                                      activeforeground="white", activebackground="#555555",
                                      command=self.controller.toggle_search)
-        self.find_button.grid(row=0, column=3, sticky=tk.EW)
+        self.find_button.grid(row=0, column=4, sticky=tk.EW)
+
+        # Keep actions visible while the settings can scroll in either dimension.
+        main_frame = self._create_settings_viewport(main_frame)
 
         # --- 기본 설정 그룹 ---
         basic_group = self._create_labeled_frame(main_frame, "기본", name="basic_group")
@@ -477,14 +485,20 @@ class AppUI:
         self.scrollable_content_frame.bind("<Configure>", on_frame_configure)
 
         def on_mouse_wheel(event):
+            # Wheel events over the area list scroll that list; elsewhere scroll
+            # the whole settings viewport, including at small window sizes.
+            widget = event.widget
+            while widget is not None and widget is not self.scrollable_canvas:
+                widget = getattr(widget, 'master', None)
+            canvas = self.scrollable_canvas if widget is not None else self.settings_canvas
             # 플랫폼에 따라 스크롤 처리
             if sys.platform.startswith("win"):
-                self.scrollable_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+                canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
             elif sys.platform == "darwin": # macOS
-                self.scrollable_canvas.yview_scroll(int(-1 * event.delta), "units")
+                canvas.yview_scroll(int(-1 * event.delta), "units")
             else: # Linux
-                if event.num == 4: self.scrollable_canvas.yview_scroll(-1, "units")
-                elif event.num == 5: self.scrollable_canvas.yview_scroll(1, "units")
+                if event.num == 4: canvas.yview_scroll(-1, "units")
+                elif event.num == 5: canvas.yview_scroll(1, "units")
 
         # 캔버스 및 그 자식 위젯들에서 마우스 휠 이벤트가 발생할 때 스크롤되도록 바인딩
         self.root.bind_all("<MouseWheel>", on_mouse_wheel)
@@ -506,14 +520,30 @@ class AppUI:
         # (위젯 생성 전에 호출하면 그 시점에 존재하는 위젯이 없어 아무 효과가 없습니다.)
         self.update_window_bg('default')
 
-        # 창을 너무 작게 줄이면 구역 목록 외의 다른 설정들이 가려지므로, "탐색 구역이
-        # 하나도 없을 때"에 해당하는 크기를 최소 창 크기로 고정합니다. 지금은 기본 구역
-        # 5개가 만들어진 상태라 그대로 재면 그 크기가 잡히므로, 현재 캔버스 높이 대신
-        # '+ 구역 추가' 버튼만 있을 때의 높이(구역 0개 상태)로 바꿔서 계산합니다.
-        self.root.update_idletasks()
-        zero_zone_canvas_height = self.add_area_btn.winfo_reqheight() + 20  # 버튼의 pady(10+10)
-        zero_zone_root_height = self.root.winfo_reqheight() - self.scrollable_canvas.winfo_height() + zero_zone_canvas_height
-        self.root.minsize(self.root.winfo_reqwidth(), zero_zone_root_height)
+    def _create_settings_viewport(self, parent):
+        viewport = tk.Frame(parent)
+        viewport.pack(fill=tk.BOTH, expand=True)
+        viewport.grid_rowconfigure(0, weight=1)
+        viewport.grid_columnconfigure(0, weight=1)
+        canvas = self.settings_canvas = tk.Canvas(viewport, highlightthickness=0, width=1, height=1)
+        canvas.grid(row=0, column=0, sticky='nsew')
+        vertical = ttk.Scrollbar(viewport, orient=tk.VERTICAL, command=canvas.yview)
+        vertical.grid(row=0, column=1, sticky='ns')
+        horizontal = ttk.Scrollbar(viewport, orient=tk.HORIZONTAL, command=canvas.xview)
+        horizontal.grid(row=1, column=0, sticky='ew')
+        canvas.configure(yscrollcommand=vertical.set, xscrollcommand=horizontal.set)
+        content = tk.Frame(canvas)
+        window = canvas.create_window((0, 0), window=content, anchor='nw')
+
+        def update_layout(event):
+            # Preserve the controls' requested width when the window is narrow;
+            # let the horizontal scrollbar expose the rest of the settings.
+            canvas.itemconfigure(window, width=max(canvas.winfo_width(), content.winfo_reqwidth()))
+            canvas.configure(scrollregion=canvas.bbox('all'))
+
+        canvas.bind('<Configure>', update_layout)
+        content.bind('<Configure>', update_layout)
+        return content
 
     def _create_area_group(self, parent, area_number: int):
         """
