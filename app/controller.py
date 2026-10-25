@@ -7,7 +7,7 @@ from pynput import mouse, keyboard
 from typing import Optional, TYPE_CHECKING
 import ast
 import random # 오차 적용을 위해 추가
-from PIL import ImageGrab # 화면 캡처를 위해 import 합니다.
+from .screen_capture import color_at
 import json
 from tkinter import filedialog
 import itertools # 재시도 순환을 위해 추가
@@ -1123,11 +1123,7 @@ class AppController:
         if not self.ui: return
 
         x, y = self.mouse_controller.position
-        # 1x1 픽셀만 캡처하면 충분합니다.
-        screenshot = ImageGrab.grab(bbox=(int(x), int(y), int(x) + 1, int(y) + 1))
-        pixel_color = screenshot.getpixel((0, 0))
-        
-        new_color = pixel_color[:3] # RGB 값만 사용 (알파 채널 제외)
+        new_color = color_at(x, y)
 
         if color_key == 'main_color':
             self.ui.color_var.set(str(new_color))
@@ -1168,12 +1164,7 @@ class AppController:
         x, y = self.mouse_controller.position
         pos = (int(x), int(y))
         
-        # 화면 전체 캡처 후 마우스 위치의 색상 추출 (Retina 스케일링 대응)
-        screenshot = ImageGrab.grab()
-        img_w, _ = screenshot.size
-        screen_w = self.ui.root.winfo_screenwidth()
-        scale = img_w / screen_w
-        color = screenshot.getpixel((int(x * scale), int(y * scale)))[:3]
+        color = color_at(x, y)
 
         if prefix == 'op_check':
             self.ui.op_check_coord_var.set(str(pos))

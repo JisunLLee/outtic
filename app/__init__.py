@@ -1,0 +1,3 @@
+from .screen_capture import enable_windows_dpi_awareness
+
+enable_windows_dpi_awareness()

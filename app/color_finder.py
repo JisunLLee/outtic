@@ -1,6 +1,6 @@
 from enum import Enum
 from pynput import mouse
-from PIL import ImageGrab
+from .screen_capture import grab_area
 import time
 import threading
 import numpy as np
@@ -86,7 +86,7 @@ class ColorFinder:
         if not (x2 > x1 and y2 > y1):
             return None
 
-        screenshot = ImageGrab.grab(bbox=(x1, y1, x2, y2))
+        screenshot = grab_area((x1, y1, x2, y2))
         img_array = np.array(screenshot)
         height, width, _ = img_array.shape
 

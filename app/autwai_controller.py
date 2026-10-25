@@ -5,7 +5,7 @@ import ast
 from typing import Optional, TYPE_CHECKING
 
 from pynput import mouse, keyboard
-from PIL import ImageGrab
+from .screen_capture import color_at
 
 from .color_finder import ColorFinder, SearchDirection
 from .global_hotkey_listener import GlobalHotkeyListener
@@ -269,8 +269,7 @@ class AutwaiController:
     def _grab_color(self, color_key: str):
         if not self.ui: return
         x, y = self.mouse_controller.position
-        screenshot = ImageGrab.grab(bbox=(int(x), int(y), int(x) + 1, int(y) + 1))
-        new_color = screenshot.getpixel((0, 0))[:3] # RGB
+        new_color = color_at(x, y)
 
         if color_key == 'main_color':
             self.ui.color_var.set(str(new_color))

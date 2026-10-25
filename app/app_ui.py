@@ -2,7 +2,7 @@ import tkinter as tk
 import queue
 import sys
 from pynput import mouse
-from PIL import ImageGrab
+from .screen_capture import color_at
 
 from .color_finder import SearchDirection
 
@@ -305,11 +305,7 @@ class AppUI:
 
         def grab_color_after_delay():
             x, y = self.mouse_controller.position
-            ix, iy = int(x), int(y)
-            
-            screenshot = ImageGrab.grab(bbox=(ix, iy, ix + 1, iy + 1)).convert('RGB')
-            pixel_color = screenshot.getpixel((0, 0))
-            new_color = pixel_color
+            new_color = color_at(x, y)
 
             if color_index == 0:
                 self.color_var.set(str(new_color))
